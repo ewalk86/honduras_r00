@@ -10,6 +10,45 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+library(tidyverse)
+```
 
+```{r}
+# Load data
+#r00_p6_pre_weights <- read_csv("input/honduras_r00_p6_pre_weights.csv")
+#r00_p6_post_weights <- read_csv("input/honduras_r00_p6_post_weights.csv")
+r00_p6_weights_combined <- readRDS("output/r00_p6_weights_combined.rds")
+r00_p6_pre_weights <- readRDS("output/r00_p6_pre_weights.rds")
+r00_p6_post_weights <- readRDS("output/r00_p6_post_weights.rds")
+```
+
+```{r}
+# check imported data
+head(r00_p6_post_weights)
+head(r00_p6_pre_weights)
+```
+
+```{r}
+# rename entry_check vars
+#r00_p6_pre_weights <- r00_p6_pre_weights %>% 
+ # rename(entry_check_pre = entry_check)
+#r00_p6_post_weights <- r00_p6_post_weights %>% 
+ # rename(entry_check_post = entry_check)
+#r00_p6_weights_combined <- full_join(r00_p6_pre_weights, r00_p6_post_weights, by = "filter_id")
+
+# save datasets as RDS
+#saveRDS(r00_p6_weights_combined, "output/r00_p6_weights_combined.rds")
+#saveRDS(r00_p6_pre_weights, "output/r00_p6_pre_weights.rds")
+#saveRDS(r00_p6_post_weights, "output/r00_p6_post_weights.rds")
+```
+
+```{r}
+# Initial data check on weights
+weight_check <- r00_p6_weights_combined %>% 
+  mutate(pre_post_diff = (average_post - average_pre)) %>% 
+  mutate(pre_post_check = if_else(pre_post_diff < 0, "neg", "pos")) %>% 
+  group_by(pre_post_check) %>% 
+  summarize(n())
+weight_check
 ```
 
