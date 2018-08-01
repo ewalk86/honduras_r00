@@ -5,3 +5,4 @@
 *.PDF
 *.RDS
 doc/**/*.RDS
+doc/**/*.csv
