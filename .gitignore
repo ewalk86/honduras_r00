@@ -4,5 +4,6 @@
 .Ruserdata
 *.PDF
 *.RDS
+*.csv
 doc/**/*.RDS
 doc/**/*.csv

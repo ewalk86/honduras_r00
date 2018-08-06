@@ -1,7 +1,7 @@
 ---
-title: "Initial Exposure Data Cleaning"
+title: "Initial Data Cleaning"
 author: "Ethan Walker"
-date: "1 August 2018"
+date: "6 August 2018"
 output: pdf_document
 ---
 
@@ -11,15 +11,20 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(readxl)
 ```
 
 ```{r, message=FALSE}
 # Load data
 #r00_p6_pre_weights <- read_csv("input/honduras_r00_p6_pre_weights.csv")
 #r00_p6_post_weights <- read_csv("input/honduras_r00_p6_post_weights.csv")
+#r00_full_wide <- read_xlsx("input/R00_health_wide_06Aug2018_by.xlsx")
+
 r00_p6_weights_combined <- readRDS("output/r00_p6_weights_combined.rds")
 r00_p6_pre_weights <- readRDS("output/r00_p6_pre_weights.rds")
 r00_p6_post_weights <- readRDS("output/r00_p6_post_weights.rds")
+
+r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
 
 ```{r}
@@ -75,3 +80,34 @@ weight_check <- r00_p6_weights_combined %>%
 # P6-031 entered correctly - same pre/post weight, don't reweigh
 ```
 
+##### Convert Dataset from Wide to Long #####
+```{r}
+r00_full_long <- r00_full_wide %>% 
+  gather(key = "variable", value = "value", -house_id) %>% 
+  arrange(house_id)
+
+r00_full_repeated_by_phase <- r00_full_long %>%
+  mutate(variable = if_else(variable == "ses_materials", 
+                            "ses_materials_r00_p1", variable)) %>% 
+  mutate(variable = if_else(variable == "beds_new", 
+                            "beds_new_r00_p1", variable)) %>%
+  mutate(variable = if_else(variable == "group", 
+                            "group_r00_p1", variable)) %>%
+  separate(variable, c("variable", "phase"), sep = "_r00_p") %>% 
+  separate(phase, c("phase", "new"), sep = "_") %>% 
+  unite("variable", c("variable", "new")) %>% 
+  separate(variable, c("variable", "trash"), sep = "_NA") %>% 
+  select(-"trash") %>% 
+  spread(key = "variable", value = "value") %>% 
+  arrange(house_id)
+```
+
+# Save datasets
+```{r}
+write_rds(r00_full_wide, "output/r00_full_wide.rds")
+write_rds(r00_full_long, "output/r00_full_long.rds")
+write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
+write_csv(r00_full_wide, "output/r00_full_wide.csv")
+write_csv(r00_full_long, "output/r00_full_long.csv")
+write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv")
+```
