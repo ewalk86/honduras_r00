@@ -27,12 +27,7 @@ r00_p6_post_weights <- readRDS("output/r00_p6_post_weights.rds")
 r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
 
-```{r}
-# check imported data
-head(r00_p6_post_weights)
-head(r00_p6_pre_weights)
-```
-
+##### Phase 6 initial exposure data check and cleaning #####
 ```{r}
 # rename entry_check vars
 r00_p6_pre_weights <- r00_p6_pre_weights %>% 
