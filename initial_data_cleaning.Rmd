@@ -83,21 +83,33 @@ weight_check <- r00_p6_weights_combined %>%
 ##### Convert Dataset from Wide to Long #####
 ```{r}
 r00_full_long <- r00_full_wide %>% 
+  #transform data to long format with only 3 columns
   gather(key = "variable", value = "value", -house_id) %>% 
+  #arrange data by house_id, descending
   arrange(house_id)
 
 r00_full_repeated_by_phase <- r00_full_long %>%
+  #this variable has no corresponding phase
+  #renaming to phase 1 so it spreads below
   mutate(variable = if_else(variable == "ses_materials", 
                             "ses_materials_r00_p1", variable)) %>% 
+  #this variable has no corresponding phase
+  #renaming to phase 1 so it spreads below
   mutate(variable = if_else(variable == "beds_new", 
                             "beds_new_r00_p1", variable)) %>%
+  #this variable has no corresponding phase
+  #renaming to phase 1 so it spreads below
   mutate(variable = if_else(variable == "group", 
                             "group_r00_p1", variable)) %>%
-  separate(variable, c("variable", "phase"), sep = "_r00_p") %>% 
+  #separate variable to create new phase column
+  separate(variable, c("variable", "phase"), sep = "_r00_p") %>%
+  #separate phase and "new", then attach "new" to variable
   separate(phase, c("phase", "new"), sep = "_") %>% 
   unite("variable", c("variable", "new")) %>% 
+  #remove NA from end of variables that was added above
   separate(variable, c("variable", "trash"), sep = "_NA") %>% 
   select(-"trash") %>% 
+  #spread out into columns, grouped by house_id and phase
   spread(key = "variable", value = "value") %>% 
   arrange(house_id)
 ```
