@@ -12,72 +12,77 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message=FALSE}
 library(tidyverse)
 library(readxl)
+library(naniar)
 ```
 
 ```{r, message=FALSE}
 # Load data
-#r00_p6_pre_weights <- read_csv("input/honduras_r00_p6_pre_weights.csv")
-#r00_p6_post_weights <- read_csv("input/honduras_r00_p6_post_weights.csv")
 #r00_full_wide <- read_xlsx("input/R00_health_wide_06Aug2018_by.xlsx")
 
-r00_p6_weights_combined <- readRDS("output/r00_p6_weights_combined.rds")
-r00_p6_pre_weights <- readRDS("output/r00_p6_pre_weights.rds")
-r00_p6_post_weights <- readRDS("output/r00_p6_post_weights.rds")
-
 r00_full_wide <- readRDS("output/r00_full_wide.rds")
-```
-
-##### Phase 6 initial exposure data check and cleaning #####
-```{r}
-# rename entry_check vars
-r00_p6_pre_weights <- r00_p6_pre_weights %>% 
-  rename(entry_check_pre = entry_check)
-r00_p6_post_weights <- r00_p6_post_weights %>% 
-  rename(entry_check_post = entry_check)
-
-r00_p6_weights_combined <- full_join(r00_p6_pre_weights, r00_p6_post_weights, by = "filter_id")
-
-# save datasets as RDS
-saveRDS(r00_p6_weights_combined, "output/r00_p6_weights_combined.rds")
-saveRDS(r00_p6_pre_weights, "output/r00_p6_pre_weights.rds")
-saveRDS(r00_p6_post_weights, "output/r00_p6_post_weights.rds")
-```
-
-```{r}
-# Initial data check on weights
-weight_check <- r00_p6_weights_combined %>% 
-  mutate(pre_post_diff = (average_post - average_pre)) %>% 
-  mutate(pre_post_check = if_else(pre_post_diff < 0, "neg", "pos")) 
-
-# P6-338 has no pre-weight -  post-weight entered correctly - P6-238 entered twice
- #### Changed in database ####
-# P6-217 has no pre-weight -  post-weight entered correctly - P6-218 entered twice
- #### Changed in database ####
-# P6-162 has no pre-weight -  post-weight entered correctly - P6-126 entered twice
- #### Changed in database ####
-# P6-498 entered twice 
- #### The one with pre-weight of 109.801 (higher than post-weight) was renamed to P6-468 (missing from pre-weights) ####
-
-# P6-247 entered correctly - reweigh
-# P6-339 entered correctly - reweigh
-# P6-405 entered correctly - reweigh
-# P6-078 entered correctly - reweigh - "dropped prior to weighing (pre)"
-# P6-442 entered correctly - reweigh
-# P6-074 entered correctly - reweigh - pre trip colocation
-# P6-475 entered correctly - reweigh
-# P6-395 entered correctly - less than 0.01 difference, don't reweigh
-# P6-328 entered correctly - less than 0.01 difference, don't reweigh
-# P6-424 entered correctly - less than 0.01 difference, don't reweigh
-# P6-176 entered correctly - less than 0.01 difference, don't reweigh
-# P6-427 entered correctly - less than 0.01 difference, don't reweigh
-# P6-280 entered correctly - less than 0.01 difference, don't reweigh
-# P6-121 entered correctly - same pre/post weight, don't reweigh
-# P6-031 entered correctly - same pre/post weight, don't reweigh
 ```
 
 ##### Convert Dataset from Wide to Long #####
 ```{r}
 r00_full_long <- r00_full_wide %>% 
+  #creating new variables for phases 2-6 if it was only collected at phase 1
+  mutate(electricity_r00_p2 = electricity_r00_p1, 
+         electricity_r00_p3 = electricity_r00_p1, 
+         electricity_r00_p4 = electricity_r00_p1, 
+         electricity_r00_p5 = electricity_r00_p1, 
+         electricity_r00_p6 = electricity_r00_p1) %>%
+  mutate(school_bi_r00_p2 = school_bi_r00_p1, 
+         school_bi_r00_p3 = school_bi_r00_p1, 
+         school_bi_r00_p4 = school_bi_r00_p1, 
+         school_bi_r00_p5 = school_bi_r00_p1, 
+         school_bi_r00_p6 = school_bi_r00_p1) %>%
+  mutate(community_cat_r00_p2 = community_cat_r00_p1, 
+         community_cat_r00_p3 = community_cat_r00_p1, 
+         community_cat_r00_p4 = community_cat_r00_p1, 
+         community_cat_r00_p5 = community_cat_r00_p1, 
+         community_cat_r00_p6 = community_cat_r00_p1) %>%
+  mutate(birth_year_r00_p2 = birth_year_r00_p1, 
+         birth_year_r00_p3 = birth_year_r00_p1, 
+         birth_year_r00_p4 = birth_year_r00_p1, 
+         birth_year_r00_p5 = birth_year_r00_p1, 
+         birth_year_r00_p6 = birth_year_r00_p1) %>%
+  rename(beds_new_r00_p1 = beds_new) %>% 
+  mutate(beds_new_r00_p2 = beds_new_r00_p1, 
+         beds_new_r00_p3 = beds_new_r00_p1, 
+         beds_new_r00_p4 = beds_new_r00_p1, 
+         beds_new_r00_p5 = beds_new_r00_p1, 
+         beds_new_r00_p6 = beds_new_r00_p1) %>%
+  mutate(indigenous_r00_p2 = indigenous_r00_p1, 
+         indigenous_r00_p3 = indigenous_r00_p1, 
+         indigenous_r00_p4 = indigenous_r00_p1, 
+         indigenous_r00_p5 = indigenous_r00_p1, 
+         indigenous_r00_p6 = indigenous_r00_p1) %>%
+  mutate(school_self_r00_p2 = school_self_r00_p1, 
+         school_self_r00_p3 = school_self_r00_p1, 
+         school_self_r00_p4 = school_self_r00_p1, 
+         school_self_r00_p5 = school_self_r00_p1, 
+         school_self_r00_p6 = school_self_r00_p1) %>%
+  mutate(elevation_r00_p2 = elevation_r00_p1, 
+         elevation_r00_p3 = elevation_r00_p1, 
+         elevation_r00_p4 = elevation_r00_p1, 
+         elevation_r00_p5 = elevation_r00_p1, 
+         elevation_r00_p6 = elevation_r00_p1) %>% 
+  mutate(sex_r00_p2 = sex_r00_p1, 
+         sex_r00_p3 = sex_r00_p1, 
+         sex_r00_p4 = sex_r00_p1, 
+         sex_r00_p5 = sex_r00_p1, 
+         sex_r00_p6 = sex_r00_p1) %>% 
+  mutate(pers_info_r00_p2 = pers_info_r00_p1, 
+         pers_info_r00_p3 = pers_info_r00_p1, 
+         pers_info_r00_p4 = pers_info_r00_p1, 
+         pers_info_r00_p5 = pers_info_r00_p1, 
+         pers_info_r00_p6 = pers_info_r00_p1) %>% 
+  rename(ses_materials_r00_p1 = ses_materials) %>% 
+  mutate(ses_materials_r00_p2 = ses_materials_r00_p1, 
+         ses_materials_r00_p3 = ses_materials_r00_p1, 
+         ses_materials_r00_p4 = ses_materials_r00_p1, 
+         ses_materials_r00_p5 = ses_materials_r00_p1, 
+         ses_materials_r00_p6 = ses_materials_r00_p1) %>% 
   #transform data to long format with only 3 columns
   gather(key = "variable", value = "value", -house_id) %>% 
   #arrange data by house_id, descending
@@ -86,18 +91,12 @@ r00_full_long <- r00_full_wide %>%
 r00_full_repeated_by_phase <- r00_full_long %>%
   #this variable has no corresponding phase
   #renaming to phase 1 so it spreads below
-  mutate(variable = if_else(variable == "ses_materials", 
-                            "ses_materials_r00_p1", variable)) %>% 
-  #this variable has no corresponding phase
-  #renaming to phase 1 so it spreads below
-  mutate(variable = if_else(variable == "beds_new", 
-                            "beds_new_r00_p1", variable)) %>%
-  #this variable has no corresponding phase
-  #renaming to phase 1 so it spreads below
   mutate(variable = if_else(variable == "group", 
                             "group_r00_p1", variable)) %>%
   #separate variable to create new phase column
   separate(variable, c("variable", "phase"), sep = "_r00_p") %>%
+  mutate(value = if_else(value == ".", "99999", value)) %>% 
+  replace_with_na(replace = list(value = 99999)) %>% 
   #separate phase and "new", then attach "new" to variable
   separate(phase, c("phase", "new"), sep = "_") %>% 
   unite("variable", c("variable", "new")) %>% 
@@ -116,5 +115,5 @@ write_rds(r00_full_long, "output/r00_full_long.rds")
 write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
 write_csv(r00_full_wide, "output/r00_full_wide.csv")
 write_csv(r00_full_long, "output/r00_full_long.csv")
-write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv")
+write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```
