@@ -1,0 +1,248 @@
+---
+title: "AIx Analysis R21"
+author: "Ethan Walker"
+date: "7 August, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggthemes)
+library(tidyverse)
+library(emmeans)
+
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data Analysis R21/Analysis_R21_Symptoms")
+```
+
+```{r, message=FALSE}
+r21_full <- read_csv("r21final_27June2018_hr.csv")
+```
+
+#Create new aix75 variable using sphygmocor methods for age/aix relationship
+```{r}
+r21_aix75 <- r21_full %>% 
+  mutate(aix75 = if_else(hr < 75, aix - (((75 - hr)/10)*4.8), 
+                         aix - (((75 - hr)/10)*4.8)))
+```
+
+#Assess ranges/summaries of variables
+```{r}
+IQR(r21_aix75$p_pm25_r21new, na.rm = TRUE)
+IQR(r21_aix75$a_pm25_r21new, na.rm = TRUE)
+IQR(r21_aix75$p_bc_r21rev, na.rm = TRUE)
+IQR(r21_aix75$a_bc_r21rev, na.rm = TRUE)
+IQR(r21_aix75$waist, na.rm = TRUE)
+
+fivenum(r21_full_final$p_bc_r21rev)
+fivenum(r21_full_final$a_bc_r21rev)
+```
+
+#New database with IQR standardized pollution variables
+```{r}
+r21_full_final <- r21_aix75 %>% 
+  mutate(p_pm_std = (p_pm25_r21new/84)) %>% # standardizing pollution vars to IQR
+  mutate(a_pm_std = (a_pm25_r21new/311)) %>%
+  mutate(p_bc_std = (p_bc_r21rev/14)) %>%
+  mutate(a_bc_std = (a_bc_r21rev/71)) %>% 
+  # new dichotomous age var
+  mutate(age_dich = if_else(age_new < 40, "younger", "older")) %>% 
+  mutate(age_dich = factor(age_dich, levels = c("younger", "older"))) %>% 
+  # remove very high and low observations (3 total)
+  filter(aix < 140) %>% 
+  filter(aix > -30) 
+```
+
+# Correlations for body type measurements
+```{r}
+summary_phys <- r21_full %>% 
+  select(bmi, waist, waist_hip, height) %>% 
+  na.exclude() 
+
+cor(summary_phys)
+```
+
+# Correlations for SES vars
+```{r}
+summary_ses <- r21_full %>% 
+  select() %>% 
+  na.exclude() 
+
+cor(summary_ses)
+```
+
+# Correlations for hemodynamic vars
+```{r}
+summary_aix <- r21_aix75 %>% 
+  select(aix, aix75, hr, diabp, sysbp) %>% 
+  na.exclude() 
+
+cor(summary_aix)
+```
+
+# More ranges/data summaries
+```{r}
+range(r21_aix75$waist_hip)
+range(r21_aix75$waist)
+range(r21_aix75$bmi)
+range(r21_full_final$aix)
+range(r21_full_final$phys_act_mets)
+mean(r21_full_final$aix)
+```
+
+# Simple linear models and summaries
+```{r}
+bmi_model <- lm(aix ~ bmi, r21_full)
+summary(bmi_model)
+
+waist_model <- lm(aix ~ waist, r21_full)
+summary(waist_model)
+
+waist_hip_model <- lm(aix ~ waist_hip, r21_full)
+summary(waist_hip_model)
+```
+
+# MultiReg Models, summaries, and diagnostics
+```{r}
+# Dichotomous Stove Type
+
+final_model_stove2 <- lm(aix ~ generalstove_type*age_dich + waist + beds2 + 
+                           dds_total + phys_act_mets, r21_full_final)
+summary(final_model_stove2)
+emmeans(final_model_stove2, "generalstove_type", by = "age_dich") #assess age as interaction term
+plot(final_model_stove2)
+```
+
+```{r}
+# Personal PM
+
+final_model_ppm <- lm(aix ~ p_pm_std + waist_hip + beds2 + 
+                           dds_total + phys_act_mets + age_new, r21_full_final)
+summary(final_model_ppm)
+plot(final_model_ppm)
+```
+
+```{r}
+# Kitchen PM
+
+final_model_apm <- lm(aix ~ a_pm_std + bmi + beds2 + 
+                           dds_total + phys_act_mets + age_new, r21_full_final)
+summary(final_model_apm)
+plot(final_model_apm)
+plot(r21_full_final$age_new, r21_full_final$aix)
+```
+
+```{r}
+# Personal BC
+
+final_model_pbc <- lm(aix ~ p_bc_std + waist_hip + beds2 + 
+                           dds_total + phys_act_mets + age_new, r21_full_final)
+summary(final_model_pbc)
+plot(final_model_pbc)
+```
+
+```{r}
+# Kitchen BC
+
+final_model_abc <- lm(aix ~ a_bc_std*age_dich + waist_hip + beds2 + 
+                           dds_total + phys_act_mets, r21_full_final)
+summary(final_model_abc)
+plot(final_model_abc)
+```
+
+##### Plots and Figures for Honduras R21 AIx Analysis #####
+
+## Boxplots for PM and BC
+```{r}
+honduras_boxplots_pm <- r21_full_final %>% 
+  mutate(generalstove_type = factor(generalstove_type, labels = c("Justa", "Traditional"))) %>% 
+  ggplot() +
+  geom_boxplot(aes(x = "Personal", y = p_pm25_r21new, 
+                   fill = generalstove_type), lwd = 1, fatten = 1) +
+  geom_boxplot(aes(x = "Kitchen", y = a_pm25_r21new, 
+                   fill = generalstove_type), lwd = 1, fatten = 1) +
+  labs(aes(x="", y="")) +
+  labs(aes(x = "", y = paste("Fine Particulate Matter", " (", mu, g/m^3, ")"), fill = "Stove Type")) +
+  scale_fill_manual(values = c("white", "grey")) +
+  scale_y_continuous(limits = c(0, 1000)) +
+  theme(axis.line.x = element_line(size = 1, colour = "black"),
+        axis.line.y = element_line(size = 1, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        text = element_text(size = 19),
+        axis.text.y = element_text(size = 20, colour = "black"),
+        axis.text.x = element_text(size = 20, colour = "black"),
+        legend.position=c(.8,.8),
+        legend.key = element_rect(fill = "white"),
+        legend.text = element_text(size = 18))
+honduras_boxplots_pm
+
+honduras_boxplots_bc <- r21_full_final %>% 
+  mutate(generalstove_type = factor(generalstove_type, labels = c("Justa", "Traditional"))) %>% 
+  ggplot() +
+  geom_boxplot(aes(x = "Personal", y = p_bc_r21rev, 
+                   fill = generalstove_type), lwd = 1, fatten = 1) +
+  geom_boxplot(aes(x = "Kitchen", y = a_bc_r21rev, 
+                   fill = generalstove_type), lwd = 1, fatten = 1) +
+  labs(aes(x="", y="")) +
+  labs(aes(x = "", y = paste("Black Carbon", " (", mu, g/m^3, ")"), fill = "Stove Type")) +
+  scale_fill_manual(values = c("white", "grey")) +
+  scale_y_continuous(limits = c(0, 400)) +
+  theme(axis.line.x = element_line(size = 1, colour = "black"),
+        axis.line.y = element_line(size = 1, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        text = element_text(size = 19),
+        axis.text.y = element_text(size = 20, colour = "black"),
+        axis.text.x = element_text(size = 20, colour = "black"),
+        legend.position=c(.8,.8),
+        legend.key = element_rect(fill = "white"),
+        legend.text = element_text(size = 18))
+honduras_boxplots_bc
+```
+
+## Plots for Estimates
+```{r, fig.width=12, fig.height=4}
+##Plots for ORs
+#Create vectors
+models <- c("Stove Type", "Personal Fine Particulate Matter", 
+            "Kitchen Fine Particulate Matter", "Personal Black Carbon",
+            "Kitchen Black Carbon")
+estimates <- c(-0.85, 0.5, -0.12, -0.42, 0.04)
+upper_cl <- c(2.88, 3.44, 1.9, 1.11, 1.11)
+lower_cl <- c(-4.58, -2.45, -2.15, -1.95, -1.02)
+
+#Plot for Stove Type
+estimate_plot <- ggplot() +
+  geom_errorbarh(aes(x = estimates, y = c(5:1), xmin = lower_cl,
+                     xmax = upper_cl), size = 1.25) +
+  geom_point(aes(x = estimates, y = c(5:1)), size = 3, color = "black") +
+  geom_vline(aes(xintercept = 0), linetype = 3, size = 1.25) +
+  scale_x_continuous(name = "", breaks = c(-5,-4,-3,-2,-1,0,1,2,3,4,5)) +
+  scale_y_continuous(breaks = c(5,4,3,2,1), labels = models) +
+  labs(title = "Adjusted Estimates", subtitle = "With 95% Confidence Intervals") +
+  labs(y = "") +
+  theme(axis.line.x = element_line(size = 1.25, colour = "black"),
+        axis.line.y = element_line(size = 1.25, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.y = element_text(size = 20, colour = "black"),
+        axis.text.x = element_text(size = 20, colour = "black"),
+        text = element_text(size = 20))
+estimate_plot
+```
