@@ -66,7 +66,7 @@ phase_6_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names
 phase_6_data$mycolumn <- substring(row.names(phase_6_data),1,10)
 ```
 
-#Clean SUMs file
+#Clean SUMs files
 ```{r}
 rownames(phase_1_data) <- c()
 phase_1_data_clean <- phase_1_data %>% 
@@ -202,5 +202,26 @@ phase_6_data_full <- exposure_times_clean %>%
   mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
   mutate(temp_45 = if_else(temp >= 45, TRUE, FALSE)) %>% 
   mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
+```
+
+#Save data
+```{r}
+write_rds(phase_1_data_full, "output/r00_phase_1_sums_data.rds")
+write_csv(phase_1_data_full, "output/r00_phase_1_sums_data.csv")
+
+write_rds(phase_2_data_full, "output/r00_phase_2_sums_data.rds")
+write_csv(phase_2_data_full, "output/r00_phase_2_sums_data.csv")
+
+write_rds(phase_3_data_full, "output/r00_phase_3_sums_data.rds")
+write_csv(phase_3_data_full, "output/r00_phase_3_sums_data.csv")
+
+write_rds(phase_4_data_full, "output/r00_phase_4_sums_data.rds")
+write_csv(phase_4_data_full, "output/r00_phase_4_sums_data.csv")
+
+write_rds(phase_5_data_full, "output/r00_phase_5_sums_data.rds")
+write_csv(phase_5_data_full, "output/r00_phase_5_sums_data.csv")
+
+write_rds(phase_6_data_full, "output/r00_phase_6_sums_data.rds")
+write_csv(phase_6_data_full, "output/r00_phase_6_sums_data.csv")
 ```
 
