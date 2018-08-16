@@ -10,7 +10,10 @@ library(chron)
 
 rm(list=ls())
 
-setwd("C:/WorkDocs/cookstove_study/Data_R21/SUMs")
+# Old WD for Sarah
+#setwd("C:/WorkDocs/cookstove_study/Data_R21/SUMs")
+
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 1 - Aug-Dec 2015/SUMs")
 
 list.files<-list.files()
 list.files<-gsub(".txt", "", list.files)

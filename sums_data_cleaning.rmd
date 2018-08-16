@@ -1,0 +1,206 @@
+---
+title: "SUMs Data Cleaning"
+author: "Ethan Walker"
+date: "August 16, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r, message=FALSE}
+exposure_times <- read_csv("input/honduras_r00_exposure_times.csv")
+```
+
+#Prep Exposure Times
+```{r}
+exposure_times_clean <- exposure_times %>% 
+  unite(setup_datetime, c(setup_date, setup_time), sep = " ") %>% 
+  mutate(setup_datetime = mdy_hms(setup_datetime)) %>%
+  unite(takedown_datetime, c(takedown_date, takedown_time), sep = " ") %>% 
+  mutate(takedown_datetime = mdy_hms(takedown_datetime)) 
+```
+
+#Read in SUMs files
+```{r}
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 1 - Aug-Dec 2015/SUMs")
+
+phase_1_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
+                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+phase_1_data$mycolumn <- substring(row.names(phase_1_data),1,10)
+
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 2 - Jan-May 2016/SUMs")
+
+phase_2_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
+                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+phase_2_data$mycolumn <- substring(row.names(phase_2_data),1,10)
+
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 3 - Sep-Dec 2016/SUMs")
+
+phase_3_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
+                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+phase_3_data$mycolumn <- substring(row.names(phase_3_data),1,10)
+
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 4 - Feb-May 2017/SUMs")
+
+phase_4_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
+                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+phase_4_data$mycolumn <- substring(row.names(phase_4_data),1,10)
+
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 5 - Aug-Dec 2017/SUMs")
+
+phase_5_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
+                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+phase_5_data$mycolumn <- substring(row.names(phase_5_data),1,10)
+
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 6 - Feb-May 2018/SUMs")
+
+phase_6_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
+                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+phase_6_data$mycolumn <- substring(row.names(phase_6_data),1,10)
+```
+
+#Clean SUMs file
+```{r}
+rownames(phase_1_data) <- c()
+phase_1_data_clean <- phase_1_data %>% 
+  separate(mycolumn, c("trash", "house_id"), sep = "./") %>% 
+  separate(house_id, c("house_id", "prim_or_sec"), sep = "_") %>% 
+  rename(datetime = `Date/Time`, temp = Value) %>% 
+  select(-Unit, - trash) %>% 
+  mutate(exposure_datetime = mdy_hms(datetime)) 
+
+rownames(phase_2_data) <- c()
+phase_2_data_clean <- phase_2_data %>% 
+  separate(mycolumn, c("trash", "house_id"), sep = "./") %>% 
+  separate(house_id, c("house_id", "prim_or_sec"), sep = "_") %>% 
+  rename(datetime = `Date/Time`, temp = Value) %>% 
+  select(-Unit, - trash) %>% 
+  mutate(exposure_datetime = mdy_hms(datetime)) 
+
+rownames(phase_3_data) <- c()
+phase_3_data_clean <- phase_3_data %>% 
+  separate(mycolumn, c("trash", "house_id"), sep = "./") %>% 
+  separate(house_id, c("house_id", "prim_or_sec"), sep = "_") %>% 
+  rename(datetime = `Date/Time`, temp = Value) %>% 
+  select(-Unit, - trash) %>% 
+  mutate(exposure_datetime = mdy_hms(datetime)) 
+
+rownames(phase_4_data) <- c()
+phase_4_data_clean <- phase_4_data %>% 
+  separate(mycolumn, c("trash", "house_id"), sep = "./") %>% 
+  separate(house_id, c("house_id", "prim_or_sec"), sep = "_") %>% 
+  rename(datetime = `Date/Time`, temp = Value) %>% 
+  select(-Unit, - trash) %>% 
+  mutate(exposure_datetime = mdy_hms(datetime)) 
+
+rownames(phase_5_data) <- c()
+phase_5_data_clean <- phase_5_data %>% 
+  separate(mycolumn, c("trash", "house_id"), sep = "./") %>% 
+  separate(house_id, c("house_id", "prim_or_sec"), sep = "_") %>% 
+  rename(datetime = `Date/Time`, temp = Value) %>% 
+  select(-Unit, - trash) %>% 
+  mutate(exposure_datetime = mdy_hms(datetime)) 
+
+rownames(phase_6_data) <- c()
+phase_6_data_clean <- phase_6_data %>% 
+  separate(mycolumn, c("trash", "house_id"), sep = "./") %>% 
+  separate(house_id, c("house_id", "prim_or_sec"), sep = "_") %>% 
+  rename(datetime = `Date/Time`, temp = Value) %>% 
+  select(-Unit, - trash) %>% 
+  mutate(exposure_datetime = mdy_hms(datetime)) 
+```
+
+#Select for specified exposure times and add vars for specific temp thresholds
+```{r}
+phase_1_data_full <- exposure_times_clean %>% 
+  full_join(phase_1_data_clean, by = c("house_id")) %>% 
+  group_by(house_id) %>% 
+  mutate(logic_datetime = if_else((exposure_datetime > setup_datetime) & 
+                              (exposure_datetime < takedown_datetime), 
+                              "keep", "trash")) %>% 
+  filter(logic_datetime == "keep") %>% 
+  select(-datetime) %>% 
+  mutate(temp_35 = if_else(temp >= 35, TRUE, FALSE)) %>% 
+  mutate(temp_38 = if_else(temp >= 38, TRUE, FALSE)) %>% 
+  mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
+  mutate(temp_45 = if_else(temp >= 45, TRUE, FALSE)) %>% 
+  mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
+
+phase_2_data_full <- exposure_times_clean %>% 
+  full_join(phase_2_data_clean, by = c("house_id")) %>% 
+  group_by(house_id) %>% 
+  mutate(logic_datetime = if_else((exposure_datetime > setup_datetime) & 
+                              (exposure_datetime < takedown_datetime), 
+                              "keep", "trash")) %>% 
+  filter(logic_datetime == "keep") %>% 
+  select(-datetime) %>% 
+  mutate(temp_35 = if_else(temp >= 35, TRUE, FALSE)) %>% 
+  mutate(temp_38 = if_else(temp >= 38, TRUE, FALSE)) %>% 
+  mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
+  mutate(temp_45 = if_else(temp >= 45, TRUE, FALSE)) %>% 
+  mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
+
+phase_3_data_full <- exposure_times_clean %>% 
+  full_join(phase_3_data_clean, by = c("house_id")) %>% 
+  group_by(house_id) %>% 
+  mutate(logic_datetime = if_else((exposure_datetime > setup_datetime) & 
+                              (exposure_datetime < takedown_datetime), 
+                              "keep", "trash")) %>% 
+  filter(logic_datetime == "keep") %>% 
+  select(-datetime) %>% 
+  mutate(temp_35 = if_else(temp >= 35, TRUE, FALSE)) %>% 
+  mutate(temp_38 = if_else(temp >= 38, TRUE, FALSE)) %>% 
+  mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
+  mutate(temp_45 = if_else(temp >= 45, TRUE, FALSE)) %>% 
+  mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
+
+phase_4_data_full <- exposure_times_clean %>% 
+  full_join(phase_4_data_clean, by = c("house_id")) %>% 
+  group_by(house_id) %>% 
+  mutate(logic_datetime = if_else((exposure_datetime > setup_datetime) & 
+                              (exposure_datetime < takedown_datetime), 
+                              "keep", "trash")) %>% 
+  filter(logic_datetime == "keep") %>% 
+  select(-datetime) %>% 
+  mutate(temp_35 = if_else(temp >= 35, TRUE, FALSE)) %>% 
+  mutate(temp_38 = if_else(temp >= 38, TRUE, FALSE)) %>% 
+  mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
+  mutate(temp_45 = if_else(temp >= 45, TRUE, FALSE)) %>% 
+  mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
+
+phase_5_data_full <- exposure_times_clean %>% 
+  full_join(phase_5_data_clean, by = c("house_id")) %>% 
+  group_by(house_id) %>% 
+  mutate(logic_datetime = if_else((exposure_datetime > setup_datetime) & 
+                              (exposure_datetime < takedown_datetime), 
+                              "keep", "trash")) %>% 
+  filter(logic_datetime == "keep") %>% 
+  select(-datetime) %>% 
+  mutate(temp_35 = if_else(temp >= 35, TRUE, FALSE)) %>% 
+  mutate(temp_38 = if_else(temp >= 38, TRUE, FALSE)) %>% 
+  mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
+  mutate(temp_45 = if_else(temp >= 45, TRUE, FALSE)) %>% 
+  mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
+
+phase_6_data_full <- exposure_times_clean %>% 
+  full_join(phase_6_data_clean, by = c("house_id")) %>% 
+  group_by(house_id) %>% 
+  mutate(logic_datetime = if_else((exposure_datetime > setup_datetime) & 
+                              (exposure_datetime < takedown_datetime), 
+                              "keep", "trash")) %>% 
+  filter(logic_datetime == "keep") %>% 
+  select(-datetime) %>% 
+  mutate(temp_35 = if_else(temp >= 35, TRUE, FALSE)) %>% 
+  mutate(temp_38 = if_else(temp >= 38, TRUE, FALSE)) %>% 
+  mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
+  mutate(temp_45 = if_else(temp >= 45, TRUE, FALSE)) %>% 
+  mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
+```
+
