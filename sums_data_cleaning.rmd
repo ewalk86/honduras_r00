@@ -12,10 +12,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message=FALSE}
 library(tidyverse)
 library(lubridate)
+library(caTools)
 ```
 
 ```{r, message=FALSE}
 exposure_times <- read_csv("input/honduras_r00_exposure_times.csv")
+
+r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
 #Prep Exposure Times
@@ -25,6 +28,8 @@ exposure_times_clean <- exposure_times %>%
   mutate(setup_datetime = mdy_hms(setup_datetime)) %>%
   unite(takedown_datetime, c(takedown_date, takedown_time), sep = " ") %>% 
   mutate(takedown_datetime = mdy_hms(takedown_datetime)) 
+
+#20 NA occurrences for both setup and takedown datetimes
 ```
 
 #Read in SUMs files
@@ -223,5 +228,68 @@ write_csv(phase_5_data_full, "output/r00_phase_5_sums_data.csv")
 
 write_rds(phase_6_data_full, "output/r00_phase_6_sums_data.rds")
 write_csv(phase_6_data_full, "output/r00_phase_6_sums_data.csv")
+```
+
+#Analyze datasets and create final variables
+```{r}
+#Combine data from all phases into single dataset
+sums_all_phases_full <- rbind(phase_1_data_full, phase_2_data_full, phase_3_data_full, 
+                             phase_4_data_full, phase_5_data_full, phase_6_data_full)
+
+write_rds(sums_all_phases_full, "output/r00_sums_all_phases_full.rds")
+write_csv(sums_all_phases_full, "output/r00_sums_all_phases_full.csv")
+```
+
+```{r}
+sums_all_phases_clean <- sums_all_phases %>% 
+  #relabel temp vars: 1=true, 0=false
+  mutate(temp_35 = if_else(temp_35 == TRUE, 1, 0)) %>%
+  mutate(temp_38 = if_else(temp_38 == TRUE, 1, 0)) %>%
+  mutate(temp_40 = if_else(temp_40 == TRUE, 1, 0)) %>%
+  mutate(temp_45 = if_else(temp_45 == TRUE, 1, 0)) %>%
+  mutate(temp_50 = if_else(temp_50 == TRUE, 1, 0)) %>% 
+  group_by(house_id, phase, prim_or_sec) %>% 
+  #create percent usage vars
+  mutate(temp_35_percent = mean(temp_35)) %>% 
+  mutate(temp_38_percent = mean(temp_38)) %>%
+  mutate(temp_40_percent = mean(temp_40)) %>%
+  mutate(temp_45_percent = mean(temp_45)) %>%
+  mutate(temp_50_percent = mean(temp_50))
+
+write_rds(sums_all_phases_clean, "output/r00_sums_all_phases_clean.rds")
+write_csv(sums_all_phases_clean, "output/r00_sums_all_phases_clean.csv")
+
+#create new var for events of temp > 38
+sums_temp38_clean <- sums_all_phases_clean %>% 
+  filter(prim_or_sec == "P") %>% 
+  group_by(house_id, phase) %>%
+  filter(temp_38 == 1) %>% 
+  mutate(exposure_datetime_lead = lead(exposure_datetime)) %>% 
+  mutate(time_diff = exposure_datetime_lead - exposure_datetime) %>% 
+  mutate(temp_38_new_event = if_else(time_diff > 3600, 1, 0)) %>% 
+  group_by(house_id, phase, temp_38_percent) %>% 
+  na.omit(temp_38_new_event) %>% 
+  summarise(sum(temp_38_new_event)) %>% 
+  mutate(temp_38_cooking_events = `sum(temp_38_new_event)` + 1) %>% 
+  select(-`sum(temp_38_new_event)`) %>% 
+  ungroup() %>% 
+  mutate(phase = as.character(phase)) %>% 
+  rename(sums_temp38_events = temp_38_cooking_events, 
+         sums_temp38_percent = temp_38_percent)
+
+write_rds(sums_temp38_clean, "output/r00_sums_temp38_clean.rds")
+write_csv(sums_temp38_clean, "output/r00_sums_temp38_clean.csv")
+```
+
+#Add to full R00 dataset
+```{r}
+r00_full_dataset <- r00_full_repeated_by_phase %>% 
+  full_join(sums_temp38_clean, by = c("house_id", "phase"))
+```
+
+#Save final dataset
+```{r}
+write_rds(r00_full_dataset, "output/r00_full_repeated_by_phase.rds")
+write_csv(r00_full_dataset, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```
 
