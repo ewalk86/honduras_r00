@@ -34,48 +34,70 @@ exposure_times_clean <- exposure_times %>%
 
 #Read in SUMs files
 ```{r}
+#Phase 1
 setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 1 - Aug-Dec 2015/SUMs")
 
+#This pulls in all CSVs, skipping the first 19 rows of description, and binds all data together
 phase_1_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
-                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+                                     read_csv, col_names = TRUE, col_types = cols(), 
+                                     skip = 19, simplify = FALSE)) 
+#This creates a column of the row name (file name) to be used later for labeling
 phase_1_data$mycolumn <- substring(row.names(phase_1_data),1,10)
 
+
+#Phase 2
 setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 2 - Jan-May 2016/SUMs")
 
 phase_2_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
-                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+                                     read_csv, col_names = TRUE, col_types = cols(), 
+                                     skip = 19, simplify = FALSE)) 
 phase_2_data$mycolumn <- substring(row.names(phase_2_data),1,10)
 
+
+#Phase 3
 setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 3 - Sep-Dec 2016/SUMs")
 
 phase_3_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
-                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+                                     read_csv, col_names = TRUE, col_types = cols(), 
+                                     skip = 19, simplify = FALSE)) 
 phase_3_data$mycolumn <- substring(row.names(phase_3_data),1,10)
 
+
+#Phase 4
 setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 4 - Feb-May 2017/SUMs")
 
 phase_4_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
-                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+                                     read_csv, col_names = TRUE, col_types = cols(), 
+                                     skip = 19, simplify = FALSE)) 
 phase_4_data$mycolumn <- substring(row.names(phase_4_data),1,10)
 
+
+#Phase 5
 setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 5 - Aug-Dec 2017/SUMs")
 
 phase_5_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
-                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+                                     read_csv, col_names = TRUE, col_types = cols(), 
+                                     skip = 19, simplify = FALSE)) 
 phase_5_data$mycolumn <- substring(row.names(phase_5_data),1,10)
 
+
+#Phase 6
 setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data R00/original data/Phase 6 - Feb-May 2018/SUMs")
 
 phase_6_data <- do.call("rbind", sapply(list.files(pattern = ".csv$", full.names = TRUE), 
-                                     read_csv, col_names = TRUE, col_types = cols(), skip = 19, simplify = FALSE)) 
+                                     read_csv, col_names = TRUE, col_types = cols(), 
+                                     skip = 19, simplify = FALSE)) 
 phase_6_data$mycolumn <- substring(row.names(phase_6_data),1,10)
 ```
 
 #Clean SUMs files
 ```{r}
+#Remove row names
 rownames(phase_1_data) <- c()
 phase_1_data_clean <- phase_1_data %>% 
+  #pull out house_id and primary vs secondar stove, remove unnecessary info
   separate(mycolumn, c("trash", "house_id"), sep = "./") %>% 
+  #separate into 2 variables
   separate(house_id, c("house_id", "prim_or_sec"), sep = "_") %>% 
   rename(datetime = `Date/Time`, temp = Value) %>% 
   select(-Unit, - trash) %>% 
@@ -127,11 +149,14 @@ phase_6_data_clean <- phase_6_data %>%
 phase_1_data_full <- exposure_times_clean %>% 
   full_join(phase_1_data_clean, by = c("house_id")) %>% 
   group_by(house_id) %>% 
+  # new variable dictating if exposure time is between setup and takedown times
   mutate(logic_datetime = if_else((exposure_datetime > setup_datetime) & 
                               (exposure_datetime < takedown_datetime), 
                               "keep", "trash")) %>% 
+  # filter for times when exposure time is between setup and takedown times
   filter(logic_datetime == "keep") %>% 
   select(-datetime) %>% 
+  # new variables saying if temp meets a threshold at each sums datapoint
   mutate(temp_35 = if_else(temp >= 35, TRUE, FALSE)) %>% 
   mutate(temp_38 = if_else(temp >= 38, TRUE, FALSE)) %>% 
   mutate(temp_40 = if_else(temp >= 40, TRUE, FALSE)) %>% 
@@ -261,14 +286,19 @@ write_csv(sums_all_phases_clean, "output/r00_sums_all_phases_clean.csv")
 
 #create new var for events of temp > 38
 sums_temp38_clean <- sums_all_phases_clean %>% 
+  # filter for primary stoves only
   filter(prim_or_sec == "P") %>% 
   group_by(house_id, phase) %>%
+  # filter for 38 degree temp threshold
   filter(temp_38 == 1) %>% 
   mutate(exposure_datetime_lead = lead(exposure_datetime)) %>% 
+  # calc time difference between each datapoint that was 38+ temperature
   mutate(time_diff = exposure_datetime_lead - exposure_datetime) %>% 
+  # new variable saying if time difference was greater than 1 hour (3600 seconds)
   mutate(temp_38_new_event = if_else(time_diff > 3600, 1, 0)) %>% 
   group_by(house_id, phase, temp_38_percent) %>% 
   na.omit(temp_38_new_event) %>% 
+  # adding up new events per house per phase, plus 1 for the 1st event
   summarise(sum(temp_38_new_event)) %>% 
   mutate(temp_38_cooking_events = `sum(temp_38_new_event)` + 1) %>% 
   select(-`sum(temp_38_new_event)`) %>% 
