@@ -18,6 +18,8 @@ library(caTools)
 ```{r, message=FALSE}
 exposure_times <- read_csv("input/honduras_r00_exposure_times.csv")
 
+sums_all_phases_clean <- read_rds("output/r00_sums_all_phases_clean.rds")
+
 r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
@@ -283,8 +285,10 @@ sums_all_phases_clean <- sums_all_phases %>%
 
 write_rds(sums_all_phases_clean, "output/r00_sums_all_phases_clean.rds")
 write_csv(sums_all_phases_clean, "output/r00_sums_all_phases_clean.csv")
+```
 
 #create new var for events of temp > 38
+```{r}
 sums_temp38_clean <- sums_all_phases_clean %>% 
   # filter for primary stoves only
   filter(prim_or_sec == "P") %>% 
@@ -311,10 +315,155 @@ write_rds(sums_temp38_clean, "output/r00_sums_temp38_clean.rds")
 write_csv(sums_temp38_clean, "output/r00_sums_temp38_clean.csv")
 ```
 
+#create new var for events of temp > 40
+```{r}
+sums_temp40_clean <- sums_all_phases_clean %>% 
+  # filter for primary stoves only
+  filter(prim_or_sec == "P") %>% 
+  group_by(house_id, phase) %>%
+  # filter for 40 degree temp threshold
+  filter(temp_40 == 1) %>% 
+  mutate(exposure_datetime_lead = lead(exposure_datetime)) %>% 
+  # calc time difference between each datapoint that was 40+ temperature
+  mutate(time_diff = exposure_datetime_lead - exposure_datetime) %>% 
+  # new variable saying if time difference was greater than 1 hour (3600 seconds)
+  mutate(temp_40_new_event = if_else(time_diff > 3600, 1, 0)) %>% 
+  group_by(house_id, phase, temp_40_percent) %>% 
+  na.omit(temp_40_new_event) %>% 
+  # adding up new events per house per phase, plus 1 for the 1st event
+  summarise(sum(temp_40_new_event)) %>% 
+  mutate(temp_40_cooking_events = `sum(temp_40_new_event)` + 1) %>% 
+  select(-`sum(temp_40_new_event)`) %>% 
+  ungroup() %>% 
+  mutate(phase = as.character(phase)) %>% 
+  rename(sums_temp40_events = temp_40_cooking_events, 
+         sums_temp40_percent = temp_40_percent)
+
+write_rds(sums_temp40_clean, "output/r00_sums_temp40_clean.rds")
+write_csv(sums_temp40_clean, "output/r00_sums_temp40_clean.csv")
+```
+
+#create new var for events of temp > 45
+```{r}
+sums_temp45_clean <- sums_all_phases_clean %>% 
+  # filter for primary stoves only
+  filter(prim_or_sec == "P") %>% 
+  group_by(house_id, phase) %>%
+  # filter for 45 degree temp threshold
+  filter(temp_45 == 1) %>% 
+  mutate(exposure_datetime_lead = lead(exposure_datetime)) %>% 
+  # calc time difference between each datapoint that was 45+ temperature
+  mutate(time_diff = exposure_datetime_lead - exposure_datetime) %>% 
+  # new variable saying if time difference was greater than 1 hour (3600 seconds)
+  mutate(temp_45_new_event = if_else(time_diff > 3600, 1, 0)) %>% 
+  group_by(house_id, phase, temp_45_percent) %>% 
+  na.omit(temp_45_new_event) %>% 
+  # adding up new events per house per phase, plus 1 for the 1st event
+  summarise(sum(temp_45_new_event)) %>% 
+  mutate(temp_45_cooking_events = `sum(temp_45_new_event)` + 1) %>% 
+  select(-`sum(temp_45_new_event)`) %>% 
+  ungroup() %>% 
+  mutate(phase = as.character(phase)) %>% 
+  rename(sums_temp45_events = temp_45_cooking_events, 
+         sums_temp45_percent = temp_45_percent)
+
+write_rds(sums_temp45_clean, "output/r00_sums_temp45_clean.rds")
+write_csv(sums_temp45_clean, "output/r00_sums_temp45_clean.csv")
+```
+
+#create new var for events of temp > 38 (secondary stoves)
+```{r}
+sums_temp38_secondary_clean <- sums_all_phases_clean %>% 
+  # filter for primary stoves only
+  filter(prim_or_sec == "S") %>% 
+  group_by(house_id, phase) %>%
+  # filter for 38 degree temp threshold
+  filter(temp_38 == 1) %>% 
+  mutate(exposure_datetime_lead = lead(exposure_datetime)) %>% 
+  # calc time difference between each datapoint that was 38+ temperature
+  mutate(time_diff = exposure_datetime_lead - exposure_datetime) %>% 
+  # new variable saying if time difference was greater than 1 hour (3600 seconds)
+  mutate(temp_38_secondary_new_event = if_else(time_diff > 3600, 1, 0)) %>% 
+  group_by(house_id, phase, temp_38_percent) %>% 
+  na.omit(temp_38_secondary_new_event) %>% 
+  # adding up new events per house per phase, plus 1 for the 1st event
+  summarise(sum(temp_38_secondary_new_event)) %>% 
+  mutate(temp_38_secondary_cooking_events = `sum(temp_38_secondary_new_event)` + 1) %>% 
+  select(-`sum(temp_38_secondary_new_event)`) %>% 
+  ungroup() %>% 
+  mutate(phase = as.character(phase)) %>% 
+  rename(sums_temp38_secondary_events = temp_38_secondary_cooking_events, 
+         sums_temp38_secondary_percent = temp_38_percent)
+
+write_rds(sums_temp38_secondary_clean, "output/r00_sums_temp38_secondary_clean.rds")
+write_csv(sums_temp38_secondary_clean, "output/r00_sums_temp38_secondary_clean.csv")
+```
+
+#create new var for events of temp > 40 (secondary stoves)
+```{r}
+sums_temp40_secondary_clean <- sums_all_phases_clean %>% 
+  # filter for primary stoves only
+  filter(prim_or_sec == "S") %>% 
+  group_by(house_id, phase) %>%
+  # filter for 40 degree temp threshold
+  filter(temp_40 == 1) %>% 
+  mutate(exposure_datetime_lead = lead(exposure_datetime)) %>% 
+  # calc time difference between each datapoint that was 40+ temperature
+  mutate(time_diff = exposure_datetime_lead - exposure_datetime) %>% 
+  # new variable saying if time difference was greater than 1 hour (3600 seconds)
+  mutate(temp_40_secondary_new_event = if_else(time_diff > 3600, 1, 0)) %>% 
+  group_by(house_id, phase, temp_40_percent) %>% 
+  na.omit(temp_40_secondary_new_event) %>% 
+  # adding up new events per house per phase, plus 1 for the 1st event
+  summarise(sum(temp_40_secondary_new_event)) %>% 
+  mutate(temp_40_secondary_cooking_events = `sum(temp_40_secondary_new_event)` + 1) %>% 
+  select(-`sum(temp_40_secondary_new_event)`) %>% 
+  ungroup() %>% 
+  mutate(phase = as.character(phase)) %>% 
+  rename(sums_temp40_secondary_events = temp_40_secondary_cooking_events, 
+         sums_temp40_secondary_percent = temp_40_percent)
+
+write_rds(sums_temp40_secondary_clean, "output/r00_sums_temp40_secondary_clean.rds")
+write_csv(sums_temp40_secondary_clean, "output/r00_sums_temp40_secondary_clean.csv")
+```
+
+#create new var for events of temp > 45 (secondary stoves)
+```{r}
+sums_temp45_secondary_clean <- sums_all_phases_clean %>% 
+  # filter for primary stoves only
+  filter(prim_or_sec == "S") %>% 
+  group_by(house_id, phase) %>%
+  # filter for 45 degree temp threshold
+  filter(temp_45 == 1) %>% 
+  mutate(exposure_datetime_lead = lead(exposure_datetime)) %>% 
+  # calc time difference between each datapoint that was 45+ temperature
+  mutate(time_diff = exposure_datetime_lead - exposure_datetime) %>% 
+  # new variable saying if time difference was greater than 1 hour (3600 seconds)
+  mutate(temp_45_secondary_new_event = if_else(time_diff > 3600, 1, 0)) %>% 
+  group_by(house_id, phase, temp_45_percent) %>% 
+  na.omit(temp_45_secondary_new_event) %>% 
+  # adding up new events per house per phase, plus 1 for the 1st event
+  summarise(sum(temp_45_secondary_new_event)) %>% 
+  mutate(temp_45_secondary_cooking_events = `sum(temp_45_secondary_new_event)` + 1) %>% 
+  select(-`sum(temp_45_secondary_new_event)`) %>% 
+  ungroup() %>% 
+  mutate(phase = as.character(phase)) %>% 
+  rename(sums_temp45_secondary_events = temp_45_secondary_cooking_events, 
+         sums_temp45_secondary_percent = temp_45_percent)
+
+write_rds(sums_temp45_secondary_clean, "output/r00_sums_temp45_secondary_clean.rds")
+write_csv(sums_temp45_secondary_clean, "output/r00_sums_temp45_secondary_clean.csv")
+```
+
 #Add to full R00 dataset
 ```{r}
 r00_full_dataset <- r00_full_repeated_by_phase %>% 
-  full_join(sums_temp38_clean, by = c("house_id", "phase"))
+  full_join(sums_temp38_clean, by = c("house_id", "phase")) %>% 
+  full_join(sums_temp40_clean, by = c("house_id", "phase")) %>% 
+  full_join(sums_temp45_clean, by = c("house_id", "phase")) %>% 
+  full_join(sums_temp38_secondary_clean, by = c("house_id", "phase")) %>%
+  full_join(sums_temp40_secondary_clean, by = c("house_id", "phase")) %>%
+  full_join(sums_temp45_secondary_clean, by = c("house_id", "phase"))
 ```
 
 #Save final dataset
