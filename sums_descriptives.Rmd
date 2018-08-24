@@ -1,0 +1,30 @@
+---
+title: "SUMs Descriptives"
+author: "Ethan Walker"
+date: "August 24, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(knitr)
+```
+
+```{r, message=FALSE}
+r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
+```
+
+```{r}
+summary_primary_stoves <- r00_full_repeated_by_phase %>% 
+  summarise(mean(sums_temp38_events, na.rm = TRUE), mean(sums_temp38_percent, na.rm = TRUE), 
+            mean(sums_temp40_events, na.rm = TRUE), mean(sums_temp40_percent, na.rm = TRUE), 
+            mean(sums_temp45_events, na.rm = TRUE), mean(sums_temp45_percent, na.rm = TRUE), 
+            median(sums_temp38_events, na.rm = TRUE), median(sums_temp38_percent, na.rm = TRUE), 
+            median(sums_temp40_events, na.rm = TRUE), median(sums_temp40_percent, na.rm = TRUE), 
+            median(sums_temp45_events, na.rm = TRUE), median(sums_temp45_percent, na.rm = TRUE))
+```
+
