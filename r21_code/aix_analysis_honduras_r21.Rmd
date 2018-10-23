@@ -17,11 +17,10 @@ library(ggplot2)
 library(ggthemes)
 library(tidyverse)
 library(emmeans)
-
-setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data Analysis R21/Analysis_R21_Symptoms")
 ```
 
 ```{r, message=FALSE}
+setwd("T:/Rsch-Clark/Honduras Cookstove Projects/Data/Data Analysis R21/Analysis_R21_Symptoms")
 r21_full <- read_csv("r21final_27June2018_hr.csv")
 ```
 
@@ -57,6 +56,15 @@ r21_full_final <- r21_aix75 %>%
   # remove very high and low observations (3 total)
   filter(aix < 140) %>% 
   filter(aix > -30) 
+```
+
+# Correlations for pm2.5 measurements
+```{r}
+summary_pm <- r21_full %>% 
+  select(p_pm25_r21new, a_pm25_r21new) %>% 
+  na.exclude() 
+
+cor(summary_pm, method = c("spearman"))
 ```
 
 # Correlations for body type measurements
