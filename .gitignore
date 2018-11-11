@@ -7,3 +7,4 @@
 *.csv
 doc/**/*.RDS
 doc/**/*.csv
+input
