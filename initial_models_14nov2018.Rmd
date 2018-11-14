@@ -27,10 +27,6 @@ library(splines)
 ```
 
 ```{r}
-#pwa_clean_full <- readRDS("output/pwa_clean_full.RDS") # load data
-
-#pwa_in_sequence <- readRDS("output/pwa_in_sequence.RDS") # load data
-
 r00_sample_wide <- read_xlsx("input/data_meeting_14nov2018.xlsx")
 ```
 
@@ -78,7 +74,6 @@ r00_sample_repeated_by_phase <- r00_sample_long %>%
   mutate(age = if_else(age_baseline > 40, 1, 0))
 ```
 
-
 ## Honduras R00 Initial Model ##
 ```{r}
 #use date of visit in place of phase and try df=12
@@ -99,7 +94,7 @@ summary(bp_model)
 write_rds(bp_model, "output/bp_model_test_11nov18.RDS")
 ```
 
-#################################################################################
+###################### Code from Stoves Study to Help format R00 Models and Output###################################
 
 ## STOVES Study Final Model ##
 # Random Person Effect, Date Effect, Baseline
