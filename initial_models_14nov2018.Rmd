@@ -1,0 +1,170 @@
+---
+title: "Honduras R00 Inital Models"
+author: "Ethan Walker"
+date: "14 Nov 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.width = 10)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+```
+
+```{r}
+#pwa_clean_full <- readRDS("output/pwa_clean_full.RDS") # load data
+
+#pwa_in_sequence <- readRDS("output/pwa_in_sequence.RDS") # load data
+
+r00_sample_wide <- read_xlsx("input/data_meeting_14nov2018.xlsx")
+```
+
+##### Convert Dataset from Wide to Long #####
+```{r}
+r00_sample_long <- r00_sample_wide %>% 
+  #creating new variables for phases 2-6 if it was only collected at phase 1
+  mutate(study_arm_r00_p1 = Study_Arm_r00_p2, 
+         study_arm_r00_p2 = Study_Arm_r00_p2,
+         study_arm_r00_p3 = Study_Arm_r00_p2, 
+         study_arm_r00_p4 = Study_Arm_r00_p2, 
+         study_arm_r00_p5 = Study_Arm_r00_p2, 
+         study_arm_r00_p6 = Study_Arm_r00_p2) %>% 
+  mutate(age_baseline_r00_p2 = age_baseline_r00_p1, 
+         age_baseline_r00_p3 = age_baseline_r00_p1,
+         age_baseline_r00_p4 = age_baseline_r00_p1, 
+         age_baseline_r00_p5 = age_baseline_r00_p1, 
+         age_baseline_r00_p6 = age_baseline_r00_p1) %>% 
+  select(-Study_Arm_r00_p2) %>% 
+  #transform data to long format with only 3 columns
+  gather(key = "variable", value = "value", -house_id) %>% 
+  #arrange data by house_id, descending
+  arrange(house_id)
+
+r00_sample_repeated_by_phase <- r00_sample_long %>%
+  #this variable has no corresponding phase
+  #renaming to phase 1 so it spreads below
+  #mutate(variable = if_else(variable == "group", 
+   #                         "group_r00_p1", variable)) %>%
+  #separate variable to create new phase column
+  separate(variable, c("variable", "phase"), sep = "_r00_p") %>%
+  mutate(value = if_else(value == ".", "99999", value)) %>% 
+  replace_with_na(replace = list(value = 99999)) %>% 
+  #separate phase and "new", then attach "new" to variable
+  separate(phase, c("phase", "new"), sep = "_") %>% 
+  unite("variable", c("variable", "new")) %>% 
+  #remove NA from end of variables that was added above
+  separate(variable, c("variable", "trash"), sep = "_NA") %>% 
+  select(-"trash") %>% 
+  #spread out into columns, grouped by house_id and phase
+  spread(key = "variable", value = "value") %>% 
+  arrange(house_id) %>% 
+  mutate(sysbp = as.numeric(sysbp))%>% 
+  mutate(diabp = as.numeric(diabp)) %>% 
+  mutate(age = if_else(age_baseline > 40, 1, 0))
+```
+
+
+## Honduras R00 Initial Model ##
+```{r}
+#use date of visit in place of phase and try df=12
+bp_model_spline <- lmer(sysbp ~ assigned_stove + ns(phase, df=2) + (1 | house_id), r00_sample_repeated_by_phase)
+
+bp_model_phase <- lmer(sysbp ~ assigned_stove*age + factor(phase) + (1 | house_id), r00_sample_repeated_by_phase)
+
+bp_model <- lmer(sysbp ~ assigned_stove + (1 | house_id), r00_sample_repeated_by_phase)
+
+summary(bp_model_spline)
+
+summary(bp_model_phase)
+
+summary(bp_model)
+
+
+# save model results
+write_rds(bp_model, "output/bp_model_test_11nov18.RDS")
+```
+
+#################################################################################
+
+## STOVES Study Final Model ##
+# Random Person Effect, Date Effect, Baseline
+```{r}
+person_date_base_model <- function(df){
+    lmerTest::lmer(result ~ treatment_recieved + baseline + (1 | id) + (1 | date), 
+                   df, control = lmerControl(optimizer = "bobyqa", 
+                                             optCtrl = list(maxfun = 10000)))
+  }
+
+
+aix_tp2 <- person_date_base_model(df = aix_model_timepoint2)
+# save model results
+write_rds(aix_tp2, "output/cpp_timepoint2_model.RDS")
+
+aix_tp3 <- person_date_base_model(df = aix_model_timepoint3)
+# save model results
+write_rds(aix_tp3, "output/cpp_timepoint3_model.RDS")
+
+aix_tp4 <- person_date_base_model(df = aix_model_timepoint4)
+# save model results
+write_rds(aix_tp4, "output/cpp_timepoint4_model.RDS")
+```
+
+# Prep results from models for plotting - Random person, date, baseline
+```{r}
+tidy_results_tp2_person_date_base <- tidy(aix_tp2, conf.int = TRUE) %>% 
+    filter(grepl('treatment', term)) %>% 
+    rename(estimate2 = estimate, cilow2 = conf.low, 
+           cihi2 = conf.high, stove = term)
+tidy_results_tp3_person_date_base <- tidy(aix_tp3, conf.int = TRUE) %>% 
+    filter(grepl('treatment', term)) %>% 
+    rename(estimate3 = estimate, cilow3 = conf.low, 
+           cihi3 = conf.high, stove = term)
+tidy_results_tp4_person_date_base <- tidy(aix_tp4, conf.int = TRUE) %>% 
+    filter(grepl('treatment', term)) %>% 
+    rename(estimate4 = estimate, cilow4 = conf.low, 
+           cihi4 = conf.high, stove = term)
+
+tidy_results_combined <- full_join(tidy_results_tp2_person_date_base, 
+                                   tidy_results_tp3_person_date_base, by = "stove")
+tidy_results_combined2 <- full_join(tidy_results_combined, 
+                                    tidy_results_tp4_person_date_base, by = "stove")
+estimates_person_date_base <- tidy_results_combined2 %>% 
+  select(stove, estimate2, estimate3, estimate4, cilow2, cilow3, cilow4, 
+         cihi2, cihi3, cihi4) %>% 
+  mutate(stove = gsub("treatment_recieved", "", stove)) %>% 
+  gather(term, value, estimate2:cihi4) %>% 
+  mutate(timepoint = term) %>% 
+  mutate(timepoint = gsub("[^0-9]", "", timepoint)) %>% 
+  mutate(term = gsub("[^a-z]", "", term)) %>% 
+  group_by(stove, timepoint) %>% 
+  spread(term, value) %>% 
+  ungroup() %>% 
+  mutate(stove = factor(stove, levels = c("control", "lpg", "gasifier", 
+                                          "fan rocket", "rocket elbow", 
+                                          "three stone")))
+```
+
+# Save output
+```{r}
+  write_rds(estimates_person_date_base,
+            "output/cpp_estimates_person_date_base.RDS")
+  write_rds(estimates_person_date_base,
+            "output/bpp_estimates_person_date_base.RDS")
+  write_rds(estimates_person_date_base,
+            "output/aug_press_estimates_person_date_base.RDS")
+```
