@@ -12,7 +12,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.width 
 
 ```{r, include=FALSE}
 library(tidyverse)
-library(lubridate)
 library(lme4)
 library(lmerTest)
 library(pbkrtest)
@@ -27,10 +26,12 @@ library(splines)
 ```
 
 ```{r}
-r00_sample_wide <- read_xlsx("input/data_meeting_14nov2018.xlsx")
+#r00_sample_wide <- read_xlsx("input/data_meeting_14nov2018.xlsx")
+
+r00_sample_repeated_by_phase <- read_rds("output/r00_sample_repeated_by_phase.RDS")
 ```
 
-##### Convert Dataset from Wide to Long #####
+##### Convert Sample Dataset from Wide to Long #####
 ```{r}
 r00_sample_long <- r00_sample_wide %>% 
   #creating new variables for phases 2-6 if it was only collected at phase 1
@@ -72,14 +73,18 @@ r00_sample_repeated_by_phase <- r00_sample_long %>%
   mutate(sysbp = as.numeric(sysbp))%>% 
   mutate(diabp = as.numeric(diabp)) %>% 
   mutate(age = if_else(age_baseline > 40, 1, 0))
+
+write_rds(r00_sample_repeated_by_phase, "output/r00_sample_repeated_by_phase.RDS")
 ```
 
 ## Honduras R00 Initial Model ##
 ```{r}
 #use date of visit in place of phase and try df=12
-bp_model_spline <- lmer(sysbp ~ assigned_stove + ns(phase, df=2) + (1 | house_id), r00_sample_repeated_by_phase)
+bp_model_spline <- lmer(sysbp ~ assigned_stove + ns(phase, df=2) + 
+                          (1 | house_id), r00_sample_repeated_by_phase)
 
-bp_model_phase <- lmer(sysbp ~ assigned_stove*age + factor(phase) + (1 | house_id), r00_sample_repeated_by_phase)
+bp_model_phase <- lmer(sysbp ~ assigned_stove + factor(phase) + 
+                         (1 | house_id), r00_sample_repeated_by_phase)
 
 bp_model <- lmer(sysbp ~ assigned_stove + (1 | house_id), r00_sample_repeated_by_phase)
 
@@ -94,7 +99,28 @@ summary(bp_model)
 write_rds(bp_model, "output/bp_model_test_11nov18.RDS")
 ```
 
-###################### Code from Stoves Study to Help format R00 Models and Output###################################
+## Format model output for plotting
+```{r}
+tidy_results_bp_model_phase <- tidy(bp_model_phase, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(term = if_else(term == "assigned_stove1", "justa", "na"))
+```
+
+## Plot model estimate
+```{r}
+plot_sample_estimates <- tidy_results_bp_model_phase %>%
+  ggplot() +
+  geom_point(aes(x=1, y=estimate)) +
+  geom_errorbar(aes(x=1, ymin=ci_low, ymax=ci_hi)) +
+  theme_minimal() +
+  geom_hline(yintercept = 0) +
+  ggtitle(label = "R00 Augmentation Index Model") +
+  labs(x = "")
+plot_sample_estimates
+```
+
+###### Code from Stoves Study to Help format R00 Models and Output #######
 
 ## STOVES Study Final Model ##
 # Random Person Effect, Date Effect, Baseline
