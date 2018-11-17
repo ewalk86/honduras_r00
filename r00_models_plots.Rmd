@@ -27,7 +27,7 @@ library(lubridate)
 ```
 
 ```{r}
-#r00_full_wide <- read_xlsx("input/data_meeting_14nov2018.xlsx")
+r00_full_long_17nov2018_ew <- read_xlsx("input/r00_full_long_17nov2018_ew.csv")
 
 r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
@@ -55,6 +55,7 @@ r00_model_data <- r00_full_repeated_by_phase %>%
 
 ## Honduras R00 Initial AIx Model ##
 ```{r}
+#run/save models
 aix_model_spline <- lmer(aix ~ assigned_stove + ns(date, df=12) + 
                           (1 | house_id), r00_model_data)
 
@@ -63,6 +64,8 @@ aix_model_phase <- lmer(aix ~ assigned_stove + phase +
 
 aix_model <- lmer(aix ~ assigned_stove + (1 | house_id), r00_model_data)
 
+
+#print model summaries
 summary(aix_model_spline)
 
 summary(aix_model_phase)
