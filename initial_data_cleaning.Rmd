@@ -17,7 +17,7 @@ library(naniar)
 
 ```{r, message=FALSE}
 # Load data
-#r00_full_wide <- read_xlsx("input/R00_health_wide_06Aug2018_by.xlsx")
+#r00_full_wide <- read_xlsx("input/R00_health_wide_14Nov2018_by.xlsx")
 
 r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
@@ -82,7 +82,19 @@ r00_full_long <- r00_full_wide %>%
          ses_materials_r00_p3 = ses_materials_r00_p1, 
          ses_materials_r00_p4 = ses_materials_r00_p1, 
          ses_materials_r00_p5 = ses_materials_r00_p1, 
-         ses_materials_r00_p6 = ses_materials_r00_p1) %>% 
+         ses_materials_r00_p6 = ses_materials_r00_p1) %>%
+  mutate(study_arm_r00_p1 = Study_Arm_r00_p2, 
+         study_arm_r00_p2 = Study_Arm_r00_p2,
+         study_arm_r00_p3 = Study_Arm_r00_p2, 
+         study_arm_r00_p4 = Study_Arm_r00_p2, 
+         study_arm_r00_p5 = Study_Arm_r00_p2, 
+         study_arm_r00_p6 = Study_Arm_r00_p2) %>% 
+  mutate(age_baseline_r00_p2 = age_baseline_r00_p1, 
+         age_baseline_r00_p3 = age_baseline_r00_p1,
+         age_baseline_r00_p4 = age_baseline_r00_p1, 
+         age_baseline_r00_p5 = age_baseline_r00_p1, 
+         age_baseline_r00_p6 = age_baseline_r00_p1) %>% 
+  select(-Study_Arm_r00_p2) %>% 
   #transform data to long format with only 3 columns
   gather(key = "variable", value = "value", -house_id) %>% 
   #arrange data by house_id, descending
