@@ -42,7 +42,7 @@ r00_model_data <- r00_full_repeated_by_phase %>%
   mutate(house_id = as.factor(house_id)) %>%
   #split age at 40
   mutate(age_cat = if_else(age_baseline > 40, 1, 0)) %>% 
-  select(sysbp, diabp, aix, assigned_stove, date, house_id, age, age_current, phase) %>% 
+  select(sysbp, diabp, aix, assigned_stove, date, house_id, age_cat, age_current, phase) %>% 
   #format date var
   separate(date, c("month_time", "year"), sep = "UTC ") %>%
   separate(month_time, c("month_day", "time"), sep = " 00:00:00") %>%
