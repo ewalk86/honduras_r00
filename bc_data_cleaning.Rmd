@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(lubridate)
+library(readxl)
 ```
 
 #Read in BC files
@@ -27,6 +28,14 @@ r00_phase5_bc_post <- read_csv("input/r00_phase5_bc_post.csv")
 r00_phase5_bc_pre <- read_csv("input/r00_phase5_bc_pre.csv")
 r00_phase6_bc_post <- read_csv("input/r00_phase6_bc_post.csv")
 r00_phase6_bc_pre <- read_csv("input/r00_phase6_bc_pre.csv")
+
+r00_phase1_field_data <- read_csv("input/r00_phase1_field_data.csv")
+r00_phase4_field_data <- read_csv("input/r00_phase4_field_data.csv")
+r00_phase5_field_data <- read_csv("input/r00_phase5_field_data.csv")
+
+r00_phase1_bc <- read_csv("input/r00_phase1_bc.csv")
+r00_phase4_bc <- read_csv("input/r00_phase4_bc.csv")
+r00_phase5_bc <- read_csv("input/r00_phase5_bc.csv")
 ```
 
 #Read in BC files
@@ -43,13 +52,30 @@ r00_phase5_bc <- full_join(r00_phase5_bc_pre, r00_phase5_bc_post, by = "filter_i
 r00_phase6_bc <- full_join(r00_phase6_bc_pre, r00_phase6_bc_post, by = "filter_id")
 ```
 
+#Join BC sootscan data with field data
+```{r}
+r00_phase1_bc_full <- full_join(r00_phase1_bc, r00_phase1_field_data, by = "filter_id")
+r00_phase4_bc_full <- full_join(r00_phase4_bc, r00_phase4_field_data, by = "filter_id")
+r00_phase5_bc_full <- full_join(r00_phase5_bc, r00_phase5_field_data, by = "filter_id")
+```
+
+
 #save data
 ```{r}
+# Joined BC pre/post data
 write_csv(r00_phase1_bc_post, "output/r00_phase1_bc.csv", na = " ") #we didn't pre-scan for phase 1
 write_csv(r00_phase2_bc, "output/r00_phase2_bc.csv", na = " ")
 write_csv(r00_phase3_bc, "output/r00_phase3_bc.csv", na = " ")
 write_csv(r00_phase4_bc, "output/r00_phase4_bc.csv", na = " ")
 write_csv(r00_phase5_bc, "output/r00_phase5_bc.csv", na = " ")
 write_csv(r00_phase6_bc, "output/r00_phase6_bc.csv", na = " ")
+
+# Joined BC with field data
+write_csv(r00_phase1_bc_full, "output/r00_phase1_bc_full.csv", na = " ") #we didn't pre-scan for phase 1
+write_csv(r00_phase2_bc_full, "output/r00_phase2_bc_full.csv", na = " ")
+write_csv(r00_phase3_bc_full, "output/r00_phase3_bc_full.csv", na = " ")
+write_csv(r00_phase4_bc_full, "output/r00_phase4_bc_full.csv", na = " ")
+write_csv(r00_phase5_bc_full, "output/r00_phase5_bc_full.csv", na = " ")
+write_csv(r00_phase6_bc_full, "output/r00_phase6_bc_full.csv", na = " ")
 ```
 
