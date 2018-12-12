@@ -17,7 +17,10 @@ library(readxl)
 
 #Read in BC files
 ```{r, message=FALSE}
-r00_phase1_bc_post <- read_csv("input/r00_phase1_bc_post.csv")
+r00_phase1_bc <- read_xlsx("input/r00_phase1_bc.xlsx", 
+                           col_types = c("text", "date", "text", "guess", "numeric",
+                                         "numeric", "numeric", "numeric", "numeric",
+                                         "numeric", "text"))
 r00_phase2_bc_post <- read_csv("input/r00_phase2_bc_post.csv")
 r00_phase2_bc_pre <- read_csv("input/r00_phase2_bc_pre.csv")
 r00_phase3_bc_post <- read_csv("input/r00_phase3_bc_post.csv")
@@ -29,7 +32,7 @@ r00_phase5_bc_pre <- read_csv("input/r00_phase5_bc_pre.csv")
 r00_phase6_bc_post <- read_csv("input/r00_phase6_bc_post.csv")
 r00_phase6_bc_pre <- read_csv("input/r00_phase6_bc_pre.csv")
 
-r00_phase1_field_data <- read_csv("input/r00_phase1_field_data.csv")
+r00_phase1_field_data <- read_xlsx("input/r00_phase1_field_data.xlsx")
 r00_phase4_field_data <- read_csv("input/r00_phase4_field_data.csv")
 r00_phase5_field_data <- read_csv("input/r00_phase5_field_data.csv")
 
@@ -38,7 +41,7 @@ r00_phase4_bc <- read_csv("input/r00_phase4_bc.csv")
 r00_phase5_bc <- read_csv("input/r00_phase5_bc.csv")
 ```
 
-#Read in BC files
+#Join BC files
 ```{r}
 r00_phase2_bc <- full_join(r00_phase2_bc_pre, r00_phase2_bc_post, by = "filter_id")
 # should the blank filters with ID beginning "L" actually begin "BL"?
