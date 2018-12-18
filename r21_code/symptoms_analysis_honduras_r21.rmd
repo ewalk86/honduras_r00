@@ -28,15 +28,23 @@ honduras <- read_csv("r21final_27June2018_hr.csv")
 
 #Summary PM by stove type
 ```{r}
-summary <- honduras %>% 
+summary_apm <- honduras %>% 
   select(primarystove_r21, a_pm25_r21new, p_pm25_r21new) %>% 
   mutate(apm = as.numeric(a_pm25_r21new)) %>% 
   mutate(ppm = as.numeric(p_pm25_r21new)) %>% 
   na.exclude(a_pm25_r21new) %>% 
+  group_by(primarystove_r21) %>% 
+  summarise(mean_apm = mean(a_pm25_r21new), n())
+summary_apm
+
+summary_ppm <- honduras %>% 
+  select(primarystove_r21, a_pm25_r21new, p_pm25_r21new) %>% 
+  mutate(apm = as.numeric(a_pm25_r21new)) %>% 
+  mutate(ppm = as.numeric(p_pm25_r21new)) %>% 
   na.exclude(p_pm25_r21new) %>% 
   group_by(primarystove_r21) %>% 
-  summarise(mean_apm = mean(a_pm25_r21new), mean_ppm = mean(p_pm25_r21new), n())
-summary
+  summarise(mean_ppm = mean(p_pm25_r21new), n())
+summary_ppm
 ```
 
 #Boxplots for PM
