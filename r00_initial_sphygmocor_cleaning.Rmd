@@ -1,0 +1,88 @@
+---
+title: "R00 Sphygmocor Initial Cleaning"
+author: "Ethan Walker"
+date: "December 20, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+
+```{r}
+  library(tidyverse)
+  library(magrittr)
+  library(gridExtra)
+  library(lubridate)
+  library(haven)
+  library(knitr)
+```
+
+---
+
+# Load Sphygmocor Files
+
+```{r}
+p6_patient <- read_csv("input/sphygmocor/r00_p6_sphygmo_patient.csv") 
+
+p6_pwa <- read_csv("input/sphygmocor/r00_p6_sphygmo_pwa.csv") 
+
+#Not using for now
+#p6_cpwa <- read_csv("input/sphygmocor/r00_p6_sphygmo_cpwa.csv")
+```
+
+
+## Participants - extract study id, sphygmocor id, date of birth
+```{r}
+r00_participant_info <- p6_patient %>% 
+  select(PatientNumberInternal, PatientIDExternalReference) %>% 
+  rename(id_sphygmo = PatientNumberInternal,
+         house_id = PatientIDExternalReference) %>% 
+  mutate(id_sphygmo = as.numeric(id_sphygmo)) %>% 
+  #remove test id's
+  mutate(id_sphygmo = if_else(id_sphygmo == 246, 999999, id_sphygmo)) %>% 
+  mutate(id_sphygmo = if_else(id_sphygmo == 247, 999999, id_sphygmo)) %>% 
+  mutate(id_sphygmo = if_else(id_sphygmo == 248, 999999, id_sphygmo)) %>% 
+  mutate(id_sphygmo = if_else(id_sphygmo == 249, 999999, id_sphygmo)) %>% 
+  filter(id_sphygmo < 1000)
+```
+
+## PWA - join with participant info and clean up
+```{r}
+r00_pwa <- p6_pwa %>%
+  rename_all(tolower) %>% 
+  rename(id_sphygmo = patientnumberinternal,
+         datetime = studydatetime) %>%
+  #join with participant info
+  left_join(r00_participant_info, by = "id_sphygmo") %>%
+  mutate(date = as.Date(datetime), week_of_year = lubridate::isoweek(date)) %>%
+  select(house_id, date, datetime, week_of_year, id_sphygmo, hr, sp, dp, mp, 
+         c_sp, c_dp, c_meanp,c_ai, c_ap, c_mps, c_mpd, c_esp, c_agph) %>%
+  rename(sys_bp_periph = sp, dia_bp_periph = dp, sys_bp_central = c_sp, 
+         dia_bp_central = c_dp, map_central = c_meanp, aug_index = c_agph,
+         aug_pressure = c_ap, map_periph = mp) %>% 
+  select(-c_ai, -c_mpd, -c_mps, -c_esp) %>% 
+  #create new variables
+  mutate(pulse_pressure_periph = (sys_bp_periph - dia_bp_periph),
+         pulse_pressure_central = (sys_bp_central - dia_bp_central),
+         aix75 = if_else(hr < 75, aug_index - (((75 - hr)/10)*4.8), 
+                         aug_index - (((75 - hr)/10)*4.8))) %>% 
+  arrange(house_id, datetime)
+```
+
+#### Next step make sure participants have correct number of observations/visits
+
+# Output
+```{r}
+# .RDS
+  write_rds(r00_pwa,
+            "output/r00_sphygmocor_pwa.RDS")
+# .csv
+  write_csv(r00_pwa,
+            "output/r00_sphygmocor_pwa.csv")
+# .sas7bdat
+  write_sas(r00_pwa,
+            "output/r00_sphygmocor_pwa.sas7bdat")
+```

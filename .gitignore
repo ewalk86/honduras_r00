@@ -8,3 +8,4 @@
 doc/**/*.RDS
 doc/**/*.csv
 input
+output
