@@ -6,7 +6,7 @@ output: pdf_document
 ---
   
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 ```
 
 ```{r, message=FALSE}
@@ -28,22 +28,44 @@ honduras <- read_csv("r21final_27June2018_hr.csv")
 
 #Summary PM by stove type
 ```{r}
+# Area/Kitchen PM concentrations by stove type
 summary_apm <- honduras %>% 
-  select(primarystove_r21, a_pm25_r21new, p_pm25_r21new) %>% 
+  select(house_id, generalstove_type, a_pm25_r21new) %>% 
   mutate(apm = as.numeric(a_pm25_r21new)) %>% 
-  mutate(ppm = as.numeric(p_pm25_r21new)) %>% 
-  na.exclude(a_pm25_r21new) %>% 
-  group_by(primarystove_r21) %>% 
-  summarise(mean_apm = mean(a_pm25_r21new), n())
+  #participants with no chimney identified using primarystove_type variable 
+  mutate(generalstove_type = if_else(house_id == "OLO093", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "MOM068", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "MOM020", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "CAC067", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "CAC022", "no chimney",
+                                     generalstove_type)) %>%
+  na.exclude(apm) %>% 
+  group_by(generalstove_type) %>% 
+  summarise(mean_apm = mean(apm), sd_apm = sd(apm), n())
 summary_apm
 
+# Personal PM concentrations by stove type
 summary_ppm <- honduras %>% 
-  select(primarystove_r21, a_pm25_r21new, p_pm25_r21new) %>% 
-  mutate(apm = as.numeric(a_pm25_r21new)) %>% 
+  select(house_id, generalstove_type, p_pm25_r21new) %>% 
   mutate(ppm = as.numeric(p_pm25_r21new)) %>% 
-  na.exclude(p_pm25_r21new) %>% 
-  group_by(primarystove_r21) %>% 
-  summarise(mean_ppm = mean(p_pm25_r21new), n())
+  #participants with no chimney identified using primarystove_type variable 
+  mutate(generalstove_type = if_else(house_id == "OLO093", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "MOM068", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "MOM020", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "CAC067", "no chimney",
+                                     generalstove_type)) %>%
+  mutate(generalstove_type = if_else(house_id == "CAC022", "no chimney",
+                                     generalstove_type)) %>%
+  na.exclude(ppm) %>% 
+  group_by(generalstove_type) %>% 
+  summarise(mean_ppm = mean(ppm), sd_ppm = sd(ppm), n())
 summary_ppm
 ```
 
