@@ -56,17 +56,17 @@ r00_participant_info <- p6_patient %>%
 r00_pwa <- p6_pwa %>%
   rename_all(tolower) %>% 
   rename(id_sphygmo = patientnumberinternal,
-         datetime = studydatetime) %>%
+         datetime_sphygmo = studydatetime) %>%
   #join with participant info
   left_join(r00_participant_info, by = "id_sphygmo") %>%
-  mutate(date = as.Date(datetime), week_of_year = lubridate::isoweek(date)) %>%
-  mutate(date_health = ymd(date)) %>% 
-  select(house_id, date_health, date, datetime, week_of_year, id_sphygmo, hr, sp, dp, mp, 
+  mutate(date = as.Date(datetime_sphygmo), week_of_year = lubridate::isoweek(date)) %>%
+  mutate(date_sphygmo = ymd(date), datetime_sphygmo = ymd_hms(datetime_sphygmo)) %>% 
+  select(house_id, date_sphygmo, date, datetime_sphygmo, week_of_year, id_sphygmo, hr, sp, dp, mp, 
          c_sp, c_dp, c_meanp,c_ai, c_ap, c_mps, c_mpd, c_esp, c_agph) %>%
   rename(sys_bp_periph = sp, dia_bp_periph = dp, sys_bp_central = c_sp, 
          dia_bp_central = c_dp, map_central = c_meanp, aug_index = c_agph,
          aug_pressure = c_ap, map_periph = mp) %>% 
-  select(-c_ai, -c_mpd, -c_mps, -c_esp) %>% 
+  select(-c_ai, -c_mpd, -c_mps, -c_esp, - date) %>% 
   #create new variables
   mutate(pulse_pressure_periph = (sys_bp_periph - dia_bp_periph),
          pulse_pressure_central = (sys_bp_central - dia_bp_central),
@@ -74,9 +74,48 @@ r00_pwa <- p6_pwa %>%
                          aug_index - (((75 - hr)/10)*4.8))) %>% 
   na.exclude(house_id) %>% 
   #removing session with duplicate aug_index measurement
-  mutate(aug_index = if_else(house_id == "QDL008" & date_health == "2018-04-26", 99999, aug_index)) %>% 
-  filter(aug_index < 99999) %>% 
-  arrange(house_id, datetime)
+  mutate(aug_index = if_else(house_id == "QDL008" & date_sphygmo == "2018-04-26", 99999, aug_index)) %>% 
+  filter(aug_index < 9999) %>% 
+  #round variables to 2 digits
+  mutate(hr = round(hr, digits = 2), 
+         sys_bp_central = round(sys_bp_central, digits = 2), 
+         dia_bp_central = round(dia_bp_central, digits = 2),
+         map_central = round(map_central, digits = 2), 
+         aug_pressure = round(aug_pressure, digits = 2), 
+         aug_index = round(aug_index, digits = 2),
+         pulse_pressure_central = round(pulse_pressure_central, digits = 2), 
+         aug_index_75 = round(aug_index_75, digits = 2)) %>% 
+  arrange(house_id, datetime_sphygmo)
+```
+
+## Sphygmocor Summary Stats
+```{r}
+sphygmo_summary <- r00_pwa %>% 
+  na.exclude(aug_index) %>% 
+  summarise(mean(hr), median(hr), max(hr), min(hr),
+            mean(sys_bp_periph), median(sys_bp_periph), max(sys_bp_periph), min(sys_bp_periph),
+            mean(dia_bp_periph), median(dia_bp_periph), max(dia_bp_periph), min(dia_bp_periph),
+            mean(map_periph), median(map_periph), max(map_periph), min(map_periph),
+            mean(sys_bp_central), median(sys_bp_central), max(sys_bp_central), min(sys_bp_central),
+            mean(dia_bp_central), median(dia_bp_central), max(dia_bp_central), min(dia_bp_central),
+            mean(map_central), median(map_central), max(map_central), min(map_central),
+            mean(aug_pressure), median(aug_pressure), max(aug_pressure), min(aug_pressure),
+            mean(aug_index), median(aug_index), max(aug_index), min(aug_index),
+            mean(aug_index_75), median(aug_index_75), max(aug_index_75), min(aug_index_75),
+            mean(pulse_pressure_central), median(pulse_pressure_central), max(pulse_pressure_central),
+            min(pulse_pressure_central),
+            mean(pulse_pressure_periph), median(pulse_pressure_periph), max(pulse_pressure_periph),
+            min(pulse_pressure_periph))
+sphygmo_summary
+```
+
+## Make sure systolic pressures are > diastolic
+```{r}
+bp_check <- r00_pwa %>% 
+  mutate(periph_bp_check = if_else(dia_bp_central > sys_bp_central, 1, 0)) %>% 
+  mutate(central_bp_check = if_else(dia_bp_periph > sys_bp_periph, 1, 0)) %>% 
+  summarise(sum(periph_bp_check), sum(central_bp_check))
+bp_check
 ```
 
 ## Further cleaning - make sure correct number of observations per house_id
@@ -85,10 +124,10 @@ r00_check <- r00_full_long %>%
   separate(date, c("day_week", "month", "day", "time", "utc", "year"), sep = " ") %>% 
   unite(date_new, c("year", "month", "day"), sep = "") %>% 
   #mutate(date = ymd(date_new)) %>% 
-  mutate(date_health = ymd(date_new) + days(1)) %>% 
+  mutate(date_sphygmo = ymd(date_new) + days(1)) %>% 
   select(-"day_week", -"time", -"utc", -"date_new") %>% 
-  left_join(r00_pwa, by = c("house_id", "date_health")) %>% 
-  select(house_id, date_health, phase, augmentation_index, aug_index) %>% 
+  left_join(r00_pwa, by = c("house_id", "date_sphygmo")) %>% 
+  select(house_id, date_sphygmo, phase, augmentation_index, aug_index) %>% 
   mutate(augmentation_index = as.numeric(augmentation_index)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 
   mutate(augmentation_index = if_else(is.na(augmentation_index), 0, augmentation_index)) %>% 
@@ -117,27 +156,27 @@ r00_check <- r00_full_long %>%
   separate(date, c("day_week", "month", "day", "time", "utc", "year"), sep = " ") %>% 
   unite(date_new, c("year", "month", "day"), sep = "") %>% 
   #mutate(date = ymd(date_new)) %>% 
-  mutate(date_health = ymd(date_new) + days(1)) %>% 
+  mutate(date_sphygmo = ymd(date_new) + days(1)) %>% 
   #fix incorrect dates described above
-  mutate(date_health = if_else(house_id == "CAC007" & date_health == "2016-09-22",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "CER064" & date_health == "2017-04-11",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "HOR041" & date_health == "2016-09-08",
-                               date_health + days(2), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "OLO007" & date_health == "2016-10-21",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "PER052" & date_health == "2016-11-18",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "QDL012" & date_health == "2017-04-27",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "ZAC014" & date_health == "2015-09-05",
-                               date_health + days(2), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "ZAC027" & date_health == "2015-09-10",
-                               date_health + days(1), date_health)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "CAC007" & date_sphygmo == "2016-09-22",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "CER064" & date_sphygmo == "2017-04-11",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "HOR041" & date_sphygmo == "2016-09-08",
+                               date_sphygmo + days(2), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "OLO007" & date_sphygmo == "2016-10-21",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "PER052" & date_sphygmo == "2016-11-18",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "QDL012" & date_sphygmo == "2017-04-27",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "ZAC014" & date_sphygmo == "2015-09-05",
+                               date_sphygmo + days(2), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "ZAC027" & date_sphygmo == "2015-09-10",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
   select(-"day_week", -"time", -"utc", -"date_new") %>% 
-  left_join(r00_pwa, by = c("house_id", "date_health")) %>% 
-  select(house_id, date_health, phase, augmentation_index, aug_index) %>% 
+  left_join(r00_pwa, by = c("house_id", "date_sphygmo")) %>% 
+  select(house_id, date_sphygmo, phase, augmentation_index, aug_index) %>% 
   mutate(augmentation_index = as.numeric(augmentation_index)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 
   mutate(augmentation_index = if_else(is.na(augmentation_index), 0, augmentation_index)) %>% 
@@ -151,29 +190,30 @@ n_distinct(r00_check$house_id)
 
 # Now performing the above cleaning on full dataset
 r00_joined <- r00_full_long %>% 
-  separate(date, c("day_week", "month", "day", "time", "utc", "year"), sep = " ") %>% 
+  mutate(date_new = date) %>% 
+  separate(date_new, c("day_week", "month", "day", "time", "utc", "year"), sep = " ") %>% 
   unite(date_new, c("year", "month", "day"), sep = "") %>% 
-  #mutate(date = ymd(date_new)) %>% 
-  mutate(date_health = ymd(date_new) + days(1)) %>% 
+  mutate(date_setup = ymd(date_new)) %>% 
+  mutate(date_sphygmo = ymd(date_new) + days(1)) %>% 
   #fix incorrect dates described above
-  mutate(date_health = if_else(house_id == "CAC007" & date_health == "2016-09-22",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "CER064" & date_health == "2017-04-11",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "HOR041" & date_health == "2016-09-08",
-                               date_health + days(2), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "OLO007" & date_health == "2016-10-21",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "PER052" & date_health == "2016-11-18",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "QDL012" & date_health == "2017-04-27",
-                               date_health + days(1), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "ZAC014" & date_health == "2015-09-05",
-                               date_health + days(2), date_health)) %>% 
-  mutate(date_health = if_else(house_id == "ZAC027" & date_health == "2015-09-10",
-                               date_health + days(1), date_health)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "CAC007" & date_sphygmo == "2016-09-22",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "CER064" & date_sphygmo == "2017-04-11",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "HOR041" & date_sphygmo == "2016-09-08",
+                               date_sphygmo + days(2), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "OLO007" & date_sphygmo == "2016-10-21",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "PER052" & date_sphygmo == "2016-11-18",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "QDL012" & date_sphygmo == "2017-04-27",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "ZAC014" & date_sphygmo == "2015-09-05",
+                               date_sphygmo + days(2), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "ZAC027" & date_sphygmo == "2015-09-10",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
   select(-"day_week", -"time", -"utc", -"date_new") %>% 
-  left_join(r00_pwa, by = c("house_id", "date_health"))
+  left_join(r00_pwa, by = c("house_id", "date_sphygmo"))
 ```
 
 

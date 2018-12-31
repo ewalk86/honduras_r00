@@ -1,0 +1,55 @@
+---
+title: "Sphygmocor Summary Stats"
+author: "Ethan Walker"
+date: "December 31, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+
+```{r}
+# Libraries
+
+  library(tidyverse)
+  library(magrittr)
+  library(gridExtra)
+  library(lubridate)
+  library(haven)
+  library(knitr)
+```
+
+---
+
+```{r}
+#load full dataset
+r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+```
+
+## Sphygmocor Summary Stats
+```{r}
+summary <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(mean(hr), median(hr), max(hr), min(hr),
+            mean(sys_bp_periph), median(sys_bp_periph), max(sys_bp_periph), min(sys_bp_periph),
+            mean(dia_bp_periph), median(dia_bp_periph), max(dia_bp_periph), min(dia_bp_periph),
+            mean(map_periph), median(map_periph), max(map_periph), min(map_periph),
+            mean(sys_bp_central), median(sys_bp_central), max(sys_bp_central), min(sys_bp_central),
+            mean(dia_bp_central), median(dia_bp_central), max(dia_bp_central), min(dia_bp_central),
+            mean(map_central), median(map_central), max(map_central), min(map_central),
+            mean(aug_pressure), median(aug_pressure), max(aug_pressure), min(aug_pressure),
+            mean(aug_index), median(aug_index), max(aug_index), min(aug_index),
+            mean(aug_index_75), median(aug_index_75), max(aug_index_75), min(aug_index_75),
+            mean(pulse_pressure_central), median(pulse_pressure_central), max(pulse_pressure_central),
+            min(pulse_pressure_central),
+            mean(pulse_pressure_periph), median(pulse_pressure_periph), max(pulse_pressure_periph),
+            min(pulse_pressure_periph))
+kable(summary, digits = 2)
+```
+
