@@ -1,24 +1,22 @@
 ---
 title: "Sphygmocor Summary Stats"
 author: "Ethan Walker"
-date: "December 31, 2018"
+date: "January 2nd, 2018"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 ```
 
 
-```{r}
-# Libraries
-
-  library(tidyverse)
-  library(magrittr)
-  library(gridExtra)
-  library(lubridate)
-  library(haven)
-  library(knitr)
+```{r, message=FALSE}
+library(tidyverse)
+library(magrittr)
+library(gridExtra)
+library(lubridate)
+library(haven)
+library(knitr)
 ```
 
 ---
@@ -28,28 +26,242 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
-## Sphygmocor Summary Stats
+## Variables grouped by study arm
 ```{r}
-summary <- r00_full_joined_sphygmocor %>% 
+summary_hr <- r00_full_joined_sphygmocor %>% 
   select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
          sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>% 
   na.exclude(aug_index) %>% 
   group_by(study_arm) %>% 
-  summarise(mean(hr), median(hr), max(hr), min(hr),
-            mean(sys_bp_periph), median(sys_bp_periph), max(sys_bp_periph), min(sys_bp_periph),
-            mean(dia_bp_periph), median(dia_bp_periph), max(dia_bp_periph), min(dia_bp_periph),
-            mean(map_periph), median(map_periph), max(map_periph), min(map_periph),
-            mean(sys_bp_central), median(sys_bp_central), max(sys_bp_central), min(sys_bp_central),
-            mean(dia_bp_central), median(dia_bp_central), max(dia_bp_central), min(dia_bp_central),
-            mean(map_central), median(map_central), max(map_central), min(map_central),
-            mean(aug_pressure), median(aug_pressure), max(aug_pressure), min(aug_pressure),
-            mean(aug_index), median(aug_index), max(aug_index), min(aug_index),
-            mean(aug_index_75), median(aug_index_75), max(aug_index_75), min(aug_index_75),
-            mean(pulse_pressure_central), median(pulse_pressure_central), max(pulse_pressure_central),
-            min(pulse_pressure_central),
-            mean(pulse_pressure_periph), median(pulse_pressure_periph), max(pulse_pressure_periph),
-            min(pulse_pressure_periph))
+  summarise(variable = "hr", mean = mean(hr), median = median(hr),
+            max = max(hr), min = min(hr))
+
+summary_sys_bp_periph <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "sys bp periph", mean = mean(sys_bp_periph), median = median(sys_bp_periph),
+            max = max(sys_bp_periph), min = min(sys_bp_periph))
+
+summary_dia_bp_periph <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "dia bp periph", mean = mean(dia_bp_periph), median = median(dia_bp_periph),
+            max = max(dia_bp_periph), min = min(dia_bp_periph))
+
+summary_map_periph <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "map periph", mean = mean(map_periph), median = median(map_periph),
+            max = max(map_periph), min = min(map_periph))
+
+summary_sys_bp_central <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "sys bp central", mean = mean(sys_bp_central), median = median(sys_bp_central),
+            max = max(sys_bp_central), min = min(sys_bp_central))
+
+summary_dia_bp_central <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "dia bp central", mean = mean(dia_bp_central), median = median(dia_bp_central),
+            max = max(dia_bp_central), min = min(dia_bp_central))
+
+summary_map_central <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "map central", mean = mean(map_central), median = median(map_central),
+            max = max(map_central), min = min(map_central))
+
+summary_aug_pressure <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "aug pressure", mean = mean(aug_pressure), median = median(aug_pressure),
+            max = max(aug_pressure), min = min(aug_pressure))
+
+summary_aug_index <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "aug index", mean = mean(aug_index), median = median(aug_index),
+            max = max(aug_index), min = min(aug_index))
+
+summary_aug_index_75 <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "aug index 75", mean = mean(aug_index_75), median = median(aug_index_75),
+            max = max(aug_index_75), min = min(aug_index_75))
+
+summary_pulse_pressure_central <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "pulse pressure central", mean = mean(pulse_pressure_central), 
+            median = median(pulse_pressure_central),
+            max = max(pulse_pressure_central), min = min(pulse_pressure_central))
+
+summary_pulse_pressure_periph <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(study_arm) %>% 
+  summarise(variable = "pulse pressure periph", mean = mean(pulse_pressure_periph), 
+            median = median(pulse_pressure_periph),
+            max = max(pulse_pressure_periph), min = min(pulse_pressure_periph))
+
+summary <- rbind(summary_hr, summary_sys_bp_periph, summary_dia_bp_periph, 
+                 summary_map_periph, summary_pulse_pressure_periph, 
+                 summary_sys_bp_central, summary_dia_bp_central, 
+                 summary_map_central, summary_pulse_pressure_central, 
+                 summary_aug_index, summary_aug_index_75, summary_aug_pressure)
 kable(summary, digits = 2)
 ```
 
+## Variables grouped by phase
+```{r}
+summary_hr <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "hr", mean = mean(hr), median = median(hr),
+            max = max(hr), min = min(hr))
+
+summary_sys_bp_periph <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "sys bp periph", mean = mean(sys_bp_periph), median = median(sys_bp_periph),
+            max = max(sys_bp_periph), min = min(sys_bp_periph))
+
+summary_dia_bp_periph <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "dia bp periph", mean = mean(dia_bp_periph), median = median(dia_bp_periph),
+            max = max(dia_bp_periph), min = min(dia_bp_periph))
+
+summary_map_periph <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "map periph", mean = mean(map_periph), median = median(map_periph),
+            max = max(map_periph), min = min(map_periph))
+
+summary_sys_bp_central <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "sys bp central", mean = mean(sys_bp_central), median = median(sys_bp_central),
+            max = max(sys_bp_central), min = min(sys_bp_central))
+
+summary_dia_bp_central <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "dia bp central", mean = mean(dia_bp_central), median = median(dia_bp_central),
+            max = max(dia_bp_central), min = min(dia_bp_central))
+
+summary_map_central <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "map central", mean = mean(map_central), median = median(map_central),
+            max = max(map_central), min = min(map_central))
+
+summary_aug_pressure <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "aug pressure", mean = mean(aug_pressure), median = median(aug_pressure),
+            max = max(aug_pressure), min = min(aug_pressure))
+
+summary_aug_index <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "aug index", mean = mean(aug_index), median = median(aug_index),
+            max = max(aug_index), min = min(aug_index))
+
+summary_aug_index_75 <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "aug index 75", mean = mean(aug_index_75), median = median(aug_index_75),
+            max = max(aug_index_75), min = min(aug_index_75))
+
+summary_pulse_pressure_central <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "pulse pressure central", mean = mean(pulse_pressure_central), 
+            median = median(pulse_pressure_central),
+            max = max(pulse_pressure_central), min = min(pulse_pressure_central))
+
+summary_pulse_pressure_periph <- r00_full_joined_sphygmocor %>% 
+  select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>% 
+  na.exclude(aug_index) %>% 
+  group_by(phase) %>% 
+  summarise(variable = "pulse pressure periph", mean = mean(pulse_pressure_periph), 
+            median = median(pulse_pressure_periph),
+            max = max(pulse_pressure_periph), min = min(pulse_pressure_periph))
+
+summary <- rbind(summary_hr, summary_sys_bp_periph, summary_dia_bp_periph, 
+                 summary_map_periph, summary_pulse_pressure_periph, 
+                 summary_sys_bp_central, summary_dia_bp_central, 
+                 summary_map_central, summary_pulse_pressure_central, 
+                 summary_aug_index, summary_aug_index_75, summary_aug_pressure)
+kable(summary, digits = 2)
+```
