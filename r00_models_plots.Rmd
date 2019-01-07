@@ -24,97 +24,241 @@ library(readxl)
 library(naniar)
 library(splines)
 library(lubridate)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
 ```
 
 ```{r}
-r00_full_long_17nov2018_ew <- read_xlsx("input/r00_full_long_17nov2018_ew.csv")
-
-r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
+#load full dataset
+r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
 ## Data prep
 ```{r}
-r00_model_data <- r00_full_repeated_by_phase %>% 
-  mutate(sysbp = as.numeric(sysbp))%>% 
-  mutate(diabp = as.numeric(diabp)) %>% 
-  mutate(aix = as.numeric(aix)) %>% 
+r00_model_data <- r00_full_joined_sphygmocor %>% 
+  mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
+  mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
+  mutate(aug_index = as.numeric(aug_index)) %>% 
+  mutate(aug_index_75 = as.numeric(aug_index_75)) %>% 
+  mutate(pulse_pressure_periph = as.numeric(pulse_pressure_periph))%>% 
+  mutate(pulse_pressure_central = as.numeric(pulse_pressure_central)) %>% 
+  mutate(hr = as.numeric(hr)) %>% 
   mutate(phase = as.factor(phase)) %>%
   mutate(house_id = as.factor(house_id)) %>%
-  #split age at 40
+  #split age at 40; >40 = 1, <40 = 0
   mutate(age_cat = if_else(age_baseline > 40, 1, 0)) %>% 
-  select(sysbp, diabp, aix, assigned_stove, date, house_id, age_cat, age_current, phase) %>% 
-  #format date var
-  separate(date, c("month_time", "year"), sep = "UTC ") %>%
-  separate(month_time, c("month_day", "time"), sep = " 00:00:00") %>%
-  separate(month_day, c("month_day", "month", "day"), sep = " ") %>% 
-  unite(date, c("day", "month", "year"), sep = " ") %>% 
-  mutate(date = dmy(date)) %>% 
-  select(-month_day, -time)
+  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75, hr, pulse_pressure_periph,
+         pulse_pressure_central, assigned_stove, house_id, age_cat, age_current, 
+         phase, study_arm, date_sphygmo) 
 ```
 
 
 ## Honduras R00 Initial AIx Model ##
 ```{r}
 #run/save models
-aix_model_spline <- lmer(aix ~ assigned_stove + ns(date, df=12) + 
+sphygmo_model_spline <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
 
-aix_model_phase <- lmer(aix ~ assigned_stove + phase + 
+sphygmo_model_phase <- lmer(aug_index ~ assigned_stove + phase + 
                          (1 | house_id), r00_model_data)
 
-aix_model <- lmer(aix ~ assigned_stove + (1 | house_id), r00_model_data)
+sphygmo_model <- lmer(aug_index ~ assigned_stove + (1 | house_id), r00_model_data)
 
 
-#print model summaries
-summary(aix_model_spline)
+# print model summaries
+#  summary(sphygmo_model_spline)
 
-summary(aix_model_phase)
+#  summary(sphygmo_model_phase)
 
-summary(aix_model)
-
-
-# save model results
-write_rds(aix_model, "output/aix_model_17nov18.RDS")
-```
-
-## Honduras R00 Initial BP Model ##
-```{r}
-bp_model_spline <- lmer(sysbp ~ assigned_stove + ns(date, df=12) + 
-                          (1 | house_id), r00_model_data)
-
-bp_model_phase <- lmer(sysbp ~ assigned_stove + phase + 
-                         (1 | house_id), r00_model_data)
-
-bp_model <- lmer(sysbp ~ assigned_stove + (1 | house_id), r00_model_data)
-
-summary(bp_model_spline)
-
-summary(bp_model_phase)
-
-summary(bp_model)
-
+#  summary(sphygmo_model)
 
 # save model results
-write_rds(bp_model, "output/bp_model_17nov18.RDS")
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Format model output for plotting
-```{r}
-tidy_results_aix_model_spline <- tidy(aix_model_spline, conf.int = TRUE) %>% 
+## Format and plot model
+```{r, fig.width=8, fig.height=5}
+tidy_results_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(term = if_else(term == "assigned_stove1", "justa", "na"))
-```
+    mutate(model = if_else(term == "assigned_stove1", "spline", "na"))
+tidy_results_sphygmo_model_phase <- tidy(sphygmo_model_phase, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "phase", "na"))
+tidy_results_sphygmo_model <- tidy(sphygmo_model, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "no time", "na"))
+
+sphygmo_model_final_results <- rbind(tidy_results_sphygmo_model_spline,
+                                     tidy_results_sphygmo_model_phase,
+                                     tidy_results_sphygmo_model)
 
 ## Plot model estimate
-```{r}
-plot_estimates <- tidy_results_aix_model_spline %>%
+plot_estimates <- sphygmo_model_final_results %>%
   ggplot() +
-  geom_point(aes(x=1, y=estimate)) +
-  geom_errorbar(aes(x=1, ymin=ci_low, ymax=ci_hi)) +
-  theme_minimal() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
-  ggtitle(label = "R00 Augmentation Index Model") +
-  labs(x = "")
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "HR Models") +
+  labs(y = "Estimate: Justa compared to Traditional") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
 plot_estimates
+```
+
+
+## Honduras R00 Initial AIx 75 Model ##
+```{r}
+#run/save models
+sphygmo_model_spline <- lmer(aug_index_75 ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+sphygmo_model_phase <- lmer(aug_index_75 ~ assigned_stove + phase + 
+                         (1 | house_id), r00_model_data)
+
+sphygmo_model <- lmer(aug_index_75 ~ assigned_stove + (1 | house_id), r00_model_data)
+
+
+# print model summaries
+#  summary(sphygmo_model_spline)
+
+#  summary(sphygmo_model_phase)
+
+#  summary(sphygmo_model)
+
+# save model results
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+```
+
+## Honduras R00 Initial Central Sys BP Model ##
+```{r}
+#run/save models
+sphygmo_model_spline <- lmer(sys_bp_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+sphygmo_model_phase <- lmer(sys_bp_central ~ assigned_stove + phase + 
+                         (1 | house_id), r00_model_data)
+
+sphygmo_model <- lmer(sys_bp_central ~ assigned_stove + (1 | house_id), r00_model_data)
+
+
+# print model summaries
+#  summary(sphygmo_model_spline)
+
+#  summary(sphygmo_model_phase)
+
+#  summary(sphygmo_model)
+
+# save model results
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+```
+
+## Honduras R00 Initial Central Dia BP Model ##
+```{r}
+#run/save models
+sphygmo_model_spline <- lmer(dia_bp_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+sphygmo_model_phase <- lmer(dia_bp_central ~ assigned_stove + phase + 
+                         (1 | house_id), r00_model_data)
+
+sphygmo_model <- lmer(dia_bp_central ~ assigned_stove + (1 | house_id), r00_model_data)
+
+
+# print model summaries
+#  summary(sphygmo_model_spline)
+
+#  summary(sphygmo_model_phase)
+
+#  summary(sphygmo_model)
+
+# save model results
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+```
+
+## Honduras R00 Initial Central Pulse Pressure Model ##
+```{r}
+#run/save models
+sphygmo_model_spline <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+sphygmo_model_phase <- lmer(pulse_pressure_central ~ assigned_stove + phase + 
+                         (1 | house_id), r00_model_data)
+
+sphygmo_model <- lmer(pulse_pressure_central ~ assigned_stove + (1 | house_id), r00_model_data)
+
+
+# print model summaries
+#  summary(sphygmo_model_spline)
+
+#  summary(sphygmo_model_phase)
+
+#  summary(sphygmo_model)
+
+# save model results
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+```
+
+## Honduras R00 Initial Peripheral Pulse Pressure Model ##
+```{r}
+#run/save models
+sphygmo_model_spline <- lmer(pulse_pressure_periph ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+sphygmo_model_phase <- lmer(pulse_pressure_periph ~ assigned_stove + phase + 
+                         (1 | house_id), r00_model_data)
+
+sphygmo_model <- lmer(pulse_pressure_periph ~ assigned_stove + (1 | house_id), r00_model_data)
+
+
+# print model summaries
+#  summary(sphygmo_model_spline)
+
+#  summary(sphygmo_model_phase)
+
+#  summary(sphygmo_model)
+
+# save model results
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+```
+
+## Honduras R00 Initial HR Model ##
+```{r}
+#run/save models
+sphygmo_model_spline <- lmer(hr ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+sphygmo_model_phase <- lmer(hr ~ assigned_stove + phase + 
+                         (1 | house_id), r00_model_data)
+
+sphygmo_model <- lmer(hr ~ assigned_stove + (1 | house_id), r00_model_data)
+
+
+# print model summaries
+#  summary(sphygmo_model_spline)
+
+#  summary(sphygmo_model_phase)
+
+#  summary(sphygmo_model)
+
+# save model results
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```

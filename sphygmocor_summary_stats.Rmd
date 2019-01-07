@@ -26,7 +26,7 @@ library(knitr)
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
-## Variables grouped by study arm
+# Variables grouped by study arm
 ```{r}
 summary_hr <- r00_full_joined_sphygmocor %>% 
   select(study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
@@ -156,7 +156,7 @@ summary <- rbind(summary_hr, summary_sys_bp_periph, summary_dia_bp_periph,
 kable(summary, digits = 2)
 ```
 
-## Variables grouped by phase
+# Variables grouped by phase
 ```{r}
 summary_hr <- r00_full_joined_sphygmocor %>% 
   select(phase, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
@@ -286,7 +286,7 @@ summary <- rbind(summary_hr, summary_sys_bp_periph, summary_dia_bp_periph,
 kable(summary, digits = 2)
 ```
 
-## Correlation Matrix
+# Correlation Matrix
 ```{r}
 summary_correlation <- r00_full_joined_sphygmocor %>% 
   select(aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
@@ -296,16 +296,15 @@ summary_correlation <- r00_full_joined_sphygmocor %>%
 cor(summary_correlation)
 ```
 
-## Boxplots by phase
-#### Means marked and labeled in red  
-```{r, fig.width=10}
-# summary to include in plots below (geom_text)
+```{r}
+## summary to include in plots below (geom_text)
 sphygmocor_means <- r00_full_joined_sphygmocor %>% 
   select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
          sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
-  na.exclude(aug_index) %>% 
-  group_by(phase, study_arm) %>% 
+  na.exclude(aug_index) %>%  
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  group_by(phase, study_arm) %>%
   summarise(mean(aug_index), sd(aug_index), 
             mean(aug_index_75), sd(aug_index_75),
             mean(hr), sd(hr), 
@@ -317,7 +316,11 @@ sphygmocor_means <- r00_full_joined_sphygmocor %>%
             mean(dia_bp_periph), sd(dia_bp_periph)) %>% 
   arrange(study_arm)
 #sphygmocor_means
+```
 
+# Boxplots by phase
+## Means marked and labeled in red  
+```{r}
 ## AIx
 # boxplots by phase, faceted by study arm
 # means plotted in red
@@ -329,13 +332,17 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
   ggplot(aes(phase, aug_index)) +
   geom_boxplot(aes(phase, aug_index)) +
-  facet_wrap(~study_arm) +
   geom_text(data = sphygmocor_means, aes(phase, `mean(aug_index)`, 
-                                    label = round(`mean(aug_index)`, digits = 2)), 
-            size = 4, vjust = -1.5, color = "red") +
+                                    label = round(`mean(aug_index)`, digits = 1)),
+                                    size = 4, vjust = -2.5, color = "red") +
+  geom_line(data = sphygmocor_means, aes(phase, `mean(aug_index)`, group = study_arm), 
+            color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(aug_index)`), 
             size = 2, color = "red") +
   ggtitle("AIx by Phase and Study Arm", subtitle = "means in red") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("AIx (%)") +
   theme_minimal()
 sphygmocor_boxplot
 
@@ -351,13 +358,17 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
   ggplot(aes(phase, hr)) +
   geom_boxplot(aes(phase, hr)) +
-  facet_wrap(~study_arm) +
   geom_text(data = sphygmocor_means, aes(phase, `mean(hr)`, 
-                                    label = round(`mean(hr)`, digits = 2)), 
-            size = 4, vjust = -1.5, color = "red") +
+                                    label = round(`mean(hr)`, digits = 1)),
+                                    size = 4, vjust = -2.5, color = "red") +
+  geom_line(data = sphygmocor_means, aes(phase, `mean(hr)`, group = study_arm), 
+            color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(hr)`), 
             size = 2, color = "red") +
   ggtitle("HR by Phase and Study Arm", subtitle = "means in red") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("HR (bpm)") +
   theme_minimal()
 sphygmocor_boxplot
 
@@ -373,13 +384,43 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
   ggplot(aes(phase, pulse_pressure_central)) +
   geom_boxplot(aes(phase, pulse_pressure_central)) +
-  facet_wrap(~study_arm) +
   geom_text(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_central)`, 
-                                    label = round(`mean(pulse_pressure_central)`, digits = 2)), 
-            size = 4, vjust = -1.5, color = "red") +
+                                    label = round(`mean(pulse_pressure_central)`, digits = 1)),
+                                    size = 4, vjust = -2.5, color = "red") +
+  geom_line(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_central)`, group = study_arm), 
+            color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_central)`), 
             size = 2, color = "red") +
   ggtitle("Central Pulse Pressure by Phase and Study Arm", subtitle = "means in red") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Central Pulse Pressure (mmHg)") +
+  theme_minimal()
+sphygmocor_boxplot
+
+
+## Peripheral Pulse Pressure
+# boxplots by phase, faceted by study arm
+# means plotted in red
+sphygmocor_boxplot <- r00_full_joined_sphygmocor %>% 
+  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
+         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>%
+  na.exclude(pulse_pressure_periph) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, pulse_pressure_periph)) +
+  geom_boxplot(aes(phase, pulse_pressure_periph)) +
+  geom_text(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`, 
+                                    label = round(`mean(pulse_pressure_periph)`, digits = 1)),
+                                    size = 4, vjust = -2.5, color = "red") +
+  geom_line(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`, group = study_arm), 
+            color = "red") +
+  geom_point(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`), 
+            size = 2, color = "red") +
+  ggtitle("Peripheral Pulse Pressure by Phase and Study Arm", subtitle = "means in red") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Peripheral Pulse Pressure (mmHg)") +
   theme_minimal()
 sphygmocor_boxplot
 
@@ -395,13 +436,17 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
   ggplot(aes(phase, sys_bp_central)) +
   geom_boxplot(aes(phase, sys_bp_central)) +
-  facet_wrap(~study_arm) +
   geom_text(data = sphygmocor_means, aes(phase, `mean(sys_bp_central)`, 
-                                    label = round(`mean(sys_bp_central)`, digits = 2)), 
-            size = 4, vjust = -1.5, color = "red") +
+                                    label = round(`mean(sys_bp_central)`, digits = 1)),
+                                    size = 4, vjust = -2.5, color = "red") +
+  geom_line(data = sphygmocor_means, aes(phase, `mean(sys_bp_central)`, group = study_arm), 
+            color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(sys_bp_central)`), 
             size = 2, color = "red") +
   ggtitle("Central Systolic BP by Phase and Study Arm", subtitle = "means in red") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Central Systolic BP (mmHg)") +
   theme_minimal()
 sphygmocor_boxplot
 
@@ -417,39 +462,177 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
   ggplot(aes(phase, dia_bp_central)) +
   geom_boxplot(aes(phase, dia_bp_central)) +
-  facet_wrap(~study_arm) +
   geom_text(data = sphygmocor_means, aes(phase, `mean(dia_bp_central)`, 
-                                    label = round(`mean(dia_bp_central)`, digits = 2)),
-                                    size = 4, vjust = -1.5, color = "red") +
+                                    label = round(`mean(dia_bp_central)`, digits = 1)),
+                                    size = 4, vjust = -2.5, color = "red") +
+  geom_line(data = sphygmocor_means, aes(phase, `mean(dia_bp_central)`, group = study_arm), 
+            color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(dia_bp_central)`), 
             size = 2, color = "red") +
   ggtitle("Central Diastolic BP by Phase and Study Arm", subtitle = "means in red") +
-  theme_minimal()
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Central Diastolic BP (mmHg)") +
+  theme_bw()
 sphygmocor_boxplot
 ```
 
-#####   Pick up here and figure out how to plot lines from phase to phase 
-## Line plots
-#### Outcomes plotted across phases, faceted by study arm  
+
+# Bar charts for phases completed
+```{r}
+# Summary data to include in plot below
+phases_completed_sphygmocor <- r00_full_joined_sphygmocor %>%
+  select(phase, study_arm, aug_index) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
+  na.exclude(aug_index) %>% 
+  group_by(phase, study_arm) %>%
+  summarise(number = n()) %>%
+  ungroup()
+
+ggplot(phases_completed_sphygmocor, aes(x= phase, y = number, fill = study_arm)) +
+    geom_col() +
+    theme_bw() +
+    facet_wrap(~ study_arm) +
+    scale_y_continuous(breaks= seq(0, 120, 10)) +
+    theme(text = element_text(size = 16),
+          legend.position= "none",
+          axis.text.x = element_text(size = 15),
+          plot.title = element_text(hjust = 0.5)) +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+    xlab("Study Phase") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ylab("# Women with AIx Data") +
+    ggtitle("Sphygmocor measurements completed")
+```
+
+# Histograms for distribution of measurements
 ```{r}
 # AIx
-sphygmocor_line_plots <- ggplot(r00_full_joined_sphygmocor) +
-  geom_line(aes(timepoint, aug_index, color = id, group = id)) +
-  facet_wrap(~treatment_recieved) +
-  theme_minimal() +
-  theme(legend.position = "none")
-lipids_timepoint_facetstove
-
-sphygmocor_lineplot <- r00_full_joined_sphygmocor %>% 
-  select(house_id, phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
-         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
-         pulse_pressure_periph, pulse_pressure_central) %>%
+aix_histogram <- r00_full_joined_sphygmocor %>%
+  select(phase, study_arm, aug_index) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
-  group_by(phase) %>% 
-  ggplot() +
-  geom_path(aes(phase, mean(aug_index), group = study_arm, color = study_arm)) +
-  theme_minimal() +
-  theme(legend.position = "right")
-sphygmocor_lineplot
+    ggplot()+
+    geom_histogram(aes(x = aug_index), bins = 30) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("AIx (%)") +
+   ylab("Number of measurements") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("AIx by Phase") 
+aix_histogram
+
+# HR
+hr_histogram <- r00_full_joined_sphygmocor %>%
+  select(phase, study_arm, hr) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
+  na.exclude(hr) %>% 
+    ggplot()+
+    geom_histogram(aes(x = hr), bins = 30) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("HR (bpm)") +
+   ylab("Number of measurements") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("HR by Phase") 
+hr_histogram
+
+# pulse_pressure_central
+pulse_pressure_central_histogram <- r00_full_joined_sphygmocor %>%
+  select(phase, study_arm, pulse_pressure_central) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
+  na.exclude(pulse_pressure_central) %>% 
+    ggplot()+
+    geom_histogram(aes(x = pulse_pressure_central), bins = 30) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Central Pulse Pressure (mmHg)") +
+   ylab("Number of measurements") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Central Pulse Pressure by Phase") 
+pulse_pressure_central_histogram
+
+# pulse_pressure_periph
+pulse_pressure_peripheral_histogram <- r00_full_joined_sphygmocor %>%
+  select(phase, study_arm, pulse_pressure_periph) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
+  na.exclude(pulse_pressure_periph) %>% 
+    ggplot()+
+    geom_histogram(aes(x = pulse_pressure_periph), bins = 30) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Peripheral Pulse Pressure (mmHg)") +
+   ylab("Number of measurements") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Peripheral Pulse Pressure by Phase") 
+pulse_pressure_peripheral_histogram
+
+# sys_bp_central
+sys_bp_central_histogram <- r00_full_joined_sphygmocor %>%
+  select(phase, study_arm, sys_bp_central) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
+  na.exclude(sys_bp_central) %>% 
+    ggplot()+
+    geom_histogram(aes(x = sys_bp_central), bins = 30) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Central Systolic BP (mmHg)") +
+   ylab("Number of measurements") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Central Systolic BP by Phase") 
+sys_bp_central_histogram
+
+# dia_bp_central
+dia_bp_central_histogram <- r00_full_joined_sphygmocor %>%
+  select(phase, study_arm, dia_bp_central) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
+  na.exclude(dia_bp_central) %>% 
+    ggplot()+
+    geom_histogram(aes(x = dia_bp_central), bins = 30) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Central Diastolic BP (mmHg)") +
+   ylab("Number of measurements") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Central Diastolic BP by Phase") 
+dia_bp_central_histogram
 ```
