@@ -25,14 +25,17 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 # Load Sphygmocor Files
 
 ```{r}
-p6_patient <- read_csv("input/sphygmocor/r00_p6_sphygmo_patient.csv") 
+#p6_patient <- read_csv("input/sphygmocor/r00_p6_sphygmo_patient.csv") 
 
-p6_pwa <- read_csv("input/sphygmocor/r00_p6_sphygmo_pwa.csv") 
+#p6_pwa <- read_csv("input/sphygmocor/r00_p6_sphygmo_pwa.csv") 
 
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+#r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 #Not using for now
 #p6_cpwa <- read_csv("input/sphygmocor/r00_p6_sphygmo_cpwa.csv")
+
+#load full, joined dataset
+r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
 
@@ -214,6 +217,17 @@ r00_joined <- r00_full_long %>%
                                date_sphygmo + days(1), date_sphygmo)) %>% 
   select(-"day_week", -"time", -"utc", -"date_new") %>% 
   left_join(r00_pwa, by = c("house_id", "date_sphygmo"))
+```
+
+# Check that aug_index pulled from sphygmocor matches aix entered into ODK in the field
+```{r}
+data_check <- r00_full_joined_sphygmocor %>% 
+  select(house_id, aix, aug_index) %>% 
+  mutate(aix_check = if_else(aix == round(aug_index, digits = 0), 0, 1)) %>% 
+  filter(aix_check == 1)
+# 16 instances where AIx value entered in field doesn't match the value pulled from database
+# Most are rounding errors or explained by mis-entering the value by hand
+# Confident that values from database are correct and will use aug_index for analysis
 ```
 
 

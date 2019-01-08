@@ -48,6 +48,8 @@ r00_model_data <- r00_full_joined_sphygmocor %>%
   mutate(house_id = as.factor(house_id)) %>%
   #split age at 40; >40 = 1, <40 = 0
   mutate(age_cat = if_else(age_baseline > 40, 1, 0)) %>% 
+  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
+                                 labels = c("Traditional", "Justa"))) %>% 
   select(sys_bp_central, dia_bp_central, aug_index, aug_index_75, hr, pulse_pressure_periph,
          pulse_pressure_central, assigned_stove, house_id, age_cat, age_current, 
          phase, study_arm, date_sphygmo) 
@@ -82,15 +84,15 @@ sphygmo_model <- lmer(aug_index ~ assigned_stove + (1 | house_id), r00_model_dat
 tidy_results_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "spline", "na"))
+    mutate(model = if_else(term == "assigned_stoveJusta", "spline", "na"))
 tidy_results_sphygmo_model_phase <- tidy(sphygmo_model_phase, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "phase", "na"))
+    mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na"))
 tidy_results_sphygmo_model <- tidy(sphygmo_model, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "no time", "na"))
+    mutate(model = if_else(term == "assigned_stoveJusta", "no time", "na"))
 
 sphygmo_model_final_results <- rbind(tidy_results_sphygmo_model_spline,
                                      tidy_results_sphygmo_model_phase,
@@ -107,7 +109,7 @@ plot_estimates <- sphygmo_model_final_results %>%
   
   ##### Update outcome in title below #####
 
-  ggtitle(label = "HR Models") +
+  ggtitle(label = "AIx Models") +
   labs(y = "Estimate: Justa compared to Traditional") +
   labs(x = "") +
   theme(title = element_text(size = 19), 
