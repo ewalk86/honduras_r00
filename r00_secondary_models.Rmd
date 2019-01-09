@@ -1,0 +1,277 @@
+---
+title: "R00 Secondary Models"
+author: "Ethan Walker"
+date: "9 Jan 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.width = 10)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+```{r}
+#load full dataset
+r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+```
+
+
+```{r}
+## Data prep
+r00_model_data <- r00_full_joined_sphygmocor %>% 
+  mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
+  mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
+  mutate(aug_index = as.numeric(aug_index)) %>% 
+  mutate(aug_index_75 = as.numeric(aug_index_75)) %>% 
+  mutate(pulse_pressure_periph = as.numeric(pulse_pressure_periph))%>% 
+  mutate(pulse_pressure_central = as.numeric(pulse_pressure_central)) %>% 
+  mutate(hr = as.numeric(hr)) %>% 
+  mutate(phase = as.factor(phase)) %>%
+  mutate(house_id = as.factor(house_id)) %>%
+  #split age at 40; >40 = 1, <40 = 0
+  mutate(age_cat = if_else(age_baseline > 40, 1, 0)) %>% 
+  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
+                                 labels = c("Traditional", "Justa"))) %>% 
+  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75, hr, pulse_pressure_periph,
+         pulse_pressure_central, assigned_stove, house_id, age_cat, age_current, 
+         phase, study_arm, date_sphygmo) %>% 
+  
+  ### Check for influential outliers - Currently excluding 6 observations ###
+  
+  mutate(aug_index = as.character(aug_index)) %>%
+  mutate(aug_index = if_else(aug_index < 75 & aug_index > -25, aug_index, "NA")) %>% 
+  mutate(aug_index = as.numeric(aug_index))
+```
+
+
+```{r}
+## Prep data for T-Tests
+# Filter for Arm 1 at each phase
+r00_arm1 <- r00_model_data %>% 
+  filter(study_arm == 1)
+
+r00_arm1_phase1 <- r00_model_data %>% 
+  filter(study_arm == 1 & phase == 1)
+
+r00_arm1_phase2 <- r00_model_data %>% 
+  filter(study_arm == 1 & phase == 2)
+
+r00_arm1_phase3 <- r00_model_data %>% 
+  filter(study_arm == 1 & phase == 3)
+
+r00_arm1_phase4 <- r00_model_data %>% 
+  filter(study_arm == 1 & phase == 4)
+
+r00_arm1_phase5 <- r00_model_data %>% 
+  filter(study_arm == 1 & phase == 5)
+
+r00_arm1_phase6 <- r00_model_data %>% 
+  filter(study_arm == 1 & phase == 6)
+
+# Filter for Arm 2
+r00_arm2 <- r00_model_data %>% 
+  filter(study_arm == 2)
+
+r00_arm2_phase1 <- r00_model_data %>% 
+  filter(study_arm == 2 & phase == 1)
+
+r00_arm2_phase2 <- r00_model_data %>% 
+  filter(study_arm == 2 & phase == 2)
+
+r00_arm2_phase3 <- r00_model_data %>% 
+  filter(study_arm == 2 & phase == 3)
+
+r00_arm2_phase4 <- r00_model_data %>% 
+  filter(study_arm == 2 & phase == 4)
+
+r00_arm2_phase5 <- r00_model_data %>% 
+  filter(study_arm == 2 & phase == 5)
+
+r00_arm2_phase6 <- r00_model_data %>% 
+  filter(study_arm == 2 & phase == 6)
+```
+
+
+```{r}
+## R00 T-Tests
+## Comparisons within Arm 1
+arm1_phase2vs3_ttest <- t.test(r00_arm1_phase2$aug_index, r00_arm1_phase3$aug_index, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs3_ttest
+
+arm1_phase2vs4_ttest <- t.test(r00_arm1_phase2$aug_index, r00_arm1_phase4$aug_index, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs4_ttest
+
+arm1_phase2vs5_ttest <- t.test(r00_arm1_phase2$aug_index, r00_arm1_phase5$aug_index, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs5_ttest
+
+arm1_phase2vs6_ttest <- t.test(r00_arm1_phase2$aug_index, r00_arm1_phase6$aug_index, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs6_ttest
+
+
+## Comparisons within Arm 2
+arm2_phase4vs5_ttest <- t.test(r00_arm2_phase4$aug_index, r00_arm2_phase5$aug_index, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm2_phase4vs5_ttest
+
+arm2_phase4vs6_ttest <- t.test(r00_arm2_phase4$aug_index, r00_arm2_phase6$aug_index, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm2_phase4vs6_ttest
+
+## Comparisons between Arms at Phases 3 and 4
+arm1vs2_phase3_ttest <- t.test(r00_arm1_phase3$aug_index, r00_arm2_phase3$aug_index, 
+                               mu = 0, paired = FALSE, var.equal = FALSE)
+arm1vs2_phase3_ttest
+
+arm1vs2_phase4_ttest <- t.test(r00_arm1_phase4$aug_index, r00_arm2_phase4$aug_index, 
+                               mu = 0, paired = FALSE, var.equal = FALSE)
+arm1vs2_phase4_ttest
+```
+
+
+```{r}
+## Format estimates
+tidy_arm1_phase2vs3_ttest <- tidy(arm1_phase2vs3_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs3")
+tidy_arm1_phase2vs4_ttest <- tidy(arm1_phase2vs4_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs4")
+tidy_arm1_phase2vs5_ttest <- tidy(arm1_phase2vs5_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs5")
+tidy_arm1_phase2vs6_ttest <- tidy(arm1_phase2vs6_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs6")
+
+arm1_within_group <- rbind(tidy_arm1_phase2vs3_ttest,
+                           tidy_arm1_phase2vs4_ttest,
+                           tidy_arm1_phase2vs5_ttest,
+                           tidy_arm1_phase2vs6_ttest)
+
+
+tidy_arm2_phase4vs5_ttest <- tidy(arm2_phase4vs5_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 4vs5")
+tidy_arm2_phase4vs6_ttest <- tidy(arm2_phase4vs6_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 4vs6")
+
+arm2_within_group <- rbind(tidy_arm2_phase4vs5_ttest,
+                           tidy_arm2_phase4vs6_ttest)
+
+
+tidy_arm1vs2_phase3_ttest <- tidy(arm1vs2_phase3_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 3")
+tidy_arm1vs2_phase4_ttest <- tidy(arm1vs2_phase4_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 4")
+
+between_groups <- rbind(tidy_arm1vs2_phase3_ttest,
+                           tidy_arm1vs2_phase4_ttest)
+```
+
+
+```{r, fig.width=10, fig.height=7.5}
+## Plot model estimate
+arm_1_plot <- arm1_within_group %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "AIx Models: Arm 1 Within Group T-Tests") +
+  labs(y = "Estimate: Difference Between Phases") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+arm_1_plot
+
+arm_2_plot <- arm2_within_group %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "AIx Models: Arm 2 Within Group T-Tests") +
+  labs(y = "Estimate: Difference Between Phases") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+arm_2_plot
+
+between_group_plot <- between_groups %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "AIx Models: Between Group T-Tests") +
+  labs(y = "Estimate: Arm 1 compared to Arm 2") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+between_group_plot
+```

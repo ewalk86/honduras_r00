@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Summary Stats"
 author: "Ethan Walker"
-date: "January 8, 2019"
+date: "9 Jan 2019"
 output: pdf_document
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 Models and Estimate Plots"
 author: "Ethan Walker"
-date: "17 Nov 2018"
+date: "9 Jan 2019"
 output: pdf_document
 ---
 
@@ -34,8 +34,9 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
-## Data prep
+
 ```{r}
+## Data prep
 r00_model_data <- r00_full_joined_sphygmocor %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
   mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
@@ -55,9 +56,9 @@ r00_model_data <- r00_full_joined_sphygmocor %>%
          phase, study_arm, date_sphygmo) 
 ```
 
-
-## Honduras R00 Initial AIx Model ##
+## Model Summaries
 ```{r}
+## Honduras R00 Initial AIx Model ##
 #run/save models
 sphygmo_model_spline <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
@@ -69,18 +70,19 @@ sphygmo_model <- lmer(aug_index ~ assigned_stove + (1 | house_id), r00_model_dat
 
 
 # print model summaries
-#  summary(sphygmo_model_spline)
+  summary(sphygmo_model_spline)
 
-#  summary(sphygmo_model_phase)
+  summary(sphygmo_model_phase)
 
-#  summary(sphygmo_model)
+  summary(sphygmo_model)
 
 # save model results
 #write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Format and plot model
+## Model Plots
 ```{r, fig.width=8, fig.height=5}
+## Format and plot model
 tidy_results_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
@@ -97,6 +99,7 @@ tidy_results_sphygmo_model <- tidy(sphygmo_model, conf.int = TRUE) %>%
 sphygmo_model_final_results <- rbind(tidy_results_sphygmo_model_spline,
                                      tidy_results_sphygmo_model_phase,
                                      tidy_results_sphygmo_model)
+sphygmo_model_final_results
 
 ## Plot model estimate
 plot_estimates <- sphygmo_model_final_results %>%
@@ -127,8 +130,8 @@ plot_estimates
 ```
 
 
-## Honduras R00 Initial AIx 75 Model ##
 ```{r}
+## Honduras R00 Initial AIx 75 Model ##
 #run/save models
 sphygmo_model_spline <- lmer(aug_index_75 ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
@@ -150,8 +153,9 @@ sphygmo_model <- lmer(aug_index_75 ~ assigned_stove + (1 | house_id), r00_model_
 #write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Honduras R00 Initial Central Sys BP Model ##
+
 ```{r}
+## Honduras R00 Initial Central Sys BP Model ##
 #run/save models
 sphygmo_model_spline <- lmer(sys_bp_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
@@ -173,8 +177,9 @@ sphygmo_model <- lmer(sys_bp_central ~ assigned_stove + (1 | house_id), r00_mode
 #write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Honduras R00 Initial Central Dia BP Model ##
+
 ```{r}
+## Honduras R00 Initial Central Dia BP Model ##
 #run/save models
 sphygmo_model_spline <- lmer(dia_bp_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
@@ -196,8 +201,9 @@ sphygmo_model <- lmer(dia_bp_central ~ assigned_stove + (1 | house_id), r00_mode
 #write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Honduras R00 Initial Central Pulse Pressure Model ##
+
 ```{r}
+## Honduras R00 Initial Central Pulse Pressure Model ##
 #run/save models
 sphygmo_model_spline <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
@@ -219,8 +225,9 @@ sphygmo_model <- lmer(pulse_pressure_central ~ assigned_stove + (1 | house_id), 
 #write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Honduras R00 Initial Peripheral Pulse Pressure Model ##
+
 ```{r}
+## Honduras R00 Initial Peripheral Pulse Pressure Model ##
 #run/save models
 sphygmo_model_spline <- lmer(pulse_pressure_periph ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
@@ -242,8 +249,9 @@ sphygmo_model <- lmer(pulse_pressure_periph ~ assigned_stove + (1 | house_id), r
 #write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Honduras R00 Initial HR Model ##
+
 ```{r}
+## Honduras R00 Initial HR Model ##
 #run/save models
 sphygmo_model_spline <- lmer(hr ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
