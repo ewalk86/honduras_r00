@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Summary Stats"
 author: "Ethan Walker"
-date: "9 Jan 2019"
+date: "10 Jan 2019"
 output: pdf_document
 ---
 
@@ -27,12 +27,13 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
 # Summary Stats grouped by study arm
+### Data from phases 1 and 2
 ```{r}
 summary_stats <- r00_full_joined_sphygmocor %>% 
-  select(study_arm, house_id, phase, age_current, height, weight, bmi, ses_materials,
+  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
          beds_new, dds_total) %>% 
-  na.exclude(age_current) %>% 
-  mutate("Current Age" = as.numeric(age_current), 
+  na.exclude(age_baseline) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
          "Height" = as.numeric(height), 
          "Weight" = as.numeric(weight), 
          "Body Mass Index" = as.numeric(bmi), 
@@ -42,19 +43,140 @@ summary_stats <- r00_full_joined_sphygmocor %>%
   
   ##### need to fix this in the main database #####
   mutate(Height = if_else(phase == 6 & house_id == "CER009", 57.0, Height)) %>% 
-  mutate("Body Mass Index" = (Weight*0.453592)/((Height*0.0254)^2)) %>% 
-
-  select(-house_id, -phase, -age_current, -height, -weight, -bmi, -ses_materials,
-         -beds_new, -dds_total) %>% 
-  group_by(study_arm) %>% 
+  mutate("Body Mass Index" = (Weight*0.453592)/((Height*0.0254)^2)) %>%  
+  
+  filter(phase == 1 | phase == 2) %>% 
+  select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
+         -beds_new, -dds_total) %>%
+  group_by(study_arm, phase) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
-  gather(var, value, -study_arm) %>% 
+  gather(var, value, -study_arm, -phase) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
-  arrange(var, study_arm) %>% 
-  select(var, study_arm, n, mean, sd, median, max, min) %>% 
-  rename("Variable" = var, "Study Arm" = study_arm)
+  arrange(var, phase, study_arm) %>% 
+  select(var, phase, study_arm, n, mean, sd, median, max, min) %>% 
+  rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm)
 kable(summary_stats, digits = 2)
 ```
+
+# Boxplots
+### Phase 1 data
+```{r}
+## BMI
+# boxplots by study arm
+confounder_boxplot <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total) %>% 
+  filter(phase == 1) %>% 
+  na.exclude(bmi) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
+         "Height" = as.numeric(height), 
+         "Weight" = as.numeric(weight), 
+         "Body Mass Index" = as.numeric(bmi), 
+         "SES Materials" = as.numeric(ses_materials), 
+         "Beds Per Person" = as.numeric(beds_new), 
+         "Dietary Diversity Score" = as.numeric(dds_total)) %>%
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, `Body Mass Index`)) +
+  ggtitle("BMI by Study Arm") +
+  xlab("Study Arm") +
+  ylab("BMI (kg/m^2)") +
+  theme_bw()
+confounder_boxplot
+
+## Age
+# boxplots by study arm
+confounder_boxplot <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total) %>% 
+  filter(phase == 1) %>% 
+  na.exclude(age_baseline) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
+         "Height" = as.numeric(height), 
+         "Weight" = as.numeric(weight), 
+         "Body Mass Index" = as.numeric(bmi), 
+         "SES Materials" = as.numeric(ses_materials), 
+         "Beds Per Person" = as.numeric(beds_new), 
+         "Dietary Diversity Score" = as.numeric(dds_total)) %>%
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, `Baseline Age`)) +
+  ggtitle("Age by Study Arm") +
+  xlab("Study Arm") +
+  ylab("Age (years)") +
+  theme_bw()
+confounder_boxplot
+
+## SES
+# boxplots by study arm
+confounder_boxplot <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total) %>% 
+  filter(phase == 1) %>% 
+  na.exclude(ses_materials) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
+         "Height" = as.numeric(height), 
+         "Weight" = as.numeric(weight), 
+         "Body Mass Index" = as.numeric(bmi), 
+         "SES Materials" = as.numeric(ses_materials), 
+         "Beds Per Person" = as.numeric(beds_new), 
+         "Dietary Diversity Score" = as.numeric(dds_total)) %>%
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, `SES Materials`)) +
+  ggtitle("SES Materials by Study Arm") +
+  xlab("Study Arm") +
+  ylab("SES Materials (n)") +
+  theme_bw()
+confounder_boxplot
+
+## Beds
+# boxplots by study arm
+confounder_boxplot <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total) %>% 
+  filter(phase == 1) %>% 
+  na.exclude(beds_new) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
+         "Height" = as.numeric(height), 
+         "Weight" = as.numeric(weight), 
+         "Body Mass Index" = as.numeric(bmi), 
+         "SES Materials" = as.numeric(ses_materials), 
+         "Beds Per Person" = as.numeric(beds_new), 
+         "Dietary Diversity Score" = as.numeric(dds_total)) %>%
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, `Beds Per Person`)) +
+  ggtitle("Beds Per Person by Study Arm") +
+  xlab("Study Arm") +
+  ylab("Beds Per Person") +
+  theme_bw()
+confounder_boxplot
+
+## DDS
+# boxplots by study arm
+confounder_boxplot <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total) %>% 
+  filter(phase == 1) %>% 
+  na.exclude(dds_total) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
+         "Height" = as.numeric(height), 
+         "Weight" = as.numeric(weight), 
+         "Body Mass Index" = as.numeric(bmi), 
+         "SES Materials" = as.numeric(ses_materials), 
+         "Beds Per Person" = as.numeric(beds_new), 
+         "Dietary Diversity Score" = as.numeric(dds_total)) %>%
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, `Dietary Diversity Score`)) +
+  ggtitle("Dietary Diversity Score by Study Arm") +
+  xlab("Study Arm") +
+  ylab("Dietary Diversity Score") +
+  theme_bw()
+confounder_boxplot
+```
+
 

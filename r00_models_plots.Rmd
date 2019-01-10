@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 Models and Estimate Plots"
 author: "Ethan Walker"
-date: "9 Jan 2019"
+date: "10 Jan 2019"
 output: pdf_document
 ---
 
@@ -38,6 +38,12 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```{r}
 ## Data prep
 r00_model_data <- r00_full_joined_sphygmocor %>% 
+  ##### need to fix this in the main database #####
+  mutate(height = as.numeric(height)) %>% 
+  mutate(weight = as.numeric(weight)) %>% 
+  mutate(height = if_else(phase == 6 & house_id == "CER009", 57.0, height)) %>% 
+  mutate(bmi = (weight*0.453592)/((height*0.0254)^2)) %>%  
+  
   mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
   mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 
@@ -45,42 +51,128 @@ r00_model_data <- r00_full_joined_sphygmocor %>%
   mutate(pulse_pressure_periph = as.numeric(pulse_pressure_periph))%>% 
   mutate(pulse_pressure_central = as.numeric(pulse_pressure_central)) %>% 
   mutate(hr = as.numeric(hr)) %>% 
+  mutate(bmi = as.numeric(bmi)) %>% 
+  mutate(age_baseline = as.numeric(age_baseline)) %>% 
   mutate(phase = as.factor(phase)) %>%
   mutate(house_id = as.factor(house_id)) %>%
-  #split age at 40; >40 = 1, <40 = 0
-  mutate(age_cat = if_else(age_baseline > 40, 1, 0)) %>% 
+  #split age at 40; >40 = 1, <=40 = 0
+  mutate(age_cat = if_else(age_baseline >= 40, 1, 0)) %>% 
+  #split bmi at 26; >26 = 1, <=26 = 0
+  mutate(bmi_cat = if_else(bmi >= 26, 1, 0)) %>% 
   mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
                                  labels = c("Traditional", "Justa"))) %>% 
   select(sys_bp_central, dia_bp_central, aug_index, aug_index_75, hr, pulse_pressure_periph,
          pulse_pressure_central, assigned_stove, house_id, age_cat, age_current, 
-         phase, study_arm, date_sphygmo) 
+         age_baseline, bmi_cat, bmi, phase, study_arm, date_sphygmo) 
 ```
 
-## Model Summaries
+
 ```{r}
+## Model Summaries
 ## Honduras R00 Initial AIx Model ##
 #run/save models
-sphygmo_model_spline <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
+sphygmo_model <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
                           (1 | house_id), r00_model_data)
 
-sphygmo_model_phase <- lmer(aug_index ~ assigned_stove + phase + 
-                         (1 | house_id), r00_model_data)
+sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_cat + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
 
-sphygmo_model <- lmer(aug_index ~ assigned_stove + (1 | house_id), r00_model_data)
+sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*bmi_cat + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+
+#sphygmo_model_phase <- lmer(aug_index ~ assigned_stove + age_cat + phase + 
+ #                        (1 | house_id), r00_model_data)
+
+#sphygmo_model <- lmer(aug_index ~ assigned_stove + age_cat + (1 | house_id), r00_model_data)
 
 
 # print model summaries
-  summary(sphygmo_model_spline)
+#  summary(sphygmo_model_spline)
 
-  summary(sphygmo_model_phase)
+#  summary(sphygmo_model_phase)
 
-  summary(sphygmo_model)
+#  summary(sphygmo_model_age_int)
 
 # save model results
 #write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
-## Model Plots
+# AIx Model Summaries and Plots
+```{r, fig.width=8, fig.height=5}
+## Format and plot model
+tidy_sphygmo_model <- tidy(sphygmo_model, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no age", "")) 
+tidy_sphygmo_model_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "age covariate", "na")) 
+tidy_sphygmo_model_age_int <- tidy(sphygmo_model_age_int, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta:age_cat", "age interaction", "na")) 
+
+sphygmo_model_final_results <- rbind(tidy_sphygmo_model,
+                                     tidy_sphygmo_model_age,
+                                     tidy_sphygmo_model_age_int)
+sphygmo_model_final_results
+
+## Plot model estimate
+plot_estimates <- sphygmo_model_final_results %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "AIx Models") +
+  labs(y = "Estimate (%): Justa vs Traditional") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+plot_estimates
+```
+
+
+```{r}
+## Honduras R00 Initial Central Pulse Pressure Model ##
+#run/save models
+sphygmo_model_spline <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+
+sphygmo_model_phase <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + phase + 
+                         (1 | house_id), r00_model_data)
+
+sphygmo_model <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + (1 | house_id), r00_model_data)
+
+
+# print model summaries
+#  summary(sphygmo_model_spline)
+
+#  summary(sphygmo_model_phase)
+
+#  summary(sphygmo_model)
+
+# save model results
+#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+```
+
+
+# Central Pulse Pressure Model Summaries and Plots
 ```{r, fig.width=8, fig.height=5}
 ## Format and plot model
 tidy_results_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
@@ -112,8 +204,8 @@ plot_estimates <- sphygmo_model_final_results %>%
   
   ##### Update outcome in title below #####
 
-  ggtitle(label = "AIx Models") +
-  labs(y = "Estimate: Justa compared to Traditional") +
+  ggtitle(label = "Central Pulse Pressure Models") +
+  labs(y = "Estimate (mmHg): Justa vs Traditional") +
   labs(x = "") +
   theme(title = element_text(size = 19), 
           axis.text.x = element_text(angle = 15, hjust = 1, 
@@ -129,6 +221,7 @@ plot_estimates <- sphygmo_model_final_results %>%
 plot_estimates
 ```
 
+--------------------------------------------------------------------------------
 
 ```{r}
 ## Honduras R00 Initial AIx 75 Model ##
@@ -188,30 +281,6 @@ sphygmo_model_phase <- lmer(dia_bp_central ~ assigned_stove + phase +
                          (1 | house_id), r00_model_data)
 
 sphygmo_model <- lmer(dia_bp_central ~ assigned_stove + (1 | house_id), r00_model_data)
-
-
-# print model summaries
-#  summary(sphygmo_model_spline)
-
-#  summary(sphygmo_model_phase)
-
-#  summary(sphygmo_model)
-
-# save model results
-#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
-```
-
-
-```{r}
-## Honduras R00 Initial Central Pulse Pressure Model ##
-#run/save models
-sphygmo_model_spline <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
-                          (1 | house_id), r00_model_data)
-
-sphygmo_model_phase <- lmer(pulse_pressure_central ~ assigned_stove + phase + 
-                         (1 | house_id), r00_model_data)
-
-sphygmo_model <- lmer(pulse_pressure_central ~ assigned_stove + (1 | house_id), r00_model_data)
 
 
 # print model summaries
