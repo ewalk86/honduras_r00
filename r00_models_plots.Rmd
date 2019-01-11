@@ -1,12 +1,13 @@
 ---
 title: "Honduras R00 Models and Estimate Plots"
 author: "Ethan Walker"
-date: "10 Jan 2019"
+date: "11 Jan 2019"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.width = 10)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
 ```
 
 
@@ -24,6 +25,7 @@ library(readxl)
 library(naniar)
 library(splines)
 library(lubridate)
+library(knitr)
 jvPalette <- c("#330099","#CC0066","#FF6633", 
                  "#0099CC", "#FF9900","#CC6633",
                   "#FF3366", "#33CC99", "#33999")
@@ -38,12 +40,6 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```{r}
 ## Data prep
 r00_model_data <- r00_full_joined_sphygmocor %>% 
-  ##### need to fix this in the main database #####
-  mutate(height = as.numeric(height)) %>% 
-  mutate(weight = as.numeric(weight)) %>% 
-  mutate(height = if_else(phase == 6 & house_id == "CER009", 57.0, height)) %>% 
-  mutate(bmi = (weight*0.453592)/((height*0.0254)^2)) %>%  
-  
   mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
   mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 
@@ -69,67 +65,70 @@ r00_model_data <- r00_full_joined_sphygmocor %>%
 
 ```{r}
 ## Model Summaries
-## Honduras R00 Initial AIx Model ##
+## Honduras R00 Initial AIx Models ##
 #run/save models
-sphygmo_model <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
+sphygmo_model_notime <- lmer(aug_index ~ assigned_stove + 
                           (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_notime)
 
-sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_cat + ns(date_sphygmo, df=12) + 
+sphygmo_model_phase <- lmer(aug_index ~ assigned_stove + phase + 
                           (1 | house_id), r00_model_data)
-
-sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*bmi_cat + ns(date_sphygmo, df=12) + 
-                          (1 | house_id), r00_model_data)
-
-
-#sphygmo_model_phase <- lmer(aug_index ~ assigned_stove + age_cat + phase + 
- #                        (1 | house_id), r00_model_data)
-
-#sphygmo_model <- lmer(aug_index ~ assigned_stove + age_cat + (1 | house_id), r00_model_data)
-
-
-# print model summaries
-#  summary(sphygmo_model_spline)
-
 #  summary(sphygmo_model_phase)
 
+sphygmo_model_spline <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_spline)
+
+sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_baseline + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_age)
+
+sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*age_cat + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
 #  summary(sphygmo_model_age_int)
 
+sphygmo_model_bmi <- lmer(aug_index ~ assigned_stove + bmi + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_bmi)
+
+sphygmo_model_bmi_int <- lmer(aug_index ~ assigned_stove*bmi_cat + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_bmi_int)
+
 # save model results
-#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+# write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
 ```
 
 # AIx Model Summaries and Plots
 ```{r, fig.width=8, fig.height=5}
-## Format and plot model
-tidy_sphygmo_model <- tidy(sphygmo_model, conf.int = TRUE) %>% 
+## Format and plot models - no effect modifiers/confounders
+tidy_sphygmo_model_notime <- tidy(sphygmo_model_notime, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "no age", "")) 
-tidy_sphygmo_model_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no time", "na")) 
+tidy_sphygmo_model_phase <- tidy(sphygmo_model_phase, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "age covariate", "na")) 
-tidy_sphygmo_model_age_int <- tidy(sphygmo_model_age_int, conf.int = TRUE) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na")) 
+tidy_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta:age_cat", "age interaction", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "spline", "na")) 
 
-sphygmo_model_final_results <- rbind(tidy_sphygmo_model,
-                                     tidy_sphygmo_model_age,
-                                     tidy_sphygmo_model_age_int)
-sphygmo_model_final_results
+sphygmo_model_final_results <- rbind(tidy_sphygmo_model_notime,
+                                     tidy_sphygmo_model_phase,
+                                     tidy_sphygmo_model_spline)
+kable(sphygmo_model_final_results)
 
-## Plot model estimate
+
+## Plot model estimates
 plot_estimates <- sphygmo_model_final_results %>%
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
-  theme_bw() +
-  
-  ##### Update outcome in title below #####
-
+  theme_bw() +  
   ggtitle(label = "AIx Models") +
   labs(y = "Estimate (%): Justa vs Traditional") +
   labs(x = "") +
@@ -147,63 +146,270 @@ plot_estimates <- sphygmo_model_final_results %>%
 plot_estimates
 ```
 
+\pagebreak  
 
+## Using spline to account for time
 ```{r}
-## Honduras R00 Initial Central Pulse Pressure Model ##
-#run/save models
-sphygmo_model_spline <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + ns(date_sphygmo, df=12) + 
-                          (1 | house_id), r00_model_data)
+## Format and plot models - age
+tidy_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no age", "na")) 
+tidy_sphygmo_model_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
+tidy_sphygmo_model_age_int <- tidy(sphygmo_model_age_int, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta:age_cat', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta:age_cat", "age interaction", "na")) 
 
-sphygmo_model_phase <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + phase + 
-                         (1 | house_id), r00_model_data)
+sphygmo_model_final_results_age <- rbind(tidy_sphygmo_model_spline,
+                                     tidy_sphygmo_model_age,
+                                     tidy_sphygmo_model_age_int)
+kable(sphygmo_model_final_results_age)
 
-sphygmo_model <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + (1 | house_id), r00_model_data)
 
-
-# print model summaries
-#  summary(sphygmo_model_spline)
-
-#  summary(sphygmo_model_phase)
-
-#  summary(sphygmo_model)
-
-# save model results
-#write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+## Plot model estimates with age
+plot_estimates <- sphygmo_model_final_results_age %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  ggtitle(label = "AIx Models with Age") +
+  labs(y = "Estimate (%): Justa vs Traditional") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+plot_estimates
 ```
 
+\pagebreak  
+
+## Using spline to account for time
+```{r}
+## Format and plot models - bmi
+tidy_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no bmi", "na")) 
+tidy_sphygmo_model_bmi <- tidy(sphygmo_model_bmi, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "bmi", "na")) 
+tidy_sphygmo_model_bmi_int <- tidy(sphygmo_model_bmi_int, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta:bmi_cat', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta:bmi_cat", "bmi interaction", "na")) 
+
+sphygmo_model_final_results_bmi <- rbind(tidy_sphygmo_model_spline,
+                                     tidy_sphygmo_model_bmi,
+                                     tidy_sphygmo_model_bmi_int)
+kable(sphygmo_model_final_results_bmi)
+
+
+## Plot model estimates with bmi
+plot_estimates <- sphygmo_model_final_results_bmi %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  ggtitle(label = "AIx Models with BMI") +
+  labs(y = "Estimate (%): Justa vs Traditional") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+plot_estimates
+```
+
+\pagebreak  
+
+```{r}
+## Model Summaries
+## Honduras R00 Initial Central Pulse Pressure Models ##
+#run/save models
+sphygmo_model_notime <- lmer(pulse_pressure_central ~ assigned_stove + 
+                          (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_notime)
+
+sphygmo_model_phase <- lmer(pulse_pressure_central ~ assigned_stove + phase + 
+                          (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_phase)
+
+sphygmo_model_spline <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                          (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_spline)
+
+sphygmo_model_age <- lmer(pulse_pressure_central ~ assigned_stove + age_baseline + 
+                          ns(date_sphygmo, df=12) +  (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_age)
+
+sphygmo_model_age_int <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + 
+                              ns(date_sphygmo, df=12) + (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_age_int)
+
+sphygmo_model_bmi <- lmer(pulse_pressure_central ~ assigned_stove + bmi + 
+                          ns(date_sphygmo, df=12) + (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_bmi)
+
+sphygmo_model_bmi_int <- lmer(pulse_pressure_central ~ assigned_stove*bmi_cat + 
+                              ns(date_sphygmo, df=12) + (1 | house_id), r00_model_data)
+#  summary(sphygmo_model_bmi_int)
+
+# save model results
+# write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
+```
 
 # Central Pulse Pressure Model Summaries and Plots
 ```{r, fig.width=8, fig.height=5}
-## Format and plot model
-tidy_results_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
+## Format and plot models - no effect modifiers/confounders
+tidy_sphygmo_model_notime <- tidy(sphygmo_model_notime, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "spline", "na"))
-tidy_results_sphygmo_model_phase <- tidy(sphygmo_model_phase, conf.int = TRUE) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no time", "na")) 
+tidy_sphygmo_model_phase <- tidy(sphygmo_model_phase, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na"))
-tidy_results_sphygmo_model <- tidy(sphygmo_model, conf.int = TRUE) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na")) 
+tidy_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "no time", "na"))
+    mutate(model = if_else(term == "assigned_stoveJusta", "spline", "na")) 
 
-sphygmo_model_final_results <- rbind(tidy_results_sphygmo_model_spline,
-                                     tidy_results_sphygmo_model_phase,
-                                     tidy_results_sphygmo_model)
-sphygmo_model_final_results
+sphygmo_model_final_results <- rbind(tidy_sphygmo_model_notime,
+                                     tidy_sphygmo_model_phase,
+                                     tidy_sphygmo_model_spline)
+kable(sphygmo_model_final_results)
 
-## Plot model estimate
+
+## Plot model estimates
 plot_estimates <- sphygmo_model_final_results %>%
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
-  theme_bw() +
-  
-  ##### Update outcome in title below #####
+  theme_bw() +  
+  ggtitle(label = "Central Pulse Pressure Models") +
+  labs(y = "Estimate (mmHg): Justa vs Traditional") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+plot_estimates
+```
 
+\pagebreak  
+
+## Using spline to account for time
+```{r}
+## Format and plot models - age
+tidy_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no age", "na")) 
+tidy_sphygmo_model_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
+tidy_sphygmo_model_age_int <- tidy(sphygmo_model_age_int, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta:age_cat', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta:age_cat", "age interaction", "na")) 
+
+sphygmo_model_final_results_age <- rbind(tidy_sphygmo_model_spline,
+                                     tidy_sphygmo_model_age,
+                                     tidy_sphygmo_model_age_int)
+kable(sphygmo_model_final_results_age)
+
+
+## Plot model estimates with age
+plot_estimates <- sphygmo_model_final_results_age %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  ggtitle(label = "Central Pulse Pressure Models") +
+  labs(y = "Estimate (mmHg): Justa vs Traditional") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+plot_estimates
+```
+
+\pagebreak  
+
+## Using spline to account for time
+```{r}
+## Format and plot models - bmi
+tidy_sphygmo_model_spline <- tidy(sphygmo_model_spline, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no bmi", "na")) 
+tidy_sphygmo_model_bmi <- tidy(sphygmo_model_bmi, conf.int = TRUE) %>% 
+    filter(grepl('assigned', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "bmi", "na")) 
+tidy_sphygmo_model_bmi_int <- tidy(sphygmo_model_bmi_int, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta:bmi_cat', term)) %>% 
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta:bmi_cat", "bmi interaction", "na")) 
+
+sphygmo_model_final_results_bmi <- rbind(tidy_sphygmo_model_spline,
+                                     tidy_sphygmo_model_bmi,
+                                     tidy_sphygmo_model_bmi_int)
+kable(sphygmo_model_final_results_bmi)
+
+
+## Plot model estimates with bmi
+plot_estimates <- sphygmo_model_final_results_bmi %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
   ggtitle(label = "Central Pulse Pressure Models") +
   labs(y = "Estimate (mmHg): Justa vs Traditional") +
   labs(x = "") +

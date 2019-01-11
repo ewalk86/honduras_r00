@@ -1,12 +1,13 @@
 ---
 title: "R00 Confounders Summary Stats"
 author: "Ethan Walker"
-date: "10 Jan 2019"
+date: "11 Jan 2019"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 6)
 ```
 
 
@@ -26,13 +27,15 @@ library(knitr)
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
-# Summary Stats grouped by study arm
+# Summary Stats for entire study population with Sphygmocor data
 ### Data from phases 1 and 2
+### Sphygmocor malfunction during phase 2
 ```{r}
+### Why does total n not 230?
 summary_stats <- r00_full_joined_sphygmocor %>% 
-  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
-         beds_new, dds_total) %>% 
-  na.exclude(age_baseline) %>% 
+  select(house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total, aug_index) %>% 
+  na.exclude(aug_index) %>% 
   mutate("Baseline Age" = as.numeric(age_baseline), 
          "Height" = as.numeric(height), 
          "Weight" = as.numeric(weight), 
@@ -40,14 +43,41 @@ summary_stats <- r00_full_joined_sphygmocor %>%
          "SES Materials" = as.numeric(ses_materials), 
          "Beds Per Person" = as.numeric(beds_new), 
          "Dietary Diversity Score" = as.numeric(dds_total)) %>% 
-  
-  ##### need to fix this in the main database #####
-  mutate(Height = if_else(phase == 6 & house_id == "CER009", 57.0, Height)) %>% 
-  mutate("Body Mass Index" = (Weight*0.453592)/((Height*0.0254)^2)) %>%  
-  
   filter(phase == 1 | phase == 2) %>% 
   select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
-         -beds_new, -dds_total) %>%
+         -beds_new, -dds_total, -aug_index) %>%
+  group_by(phase) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+  gather(var, value, -phase) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, phase) %>% 
+  select(var, phase, n, mean, sd, median, max, min) %>% 
+  rename("Variable" = var, "Phase" = phase)
+kable(summary_stats, digits = 2)
+```
+
+\pagebreak  
+
+# Summary Stats grouped by study arm
+### Data from phases 1 and 2
+### Sphygmocor malfunction during phase 2
+```{r}
+summary_stats <- r00_full_joined_sphygmocor %>% 
+  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total, aug_index) %>% 
+  na.exclude(aug_index) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
+         "Height" = as.numeric(height), 
+         "Weight" = as.numeric(weight), 
+         "Body Mass Index" = as.numeric(bmi), 
+         "SES Materials" = as.numeric(ses_materials), 
+         "Beds Per Person" = as.numeric(beds_new), 
+         "Dietary Diversity Score" = as.numeric(dds_total)) %>% 
+  filter(phase == 1 | phase == 2) %>% 
+  select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
+         -beds_new, -dds_total, -aug_index) %>%
   group_by(study_arm, phase) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
@@ -59,6 +89,8 @@ summary_stats <- r00_full_joined_sphygmocor %>%
   rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm)
 kable(summary_stats, digits = 2)
 ```
+
+\pagebreak  
 
 # Boxplots
 ### Phase 1 data
@@ -85,7 +117,11 @@ confounder_boxplot <- r00_full_joined_sphygmocor %>%
   ylab("BMI (kg/m^2)") +
   theme_bw()
 confounder_boxplot
+```
 
+\pagebreak  
+
+```{r}
 ## Age
 # boxplots by study arm
 confounder_boxplot <- r00_full_joined_sphygmocor %>% 
@@ -108,7 +144,11 @@ confounder_boxplot <- r00_full_joined_sphygmocor %>%
   ylab("Age (years)") +
   theme_bw()
 confounder_boxplot
+```
 
+\pagebreak  
+
+```{r}
 ## SES
 # boxplots by study arm
 confounder_boxplot <- r00_full_joined_sphygmocor %>% 
@@ -131,7 +171,11 @@ confounder_boxplot <- r00_full_joined_sphygmocor %>%
   ylab("SES Materials (n)") +
   theme_bw()
 confounder_boxplot
+```
 
+\pagebreak  
+
+```{r}
 ## Beds
 # boxplots by study arm
 confounder_boxplot <- r00_full_joined_sphygmocor %>% 
@@ -154,7 +198,11 @@ confounder_boxplot <- r00_full_joined_sphygmocor %>%
   ylab("Beds Per Person") +
   theme_bw()
 confounder_boxplot
+```
 
+\pagebreak  
+
+```{r}
 ## DDS
 # boxplots by study arm
 confounder_boxplot <- r00_full_joined_sphygmocor %>% 

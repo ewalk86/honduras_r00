@@ -219,15 +219,14 @@ r00_joined <- r00_full_long %>%
   left_join(r00_pwa, by = c("house_id", "date_sphygmo"))
 ```
 
-# Check that aug_index pulled from sphygmocor matches aix entered into ODK in the field
+# Fix incorrect height/bmi in database
 ```{r}
-data_check <- r00_full_joined_sphygmocor %>% 
-  select(house_id, aix, aug_index) %>% 
-  mutate(aix_check = if_else(aix == round(aug_index, digits = 0), 0, 1)) %>% 
-  filter(aix_check == 1)
-# 16 instances where AIx value entered in field doesn't match the value pulled from database
-# Most are rounding errors or explained by mis-entering the value by hand
-# Confident that values from database are correct and will use aug_index for analysis
+r00_joined <- r00_full_joined_sphygmocor %>% 
+  ##### need to fix this in the main database #####
+  mutate(height = as.numeric(height)) %>% 
+  mutate(weight = as.numeric(weight)) %>% 
+  mutate(height = if_else(phase == 6 & house_id == "CER009", 57.0, height)) %>% 
+  mutate(bmi = (weight*0.453592)/((height*0.0254)^2)) 
 ```
 
 

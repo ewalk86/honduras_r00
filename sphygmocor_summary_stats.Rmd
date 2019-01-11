@@ -1,12 +1,13 @@
 ---
 title: "Sphygmocor Summary Stats"
 author: "Ethan Walker"
-date: "9 Jan 2019"
+date: "11 Jan 2019"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 6)
 ```
 
 
@@ -51,6 +52,72 @@ summary_stats_study_arm <- r00_full_joined_sphygmocor %>%
 kable(summary_stats_study_arm, digits = 2)
 ```
 
+\pagebreak  
+
+# Variables grouped by study arm and age category
+### Data from phase 3 and 4
+```{r}
+summary_stats_study_arm <- r00_full_joined_sphygmocor %>% 
+  #split age at 40; >40 = 1, <=40 = 0
+  mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
+  #split bmi at 26; >26 = 1, <=26 = 0
+  mutate(bmi_cat = if_else(bmi >= 26, 1, 0)) %>% 
+  select(phase, study_arm, age_cat, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+         "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
+         "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
+         "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
+         "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
+         "Pulse Pressure Peripheral" = pulse_pressure_periph, 
+         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+  na.exclude("Augmentation Index") %>% 
+  filter(phase == 3 | phase == 4) %>% 
+  select(-phase) %>% 
+  group_by(age_cat, study_arm) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+  gather(var, value, -study_arm, -age_cat) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, age_cat) %>% 
+  select(var, study_arm, age_cat,  n, mean, sd, median, max, min) %>% 
+  rename("Variable" = var, "Study Arm" = study_arm, "Age Category" = age_cat) 
+kable(summary_stats_study_arm, digits = 2)
+```
+
+\pagebreak  
+
+# Variables grouped by study arm and BMI category
+### Data from phase 3 and 4
+```{r}
+summary_stats_study_arm <- r00_full_joined_sphygmocor %>% 
+  #split age at 40; >40 = 1, <=40 = 0
+  mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
+  #split bmi at 26; >26 = 1, <=26 = 0
+  mutate(bmi_cat = if_else(bmi >= 26, ">=26", "<26")) %>% 
+  select(phase, study_arm, bmi_cat, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+         "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
+         "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
+         "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
+         "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
+         "Pulse Pressure Peripheral" = pulse_pressure_periph, 
+         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+  na.exclude("Augmentation Index") %>% 
+  filter(phase == 3 | phase == 4) %>% 
+  select(-phase) %>% 
+  group_by(bmi_cat, study_arm) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+  gather(var, value, -study_arm, -bmi_cat) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, bmi_cat) %>% 
+  select(var, study_arm, bmi_cat,  n, mean, sd, median, max, min) %>% 
+  rename("Variable" = var, "Study Arm" = study_arm, "BMI Category" = bmi_cat) 
+kable(summary_stats_study_arm, digits = 2)
+```
+
+\pagebreak  
+
 # Variables grouped by age category
 ### Data from phase 1 and 2
 ```{r}
@@ -78,6 +145,8 @@ summary_stats_age_cat <- r00_full_joined_sphygmocor %>%
   rename("Variable" = var, "Age Category" = age_cat) 
 kable(summary_stats_age_cat, digits = 2)
 ```
+
+\pagebreak  
 
 # Variables grouped by bmi category
 ### Data from phase 1 and 2
@@ -109,6 +178,8 @@ summary_stats_bmi_cat <- r00_full_joined_sphygmocor %>%
 kable(summary_stats_bmi_cat, digits = 2)
 ```
 
+\pagebreak  
+
 # Variables grouped by phase
 ```{r}
 summary_stats_phase <- r00_full_joined_sphygmocor %>% 
@@ -132,6 +203,8 @@ summary_stats_phase <- r00_full_joined_sphygmocor %>%
 kable(summary_stats_phase, digits = 2)
 ```
 
+\pagebreak
+
 # Correlation Matrix
 ### Data from all 6 phases
 ```{r}
@@ -142,6 +215,8 @@ summary_correlation <- r00_full_joined_sphygmocor %>%
   na.exclude(aug_index)
 cor(summary_correlation)
 ```
+
+\pagebreak
 
 ```{r}
 ## summary to include in plots below (geom_text)
@@ -193,8 +268,11 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   ylab("AIx (%)") +
   theme_bw()
 sphygmocor_boxplot
+```
 
+\pagebreak  
 
+```{r}
 ## AIx75
 # boxplots by phase, faceted by study arm
 # means plotted in red
@@ -219,8 +297,11 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   ylab("AIx75 (%)") +
   theme_bw()
 sphygmocor_boxplot
+```
 
+\pagebreak  
 
+```{r}
 ## Central Pulse Pressure
 # boxplots by phase, faceted by study arm
 # means plotted in red
@@ -245,8 +326,11 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   ylab("Central Pulse Pressure (mmHg)") +
   theme_bw()
 sphygmocor_boxplot
+```
 
+\pagebreak  
 
+```{r}
 ## HR
 # boxplots by phase, faceted by study arm
 # means plotted in red
@@ -351,6 +435,7 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
 #sphygmocor_boxplot
 ```
 
+\pagebreak  
 
 # Bar charts for phases completed
 ```{r}
@@ -382,6 +467,8 @@ ggplot(phases_completed_sphygmocor, aes(x= phase, y = number, fill = study_arm))
     ggtitle("Sphygmocor measurements completed")
 ```
 
+\pagebreak
+
 # Number of visits completed with Sphygmocor data
 ```{r}
 all_6_phases <- r00_full_joined_sphygmocor %>% 
@@ -395,6 +482,54 @@ all_6_phases <- r00_full_joined_sphygmocor %>%
 kable(all_6_phases)
 ```
 
+\pagebreak  
+
+# Check that values pulled from sphygmocor match those entered into ODK in the field
+## AIx
+### aix = ODK variable
+### aug_index = Sphygmocor variable
+```{r}
+data_aix_check <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, study_arm, aix, aug_index) %>% 
+  mutate(aix_check = if_else(aix == round(aug_index, digits = 0), 0, 1)) %>% 
+  filter(aix_check == 1)
+kable(data_aix_check)
+# 16 instances where AIx value entered in field doesn't match the value pulled from database
+# Most are rounding errors or explained by mis-entering the value by hand
+# Confident that values from database are correct and will use aug_index for analysis
+```
+
+\pagebreak  
+
+## Systolic BP
+### sysbp = ODK variable
+### sys_bp_periph = Sphygmocor variable
+```{r}
+data_sbp_check <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, study_arm, sysbp, diabp, sys_bp_periph, dia_bp_periph) %>%
+  mutate(sys_bp_check = if_else(sysbp == round(sys_bp_periph, digits = 0), 0, 1)) %>% 
+  filter(sys_bp_check == 1) %>% 
+  select(-dia_bp_periph, -diabp)
+kable(data_sbp_check)
+# 6 instances where AIx value entered in field doesn't match the value pulled from database
+```
+
+\pagebreak  
+
+## Diastolic BP
+### diabp = ODK variable
+### dia_bp_periph = Sphygmocor variable
+```{r}
+data_dbp_check <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, study_arm, sysbp, diabp, sys_bp_periph, dia_bp_periph) %>% 
+  mutate(dia_bp_check = if_else(diabp == round(dia_bp_periph, digits = 0), 0, 1)) %>% 
+  filter(dia_bp_check == 1) %>% 
+  select(-sys_bp_periph, -sysbp)
+kable(data_dbp_check)
+# 8 instances where AIx value entered in field doesn't match the value pulled from database
+```
+
+\pagebreak   
 
 # Histograms for distribution of measurements
 ```{r}
@@ -418,7 +553,11 @@ aix_histogram <- r00_full_joined_sphygmocor %>%
           plot.title = element_text(hjust = 0.5)) +
    ggtitle("AIx by Phase") 
 aix_histogram
+```
 
+\pagebreak  
+
+```{r}
 # AIx75
 aix75_histogram <- r00_full_joined_sphygmocor %>%
   select(phase, study_arm, aug_index_75) %>% 
@@ -439,7 +578,11 @@ aix75_histogram <- r00_full_joined_sphygmocor %>%
           plot.title = element_text(hjust = 0.5)) +
    ggtitle("AIx75 by Phase") 
 aix75_histogram
+```
 
+\pagebreak  
+
+```{r}
 # pulse_pressure_central
 pulse_pressure_central_histogram <- r00_full_joined_sphygmocor %>%
   select(phase, study_arm, pulse_pressure_central) %>% 
@@ -460,8 +603,11 @@ pulse_pressure_central_histogram <- r00_full_joined_sphygmocor %>%
           plot.title = element_text(hjust = 0.5)) +
    ggtitle("Central Pulse Pressure by Phase") 
 pulse_pressure_central_histogram
+```
 
+\pagebreak  
 
+```{r}
 # HR
 hr_histogram <- r00_full_joined_sphygmocor %>%
   select(phase, study_arm, hr) %>% 
@@ -482,7 +628,6 @@ hr_histogram <- r00_full_joined_sphygmocor %>%
           plot.title = element_text(hjust = 0.5)) +
    ggtitle("HR by Phase") 
 #hr_histogram
-
 
 # pulse_pressure_periph
 pulse_pressure_peripheral_histogram <- r00_full_joined_sphygmocor %>%
@@ -548,6 +693,8 @@ dia_bp_central_histogram <- r00_full_joined_sphygmocor %>%
 #dia_bp_central_histogram
 ```
 
+\pagebreak  
+
 # Line plots across study phases
 ### Blue = increase from phase to phase for a participant
 ### Red = decrease from phase to phase for a participant
@@ -568,7 +715,11 @@ line_plots <- r00_full_joined_sphygmocor %>%
   theme(legend.position = "none") +
   facet_wrap(~study_arm)
 line_plots
+```
 
+\pagebreak  
+
+```{r}
 # AIx 75
 line_plots <- r00_full_joined_sphygmocor %>% 
   select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 
@@ -585,7 +736,11 @@ line_plots <- r00_full_joined_sphygmocor %>%
   theme(legend.position = "none") +
   facet_wrap(~study_arm)
 line_plots
+```
 
+\pagebreak  
+
+```{r}
 # Central Pulse Pressure
 line_plots <- r00_full_joined_sphygmocor %>% 
   select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 

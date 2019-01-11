@@ -38,12 +38,6 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```{r}
 ## Data prep
 r00_model_data <- r00_full_joined_sphygmocor %>% 
-  ##### need to fix this in the main database #####
-  mutate(height = as.numeric(height)) %>% 
-  mutate(weight = as.numeric(weight)) %>% 
-  mutate(height = if_else(phase == 6 & house_id == "CER009", 57.0, height)) %>% 
-  mutate(bmi = (weight*0.453592)/((height*0.0254)^2)) %>%  
-  
   mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
   mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 
@@ -137,7 +131,7 @@ r00_arm2_phase6 <- r00_model_data %>%
   filter(study_arm == 2 & phase == 6)
 ```
 
-
+# AIx T-Tests
 ```{r}
 ## R00 T-Tests
 ## Comparisons within Arm 1
@@ -287,6 +281,180 @@ between_group_plot <- between_groups %>%
   ##### Update outcome in title below #####
 
   ggtitle(label = "AIx Models: Between Group T-Tests") +
+  labs(y = "Estimate: Arm 1 compared to Arm 2") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+between_group_plot
+```
+
+# Central Pulse Pressure T-Tests
+```{r}
+## R00 T-Tests
+## Comparisons within Arm 1
+arm1_phase2vs3_ttest <- t.test(r00_arm1_phase2$pulse_pressure_central,
+                               r00_arm1_phase3$pulse_pressure_central, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs3_ttest
+
+arm1_phase2vs4_ttest <- t.test(r00_arm1_phase2$pulse_pressure_central, 
+                               r00_arm1_phase4$pulse_pressure_central, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs4_ttest
+
+arm1_phase2vs5_ttest <- t.test(r00_arm1_phase2$pulse_pressure_central, 
+                               r00_arm1_phase5$pulse_pressure_central, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs5_ttest
+
+arm1_phase2vs6_ttest <- t.test(r00_arm1_phase2$pulse_pressure_central, 
+                               r00_arm1_phase6$pulse_pressure_central, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm1_phase2vs6_ttest
+
+
+## Comparisons within Arm 2
+arm2_phase4vs5_ttest <- t.test(r00_arm2_phase4$pulse_pressure_central, 
+                               r00_arm2_phase5$pulse_pressure_central, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm2_phase4vs5_ttest
+
+arm2_phase4vs6_ttest <- t.test(r00_arm2_phase4$pulse_pressure_central, 
+                               r00_arm2_phase6$pulse_pressure_central, 
+                               mu = 0, paired = TRUE, var.equal = TRUE)
+arm2_phase4vs6_ttest
+
+## Comparisons between Arms at Phases 3 and 4
+arm1vs2_phase3_ttest <- t.test(r00_arm1_phase3$pulse_pressure_central, 
+                               r00_arm2_phase3$pulse_pressure_central, 
+                               mu = 0, paired = FALSE, var.equal = FALSE)
+arm1vs2_phase3_ttest
+
+arm1vs2_phase4_ttest <- t.test(r00_arm1_phase4$pulse_pressure_central, 
+                               r00_arm2_phase4$pulse_pressure_central, 
+                               mu = 0, paired = FALSE, var.equal = FALSE)
+arm1vs2_phase4_ttest
+```
+
+
+```{r}
+## Format estimates
+tidy_arm1_phase2vs3_ttest <- tidy(arm1_phase2vs3_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs3")
+tidy_arm1_phase2vs4_ttest <- tidy(arm1_phase2vs4_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs4")
+tidy_arm1_phase2vs5_ttest <- tidy(arm1_phase2vs5_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs5")
+tidy_arm1_phase2vs6_ttest <- tidy(arm1_phase2vs6_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 2vs6")
+
+arm1_within_group <- rbind(tidy_arm1_phase2vs3_ttest,
+                           tidy_arm1_phase2vs4_ttest,
+                           tidy_arm1_phase2vs5_ttest,
+                           tidy_arm1_phase2vs6_ttest)
+
+
+tidy_arm2_phase4vs5_ttest <- tidy(arm2_phase4vs5_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 4vs5")
+tidy_arm2_phase4vs6_ttest <- tidy(arm2_phase4vs6_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 4vs6")
+
+arm2_within_group <- rbind(tidy_arm2_phase4vs5_ttest,
+                           tidy_arm2_phase4vs6_ttest)
+
+
+tidy_arm1vs2_phase3_ttest <- tidy(arm1vs2_phase3_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 3")
+tidy_arm1vs2_phase4_ttest <- tidy(arm1vs2_phase4_ttest, conf.int = TRUE) %>%
+    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
+    mutate(model = "Phase 4")
+
+between_groups <- rbind(tidy_arm1vs2_phase3_ttest,
+                           tidy_arm1vs2_phase4_ttest)
+```
+
+
+```{r, fig.width=10, fig.height=7.5}
+## Plot model estimate
+arm_1_plot <- arm1_within_group %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "Central Pulse Pressure Models: Arm 1 Within Group T-Tests") +
+  labs(y = "Estimate: Difference Between Phases") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+arm_1_plot
+
+arm_2_plot <- arm2_within_group %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "Central Pulse Pressure Models: Arm 2 Within Group T-Tests") +
+  labs(y = "Estimate: Difference Between Phases") +
+  labs(x = "") +
+  theme(title = element_text(size = 19), 
+          axis.text.x = element_text(angle = 15, hjust = 1, 
+                                     size = 18, colour = "black"),
+          axis.text.y = element_text(size = 18, colour = "black"),
+          axis.title.y = element_text(size = 18),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_colour_manual(values=jvPalette) 
+arm_2_plot
+
+between_group_plot <- between_groups %>%
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  
+  ##### Update outcome in title below #####
+
+  ggtitle(label = "Central Pulse Pressure Models: Between Group T-Tests") +
   labs(y = "Estimate: Arm 1 compared to Arm 2") +
   labs(x = "") +
   theme(title = element_text(size = 19), 
