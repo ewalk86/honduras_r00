@@ -89,7 +89,13 @@ r00_pwa <- p6_pwa %>%
          pulse_pressure_central = round(pulse_pressure_central, digits = 2), 
          aug_index_75 = round(aug_index_75, digits = 2)) %>% 
   arrange(house_id, datetime_sphygmo)
+
+###### Save Sphygmocor dataset at bottom of RMD ########
+###### Combine with full database in "initial_data_cleaning.rmd" #####
 ```
+
+###### Everything past this point is just for data checking purposes
+###### r00_pwa dataset can be combined with full dataset using "initial_data_cleaning.rmd"
 
 ## Sphygmocor Summary Stats
 ```{r}
@@ -216,19 +222,14 @@ r00_joined <- r00_full_long %>%
   mutate(date_sphygmo = if_else(house_id == "ZAC027" & date_sphygmo == "2015-09-10",
                                date_sphygmo + days(1), date_sphygmo)) %>% 
   select(-"day_week", -"time", -"utc", -"date_new") %>% 
-  left_join(r00_pwa, by = c("house_id", "date_sphygmo"))
-```
-
-# Fix incorrect height/bmi in database
-```{r}
-r00_joined <- r00_full_joined_sphygmocor %>% 
+  left_join(r00_pwa, by = c("house_id", "date_sphygmo")) %>% 
+  ##### Fix incorrect height/bmi in database #####
   ##### need to fix this in the main database #####
   mutate(height = as.numeric(height)) %>% 
   mutate(weight = as.numeric(weight)) %>% 
   mutate(height = if_else(phase == 6 & house_id == "CER009", 57.0, height)) %>% 
   mutate(bmi = (weight*0.453592)/((height*0.0254)^2)) 
 ```
-
 
 # Output
 ```{r}

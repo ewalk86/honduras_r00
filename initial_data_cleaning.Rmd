@@ -17,7 +17,7 @@ library(naniar)
 
 ```{r, message=FALSE}
 # Load data
-#r00_full_wide <- read_xlsx("input/R00_health_wide_14Nov2018_by.xlsx")
+#r00_full_wide <- read_xlsx("input/R00_health_wide_15Jan2019_by.xlsx")
 
 r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
@@ -117,15 +117,62 @@ r00_full_repeated_by_phase <- r00_full_long %>%
   select(-"trash") %>% 
   #spread out into columns, grouped by house_id and phase
   spread(key = "variable", value = "value") %>% 
-  arrange(house_id)
+  arrange(house_id) 
+
+# Check number of house_id
+n_distinct(r00_full_repeated_by_phase$house_id)
 ```
+
+# Combine with cleaned Sphygmocor and SUMs datasets
+```{r}
+r00_sums_full_dataset <- readRDS("output/r00_sums_full_dataset.rds")
+r00_pwa <- readRDS("output/r00_sphygmocor_pwa.rds")
+
+  
+r00_joined <- r00_full_repeated_by_phase %>% 
+  #create new date var (tidy format) to merge with sphygmocor dataset
+  mutate(date_new = date) %>% 
+  separate(date_new, c("day_week", "month", "day", "time", "utc", "year"), sep = " ") %>% 
+  unite(date_new, c("year", "month", "day"), sep = "") %>% 
+  mutate(date_setup = ymd(date_new)) %>% 
+  mutate(date_sphygmo = ymd(date_new) + days(1)) %>% 
+  #fix incorrect dates described in "r00_initial_sphygmocor_cleaning" so merge will line up 
+  mutate(date_sphygmo = if_else(house_id == "CAC007" & date_sphygmo == "2016-09-22",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "CER064" & date_sphygmo == "2017-04-11",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "HOR041" & date_sphygmo == "2016-09-08",
+                               date_sphygmo + days(2), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "OLO007" & date_sphygmo == "2016-10-21",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "PER052" & date_sphygmo == "2016-11-18",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "QDL012" & date_sphygmo == "2017-04-27",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "ZAC014" & date_sphygmo == "2015-09-05",
+                               date_sphygmo + days(2), date_sphygmo)) %>% 
+  mutate(date_sphygmo = if_else(house_id == "ZAC027" & date_sphygmo == "2015-09-10",
+                               date_sphygmo + days(1), date_sphygmo)) %>% 
+  select(-"day_week", -"time", -"utc", -"date_new") %>% 
+  #join with cleaned pwa dataset
+  left_join(r00_pwa, by = c("house_id", "date_sphygmo")) %>% 
+  ##### Fix incorrect height/bmi in database #####
+  ##### need to fix this in the main database #####
+  mutate(height = as.numeric(height)) %>% 
+  mutate(weight = as.numeric(weight)) %>% 
+  mutate(height = if_else(phase == 6 & house_id == "CER009", 57.0, height)) %>% 
+  mutate(bmi = (weight*0.453592)/((height*0.0254)^2)) %>% 
+  #join with cleaned sums dataset
+  left_join(r00_sums_full_dataset, by = c("house_id", "phase"))
+```
+
 
 # Save datasets
 ```{r}
 write_rds(r00_full_wide, "output/r00_full_wide.rds")
 write_rds(r00_full_long, "output/r00_full_long.rds")
-write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
+write_rds(r00_joined, "output/r00_full_repeated_by_phase.rds")
 write_csv(r00_full_wide, "output/r00_full_wide.csv")
 write_csv(r00_full_long, "output/r00_full_long.csv")
-write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv", na = " ")
+write_csv(r00_joined, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```

@@ -455,20 +455,20 @@ write_rds(sums_temp45_secondary_clean, "output/r00_sums_temp45_secondary_clean.r
 write_csv(sums_temp45_secondary_clean, "output/r00_sums_temp45_secondary_clean.csv")
 ```
 
-#Add to full R00 dataset
+#Combine clean SUMs datasets
 ```{r}
-r00_full_dataset <- r00_full_repeated_by_phase %>% 
-  full_join(sums_temp38_clean, by = c("house_id", "phase")) %>% 
+r00_sums_full_dataset <- sums_temp38_clean %>% 
   full_join(sums_temp40_clean, by = c("house_id", "phase")) %>% 
   full_join(sums_temp45_clean, by = c("house_id", "phase")) %>% 
   full_join(sums_temp38_secondary_clean, by = c("house_id", "phase")) %>%
   full_join(sums_temp40_secondary_clean, by = c("house_id", "phase")) %>%
   full_join(sums_temp45_secondary_clean, by = c("house_id", "phase"))
+
 ```
 
-#Save final dataset
+#Save final SUMs dataset
 ```{r}
-write_rds(r00_full_dataset, "output/r00_full_repeated_by_phase.rds")
-write_csv(r00_full_dataset, "output/r00_full_repeated_by_phase.csv", na = " ")
+write_rds(r00_sums_full_dataset, "output/r00_sums_full_dataset.rds")
+write_csv(r00_sums_full_dataset, "output/r00_sums_full_dataset.csv", na = " ")
 ```
 
