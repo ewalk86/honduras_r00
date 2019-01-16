@@ -1,12 +1,13 @@
 ---
-title: "SUMs Descriptives"
+title: "SUMs Summary Statistics"
 author: "Ethan Walker"
-date: "August 24, 2018"
+date: "16 Jan 2019"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 6)
 ```
 
 ```{r, message=FALSE}
@@ -18,13 +19,359 @@ library(knitr)
 r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
+# Variables grouped by study arm
 ```{r}
 summary_primary_stoves <- r00_full_repeated_by_phase %>% 
-  summarise(mean(sums_temp38_events, na.rm = TRUE), mean(sums_temp38_percent, na.rm = TRUE), 
-            mean(sums_temp40_events, na.rm = TRUE), mean(sums_temp40_percent, na.rm = TRUE), 
-            mean(sums_temp45_events, na.rm = TRUE), mean(sums_temp45_percent, na.rm = TRUE), 
-            median(sums_temp38_events, na.rm = TRUE), median(sums_temp38_percent, na.rm = TRUE), 
-            median(sums_temp40_events, na.rm = TRUE), median(sums_temp40_percent, na.rm = TRUE), 
-            median(sums_temp45_events, na.rm = TRUE), median(sums_temp45_percent, na.rm = TRUE))
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_events, 
+         "Events 40C" = sums_temp40_events, 
+         "Events 45C" = sums_temp45_events, 
+         "Percent 38C" = sums_temp38_percent, 
+         "Percent 40C" = sums_temp40_percent, 
+         "Percent 45C" = sums_temp45_percent) %>% 
+  na.exclude("Events 38C") %>% 
+  #filter(phase == 1 | phase == 2) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+  gather(var, value, -study_arm, -phase) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, phase, study_arm) %>% 
+  select(var, phase, study_arm, n, mean, sd, median, max, min) %>% 
+  mutate(mean = round(mean, digits = 2), 
+         sd = round(sd, digits = 2), 
+         median = round(median, digits = 2), 
+         max = round(max, digits = 2), 
+         min = round(min, digits = 2)) %>% 
+  rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm) 
+kable(summary_primary_stoves, digits = 2)
 ```
 
+\pagebreak  
+
+# Boxplots by phase
+## Percent time spent at specified temperature
+## Primary Stoves
+```{r}
+# boxplots by phase, faceted by study arm
+boxplots_primary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_events, 
+         "Events 40C" = sums_temp40_events, 
+         "Events 45C" = sums_temp45_events, 
+         "Percent 38C" = sums_temp38_percent, 
+         "Percent 40C" = sums_temp40_percent, 
+         "Percent 45C" = sums_temp45_percent) %>% 
+  na.exclude("Percent 38C") %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, `Percent 38C`)) +
+  geom_boxplot(aes(phase, `Percent 38C`)) +
+  ggtitle("Percent 38C by Phase and Study Arm", subtitle = "Primary Stoves") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Percent 38C") +
+  theme_bw()
+boxplots_primary_stoves
+```
+
+\pagebreak  
+
+```{r}
+boxplots_primary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_events, 
+         "Events 40C" = sums_temp40_events, 
+         "Events 45C" = sums_temp45_events, 
+         "Percent 38C" = sums_temp38_percent, 
+         "Percent 40C" = sums_temp40_percent, 
+         "Percent 45C" = sums_temp45_percent) %>% 
+  na.exclude("Percent 40C") %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, `Percent 40C`)) +
+  geom_boxplot(aes(phase, `Percent 40C`)) +
+  ggtitle("Percent 40C by Phase and Study Arm", subtitle = "Primary Stoves") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Percent 40C") +
+  theme_bw()
+boxplots_primary_stoves
+```
+
+\pagebreak  
+
+```{r}
+boxplots_primary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_events, 
+         "Events 40C" = sums_temp40_events, 
+         "Events 45C" = sums_temp45_events, 
+         "Percent 38C" = sums_temp38_percent, 
+         "Percent 40C" = sums_temp40_percent, 
+         "Percent 45C" = sums_temp45_percent) %>% 
+  na.exclude("Percent 45C") %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, `Percent 45C`)) +
+  geom_boxplot(aes(phase, `Percent 45C`)) +
+  ggtitle("Percent 45C by Phase and Study Arm", subtitle = "Primary Stoves") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Percent 45C") +
+  theme_bw()
+boxplots_primary_stoves
+```
+
+\pagebreak  
+
+# Boxplots by phase
+## Percent time spent at specified temperature
+## Secondary Stoves
+```{r}
+# boxplots by phase, faceted by study arm
+boxplots_secondary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_secondary_events, 
+         "Events 40C" = sums_temp40_secondary_events, 
+         "Events 45C" = sums_temp45_secondary_events, 
+         "Percent 38C" = sums_temp38_secondary_percent, 
+         "Percent 40C" = sums_temp40_secondary_percent, 
+         "Percent 45C" = sums_temp45_secondary_percent) %>% 
+  na.exclude("Percent 38C") %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, `Percent 38C`)) +
+  geom_boxplot(aes(phase, `Percent 38C`)) +
+  ggtitle("Percent 38C by Phase and Study Arm", subtitle = "Secondary Stoves") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Percent 38C") +
+  theme_bw()
+boxplots_secondary_stoves
+```
+
+\pagebreak  
+
+```{r}
+boxplots_secondary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_secondary_events, 
+         "Events 40C" = sums_temp40_secondary_events, 
+         "Events 45C" = sums_temp45_secondary_events, 
+         "Percent 38C" = sums_temp38_secondary_percent, 
+         "Percent 40C" = sums_temp40_secondary_percent, 
+         "Percent 45C" = sums_temp45_secondary_percent) %>% 
+  na.exclude("Percent 40C") %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, `Percent 40C`)) +
+  geom_boxplot(aes(phase, `Percent 40C`)) +
+  ggtitle("Percent 40C by Phase and Study Arm", subtitle = "Secondary Stoves") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Percent 40C") +
+  theme_bw()
+boxplots_secondary_stoves
+```
+
+\pagebreak  
+
+```{r}
+boxplots_secondary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_secondary_events, 
+         "Events 40C" = sums_temp40_secondary_events, 
+         "Events 45C" = sums_temp45_secondary_events, 
+         "Percent 38C" = sums_temp38_secondary_percent, 
+         "Percent 40C" = sums_temp40_secondary_percent, 
+         "Percent 45C" = sums_temp45_secondary_percent) %>% 
+  na.exclude("Percent 45C") %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, `Percent 45C`)) +
+  geom_boxplot(aes(phase, `Percent 45C`)) +
+  ggtitle("Percent 45C by Phase and Study Arm", subtitle = "Secondary Stoves") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Percent 45C") +
+  theme_bw()
+boxplots_secondary_stoves
+```
+
+\pagebreak  
+
+# Histograms for frequency of measurements
+## Number of events above specified temperature
+## Event = > 1hr below specified temperature
+## Primary Stoves
+```{r}
+histogram_primary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_events, 
+         "Events 40C" = sums_temp40_events, 
+         "Events 45C" = sums_temp45_events, 
+         "Percent 38C" = sums_temp38_percent, 
+         "Percent 40C" = sums_temp40_percent, 
+         "Percent 45C" = sums_temp45_percent) %>% 
+  na.exclude("Events 38C") %>% 
+    ggplot()+
+    geom_histogram(aes(x = `Events 38C`), bins = 7) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Events 38C") +
+   ylab("Frequency") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Events 38C by Phase", subtitle = "Primary Stoves") 
+histogram_primary_stoves
+```
+
+\pagebreak  
+
+```{r}
+histogram_primary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_events, 
+         "Events 40C" = sums_temp40_events, 
+         "Events 45C" = sums_temp45_events, 
+         "Percent 38C" = sums_temp38_percent, 
+         "Percent 40C" = sums_temp40_percent, 
+         "Percent 45C" = sums_temp45_percent) %>% 
+  na.exclude("Events 40C") %>% 
+    ggplot()+
+    geom_histogram(aes(x = `Events 40C`), bins = 7) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Events 40C") +
+   ylab("Frequency") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Events 40C by Phase", subtitle = "Primary Stoves") 
+histogram_primary_stoves
+```
+
+\pagebreak  
+
+```{r}
+histogram_primary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_events, 
+         "Events 40C" = sums_temp40_events, 
+         "Events 45C" = sums_temp45_events, 
+         "Percent 38C" = sums_temp38_percent, 
+         "Percent 40C" = sums_temp40_percent, 
+         "Percent 45C" = sums_temp45_percent) %>% 
+  na.exclude("Events 45C") %>% 
+    ggplot()+
+    geom_histogram(aes(x = `Events 45C`), bins = 7) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Events 45C") +
+   ylab("Frequency") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Events 45C by Phase", subtitle = "Primary Stoves") 
+histogram_primary_stoves
+```
+
+\pagebreak  
+
+# Histograms for frequency of measurements
+## Number of events above specified temperature
+## Event = > 1hr below specified temperature
+## Secondary Stoves
+```{r}
+histogram_secondary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_secondary_events, 
+         "Events 40C" = sums_temp40_secondary_events, 
+         "Events 45C" = sums_temp45_secondary_events, 
+         "Percent 38C" = sums_temp38_secondary_percent, 
+         "Percent 40C" = sums_temp40_secondary_percent, 
+         "Percent 45C" = sums_temp45_secondary_percent) %>% 
+  na.exclude("Events 38C") %>% 
+    ggplot()+
+    geom_histogram(aes(x = `Events 38C`), bins = 7) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Events 38C") +
+   ylab("Frequency") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Events 38C by Phase", subtitle = "Secondary Stoves") 
+histogram_secondary_stoves
+```
+
+\pagebreak  
+
+```{r}
+histogram_secondary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_secondary_events, 
+         "Events 40C" = sums_temp40_secondary_events, 
+         "Events 45C" = sums_temp45_secondary_events, 
+         "Percent 38C" = sums_temp38_secondary_percent, 
+         "Percent 40C" = sums_temp40_secondary_percent, 
+         "Percent 45C" = sums_temp45_secondary_percent) %>% 
+  na.exclude("Events 40C") %>% 
+    ggplot()+
+    geom_histogram(aes(x = `Events 40C`), bins = 7) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Events 40C") +
+   ylab("Frequency") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Events 40C by Phase", subtitle = "Secondary Stoves") 
+histogram_secondary_stoves
+```
+
+\pagebreak  
+
+```{r}
+histogram_secondary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, 
+         "Events 38C" = sums_temp38_secondary_events, 
+         "Events 40C" = sums_temp40_secondary_events, 
+         "Events 45C" = sums_temp45_secondary_events, 
+         "Percent 38C" = sums_temp38_secondary_percent, 
+         "Percent 40C" = sums_temp40_secondary_percent, 
+         "Percent 45C" = sums_temp45_secondary_percent) %>% 
+  na.exclude("Events 45C") %>% 
+    ggplot()+
+    geom_histogram(aes(x = `Events 45C`), bins = 7) +
+    facet_wrap(~phase, ncol = 2) +
+    theme_bw() +
+    scale_fill_manual(values=c("#33CC99",
+                               "#339999",
+                               "#FF9900",
+                               "#330099")) +
+   xlab("Events 45C") +
+   ylab("Frequency") +
+   theme(text = element_text(size = 16),
+          legend.position= "none",
+          plot.title = element_text(hjust = 0.5)) +
+   ggtitle("Events 45C by Phase", subtitle = "Secondary Stoves") 
+histogram_secondary_stoves
+```
