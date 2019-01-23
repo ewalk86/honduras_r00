@@ -79,8 +79,17 @@ r00_model_data_outliers <- r00_model_data %>%
   filter(aug_index > -25 | is.na(aug_index))
 
 r00_model_data_baseline <- r00_model_data %>% 
-  # removes 6 potential "outliers" with high or low AIx
   filter(phase == 1)
+r00_model_data_p2 <- r00_model_data %>% 
+  filter(phase == 2)
+r00_model_data_p3 <- r00_model_data %>% 
+  filter(phase == 3)
+r00_model_data_p4 <- r00_model_data %>% 
+  filter(phase == 4)
+r00_model_data_p5 <- r00_model_data %>% 
+  filter(phase == 5)
+r00_model_data_p6 <- r00_model_data %>% 
+  filter(phase == 6)
 ```
 
 # Simple linear models between AIx and age/bmi
@@ -88,8 +97,28 @@ r00_model_data_baseline <- r00_model_data %>%
 #AIx
 aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_baseline)
 tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p2)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p3)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p4)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p5)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p6)
+tidy(aix_age)
 
 aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_baseline)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p2)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p3)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p4)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p5)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p6)
 tidy(aix_bmi)
 ```
 
