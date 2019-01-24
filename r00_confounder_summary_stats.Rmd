@@ -27,6 +27,16 @@ library(knitr)
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```
 
+# Secondary Stove Use
+```{r}
+sec_stove_stats <- r00_full_joined_sphygmocor %>% 
+  select(aug_index, phase, days_sec, sec_stove, informed_consent) %>% 
+  #na.exclude(days_sec) %>% 
+  filter(phase == c(5,6)) 
+table(sec_stove_stats$sec_stove)
+```
+
+
 # Summary Stats for entire study population with Sphygmocor data
 ### Data from phases 1 and 2
 ### Sphygmocor malfunction during phase 2

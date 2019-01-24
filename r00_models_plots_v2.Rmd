@@ -73,10 +73,14 @@ r00_model_data_6phases <- r00_model_data %>%
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
   filter(sum(phase_complete) == 6)
 
-r00_model_data_outliers <- r00_model_data %>% 
+r00_model_data_outliers_aix <- r00_model_data %>% 
   # removes 6 potential "outliers" with high or low AIx
   filter(aug_index < 75 | is.na(aug_index)) %>% 
   filter(aug_index > -25 | is.na(aug_index))
+
+r00_model_data_outliers_cpp <- r00_model_data %>% 
+  # removes 42 potential "outliers" > 50mmHg CPP
+  filter(pulse_pressure_central < 50 | is.na(pulse_pressure_central))
 
 r00_model_data_baseline <- r00_model_data %>% 
   filter(phase == 1)
@@ -139,7 +143,7 @@ sphygmo_model_season_6phases <- lmer(aug_index ~ assigned_stove + season +
 #  summary(sphygmo_model_6phases)
 
 sphygmo_model_season_outliers <- lmer(aug_index ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_outliers)
+                          (1 | house_id), r00_model_data_outliers_aix)
 #  summary(sphygmo_model_season_outliers)
 
 sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_baseline + season + 
@@ -147,7 +151,7 @@ sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_baseline + season +
 #  summary(sphygmo_model_age)
 
 sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*age_cat + season + 
-                          (1 | house_id), r00_model_data)
+                          (1 | house_id), r00_model_data_outliers_aix)
 #  summary(sphygmo_model_age_int)
 age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
 summary(age_int_emmeans)
@@ -158,7 +162,7 @@ sphygmo_model_bmi <- lmer(aug_index ~ assigned_stove + bmi + season +
 #  summary(sphygmo_model_bmi)
 
 sphygmo_model_bmi_int <- lmer(aug_index ~ assigned_stove*bmi_cat + season + 
-                          (1 | house_id), r00_model_data)
+                          (1 | house_id), r00_model_data_outliers_aix)
 #  summary(sphygmo_model_bmi_int)
 bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
 summary(bmi_int_emmeans)
@@ -173,7 +177,6 @@ plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove
 # AIx Model Summaries and Plots
 ## Using season to account for time
 ## Sensitivity analyses with 6 outliers removed: 2 below -25 and 4 above 75
-## The same 6 observations were also removed for Pulse Pressure 
 ```{r}
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
@@ -351,7 +354,7 @@ tidy(cpp_bmi)
 ## Honduras R00 Initial Central Pulse Pressure Models ##
 
 sphygmo_model_season <- lmer(pulse_pressure_central ~ assigned_stove + season +
-                          (1 | house_id), r00_model_data)
+                          (1 | house_id), r00_model_data_outliers_aix)
 #  summary(sphygmo_model_season)
 
 sphygmo_model_season_6phases <- lmer(pulse_pressure_central ~ assigned_stove + season +
@@ -359,7 +362,7 @@ sphygmo_model_season_6phases <- lmer(pulse_pressure_central ~ assigned_stove + s
 #  summary(sphygmo_model_season_6phases)
 
 sphygmo_model_season_outliers <- lmer(pulse_pressure_central ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_outliers)
+                          (1 | house_id), r00_model_data_outliers_cpp)
 #  summary(sphygmo_model_season_outliers)
 
 sphygmo_model_age <- lmer(pulse_pressure_central ~ assigned_stove + age_baseline + 
@@ -367,7 +370,7 @@ sphygmo_model_age <- lmer(pulse_pressure_central ~ assigned_stove + age_baseline
 #  summary(sphygmo_model_age)
 
 sphygmo_model_age_int <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + 
-                              season + (1 | house_id), r00_model_data)
+                              season + (1 | house_id), r00_model_data_outliers_aix)
 #  summary(sphygmo_model_age_int)
 age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
 summary(age_int_emmeans)
@@ -378,7 +381,7 @@ sphygmo_model_bmi <- lmer(pulse_pressure_central ~ assigned_stove + bmi +
 #  summary(sphygmo_model_bmi)
 
 sphygmo_model_bmi_int <- lmer(pulse_pressure_central ~ assigned_stove*bmi_cat + 
-                              season + (1 | house_id), r00_model_data)
+                              season + (1 | house_id), r00_model_data_outliers_aix)
 #  summary(sphygmo_model_bmi_int)
 bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
 summary(bmi_int_emmeans)
@@ -392,6 +395,7 @@ plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove
 
 # Central Pulse Pressure Model Summaries and Plots
 ## Using season to account for time
+## 6 AIx outliers removed from CPP dataset for analyses: n = 1380
 ```{r}
 
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
@@ -405,7 +409,7 @@ tidy_sphygmo_model_season_6phases <- tidy(sphygmo_model_season_6phases, conf.int
 tidy_sphygmo_model_season_outliers <- tidy(sphygmo_model_season_outliers, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "6 AIx outliers removed", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "42 CPP outliers removed", "na")) 
 
 sphygmo_model_final_results <- rbind(tidy_sphygmo_model_season,
                                      tidy_sphygmo_model_season_6phases,
@@ -539,11 +543,11 @@ plot(sphygmo_model_season, main = "Central Pulse Pressure primary model",
 qqnorm(residuals(sphygmo_model_season), main = "Central Pulse Pressure primary model QQ Plot")
 
 plot(sphygmo_model_season_outliers, 
-     main = "Central Pulse Pressure - 6 AIx outliers removed", 
+     main = "Central Pulse Pressure - 42 CPP outliers removed", 
      xlab = "fitted values", ylab = "residuals")
 
 qqnorm(residuals(sphygmo_model_season_outliers), 
-       main = "Central Pulse Pressure - 6 AIx outliers removed QQ Plot")
+       main = "Central Pulse Pressure - 42 CPP outliers removed QQ Plot")
 
 
 #cpp_influential <- influence(sphygmo_model_season, obs = TRUE)
