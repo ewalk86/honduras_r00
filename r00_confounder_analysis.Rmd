@@ -1,0 +1,101 @@
+---
+title: "R00 Confounders Analysis"
+author: "Ethan Walker"
+date: "February 18, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 6)
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+---
+
+```{r}
+#load full datasets
+r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+
+#r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+```
+
+```{r}
+# Databases for Phases 1 and 2
+r00_model_data_p1 <- r00_full_joined_sphygmocor %>% 
+  filter(phase == 1)
+r00_model_data_p2 <- r00_full_joined_sphygmocor %>% 
+  filter(phase == 2)
+```
+
+# Simple linear models between potential confounders and AIx/CPP
+## Running models for Phases 1 and 2, separately
+```{r}
+#AIx
+aix_age_p1 <- lm(aug_index ~ as.numeric(age_baseline), data = r00_model_data_p1)
+tidy(aix_age_p1)
+aix_age_p2 <- lm(aug_index ~ as.numeric(age_baseline), data = r00_model_data_p2)
+tidy(aix_age_p2)
+
+aix_bmi_p1 <- lm(aug_index ~ as.numeric(bmi), data = r00_model_data_p1)
+tidy(aix_bmi_p1)
+aix_bmi_p2 <- lm(aug_index ~ as.numeric(bmi), data = r00_model_data_p2)
+tidy(aix_bmi_p2)
+
+aix_bed_p1 <- lm(aug_index ~ as.numeric(beds_new), data = r00_model_data_p1)
+tidy(aix_bed_p1)
+aix_bed_p2 <- lm(aug_index ~ as.numeric(beds_new), data = r00_model_data_p2)
+tidy(aix_bed_p2)
+
+# also try with split at median?
+aix_ses_p1 <- lm(aug_index ~ as.numeric(ses_materials), data = r00_model_data_p1)
+tidy(aix_ses_p1)
+aix_ses_p2 <- lm(aug_index ~ as.numeric(ses_materials), data = r00_model_data_p2)
+tidy(aix_ses_p2)
+
+aix_school_p1 <- lm(aug_index ~ as.numeric(school_self), data = r00_model_data_p1)
+tidy(aix_school_p1)
+aix_school_p2 <- lm(aug_index ~ as.numeric(school_self), data = r00_model_data_p2)
+tidy(aix_school_p2)
+
+# 1 >= 6 years
+aix_school_bi_p1 <- lm(aug_index ~ as.factor(school_bi), data = r00_model_data_p1)
+tidy(aix_school_bi_p1)
+aix_school_bi_p2 <- lm(aug_index ~ as.factor(school_bi), data = r00_model_data_p2)
+tidy(aix_school_bi_p2)
+
+aix_dds_p1 <- lm(aug_index ~ as.numeric(dds_total), data = r00_model_data_p1)
+tidy(aix_dds_p1)
+aix_dds_p2 <- lm(aug_index ~ as.numeric(dds_total), data = r00_model_data_p2)
+tidy(aix_dds_p2)
+
+aix_phys_act_p1 <- lm(aug_index ~ as.numeric(phys_act), data = r00_model_data_p1)
+tidy(aix_phys_act_p1)
+aix_phys_act_p2 <- lm(aug_index ~ as.numeric(phys_act), data = r00_model_data_p2)
+tidy(aix_phys_act_p2)
+
+
+```
+

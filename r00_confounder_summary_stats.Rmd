@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Summary Stats"
 author: "Ethan Walker"
-date: "11 Jan 2019"
+date: "18 Feb 2019"
 output: pdf_document
 ---
 
@@ -36,15 +36,45 @@ sec_stove_stats <- r00_full_joined_sphygmocor %>%
 table(sec_stove_stats$sec_stove)
 ```
 
+# Pregnancies
+## Current database says none reported across whole study?
+```{r}
+pregnancies <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, pregnant) %>% 
+  na.exclude(pregnant) %>% 
+  mutate(pregnant = as.numeric(pregnant)) %>% 
+  group_by(phase) %>% 
+  summarise(sum(pregnant))
+pregnancies
+```
 
-# Summary Stats for entire study population with Sphygmocor data
+# Self-reported smoking
+## Current database says only 1 self-reported smoking in last 6 months
+```{r}
+smoke <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, smoke_6m) %>% 
+  na.exclude(smoke_6m) %>% 
+  mutate(smoke_6m = as.numeric(smoke_6m)) 
+table(smoke$smoke_6m, smoke$phase)
+```
+
+# ETS - environmental tobacco smoke
+## Current database says only 1 self-reported smoking in last 6 months
+```{r}
+smoke <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, ets) %>% 
+  na.exclude(ets) %>% 
+  mutate(ets = as.numeric(ets)) 
+table(smoke$ets)
+```
+
+# Numeric summary stats for entire study population with Sphygmocor data
 ### Data from phases 1 and 2
 ### Sphygmocor malfunction during phase 2
 ```{r}
-### Why does total n not 230?
 summary_stats <- r00_full_joined_sphygmocor %>% 
   select(house_id, phase, age_baseline, height, weight, bmi, ses_materials,
-         beds_new, dds_total, aug_index) %>% 
+         beds_new, dds_total, phys_act, school_self, aug_index) %>% 
   na.exclude(aug_index) %>% 
   mutate("Baseline Age" = as.numeric(age_baseline), 
          "Height" = as.numeric(height), 
@@ -52,10 +82,12 @@ summary_stats <- r00_full_joined_sphygmocor %>%
          "Body Mass Index" = as.numeric(bmi), 
          "SES Materials" = as.numeric(ses_materials), 
          "Beds Per Person" = as.numeric(beds_new), 
-         "Dietary Diversity Score" = as.numeric(dds_total)) %>% 
+         "Dietary Diversity Score" = as.numeric(dds_total),
+         "School - years" = as.numeric(school_self),
+         "Phys Act" = as.numeric(phys_act)) %>% 
   filter(phase == 1 | phase == 2) %>% 
   select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
-         -beds_new, -dds_total, -aug_index) %>%
+         -beds_new, -dds_total, -aug_index, -phys_act, - school_self) %>%
   group_by(phase) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
@@ -70,13 +102,13 @@ kable(summary_stats, digits = 2)
 
 \pagebreak  
 
-# Summary Stats grouped by study arm
+# Numeric summary stats grouped by study arm
 ### Data from phases 1 and 2
 ### Sphygmocor malfunction during phase 2
 ```{r}
 summary_stats <- r00_full_joined_sphygmocor %>% 
-  select(study_arm, house_id, phase, age_baseline, height, weight, bmi, ses_materials,
-         beds_new, dds_total, aug_index) %>% 
+  select(house_id, phase, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total, phys_act, school_self, aug_index) %>% 
   na.exclude(aug_index) %>% 
   mutate("Baseline Age" = as.numeric(age_baseline), 
          "Height" = as.numeric(height), 
@@ -84,10 +116,12 @@ summary_stats <- r00_full_joined_sphygmocor %>%
          "Body Mass Index" = as.numeric(bmi), 
          "SES Materials" = as.numeric(ses_materials), 
          "Beds Per Person" = as.numeric(beds_new), 
-         "Dietary Diversity Score" = as.numeric(dds_total)) %>% 
+         "Dietary Diversity Score" = as.numeric(dds_total),
+         "School - years" = as.numeric(school_self),
+         "Phys Act" = as.numeric(phys_act)) %>% 
   filter(phase == 1 | phase == 2) %>% 
   select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
-         -beds_new, -dds_total, -aug_index) %>%
+         -beds_new, -dds_total, -aug_index, -phys_act, - school_self) %>%
   group_by(study_arm, phase) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
