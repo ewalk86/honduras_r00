@@ -1,7 +1,7 @@
 ---
 title: "Sphygmocor Summary Stats"
 author: "Ethan Walker"
-date: "11 Jan 2019"
+date: "18 Feb 2019"
 output: pdf_document
 ---
 
@@ -23,21 +23,33 @@ library(knitr)
 ---
 
 ```{r}
-#load full dataset
+#load full datasets
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
+
+
+```{r}
+one_phase <- r00_full_joined_sphygmocor %>% 
+  filter(!is.na(aug_index)) %>% 
+  summarize(n_distinct(phase))
+```
+
 
 # Variables grouped by study arm
 ### Data from phase 1 and 2
 ```{r}
-summary_stats_study_arm <- r00_full_joined_sphygmocor %>% 
+summary_stats_study_arm <- r00_model_data_outliers_removed %>% 
   select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+         "Pulse Pressure Central" = pulse_pressure_central,
+         "Pulse Pressure Amplification" = pulse_pressure_amp,
+         "Pulse Pressure Amplification Ratio" = pulse_pressure_amp_ratio) %>% 
   na.exclude("Augmentation Index") %>% 
   filter(phase == 1 | phase == 2) %>% 
   group_by(study_arm, phase) %>% 
@@ -57,7 +69,7 @@ kable(summary_stats_study_arm, digits = 2)
 # Variables grouped by study arm and age category
 ### Data from phase 3 and 4
 ```{r}
-summary_stats_study_arm <- r00_full_joined_sphygmocor %>% 
+summary_stats_study_arm <- r00_model_data_outliers_removed %>% 
   #split age at 40; >40 = 1, <=40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
   #split bmi at 26; >26 = 1, <=26 = 0
@@ -68,7 +80,9 @@ summary_stats_study_arm <- r00_full_joined_sphygmocor %>%
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+         "Pulse Pressure Central" = pulse_pressure_central,
+         "Pulse Pressure Amplification" = pulse_pressure_amp,
+         "Pulse Pressure Amplification Ratio" = pulse_pressure_amp_ratio) %>% 
   na.exclude("Augmentation Index") %>% 
   filter(phase == 3 | phase == 4) %>% 
   select(-phase) %>% 
@@ -89,7 +103,7 @@ kable(summary_stats_study_arm, digits = 2)
 # Variables grouped by study arm and BMI category
 ### Data from phase 3 and 4
 ```{r}
-summary_stats_study_arm <- r00_full_joined_sphygmocor %>% 
+summary_stats_study_arm <- r00_model_data_outliers_removed %>% 
   #split age at 40; >40 = 1, <=40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
   #split bmi at 26; >26 = 1, <=26 = 0
@@ -100,7 +114,9 @@ summary_stats_study_arm <- r00_full_joined_sphygmocor %>%
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+         "Pulse Pressure Central" = pulse_pressure_central,
+         "Pulse Pressure Amplification" = pulse_pressure_amp,
+         "Pulse Pressure Amplification Ratio" = pulse_pressure_amp_ratio) %>% 
   na.exclude("Augmentation Index") %>% 
   filter(phase == 3 | phase == 4) %>% 
   select(-phase) %>% 
@@ -121,14 +137,16 @@ kable(summary_stats_study_arm, digits = 2)
 # Variables grouped by age category
 ### Data from phase 1 and 2
 ```{r}
-summary_stats_age_cat <- r00_full_joined_sphygmocor %>% 
+summary_stats_age_cat <- r00_model_data_outliers_removed %>% 
   select(phase, study_arm, age_baseline, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+         "Pulse Pressure Central" = pulse_pressure_central,
+         "Pulse Pressure Amplification" = pulse_pressure_amp,
+         "Pulse Pressure Amplification Ratio" = pulse_pressure_amp_ratio) %>% 
   na.exclude("Augmentation Index") %>% 
   #split age at 40; >40 = 1, <40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">= 40", "< 40")) %>%
@@ -151,14 +169,16 @@ kable(summary_stats_age_cat, digits = 2)
 # Variables grouped by bmi category
 ### Data from phase 1 and 2
 ```{r}
-summary_stats_bmi_cat <- r00_full_joined_sphygmocor %>% 
+summary_stats_bmi_cat <- r00_model_data_outliers_removed %>% 
   select(phase, study_arm, age_baseline, bmi, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+         "Pulse Pressure Central" = pulse_pressure_central,
+         "Pulse Pressure Amplification" = pulse_pressure_amp,
+         "Pulse Pressure Amplification Ratio" = pulse_pressure_amp_ratio) %>% 
   na.exclude("Augmentation Index") %>% 
   #split age at 40; >40 = 1, <40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">= 40", "< 40")) %>%
@@ -182,14 +202,16 @@ kable(summary_stats_bmi_cat, digits = 2)
 
 # Variables grouped by phase
 ```{r}
-summary_stats_phase <- r00_full_joined_sphygmocor %>% 
+summary_stats_phase <- r00_model_data_outliers_removed %>% 
   select(phase, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+         "Pulse Pressure Central" = pulse_pressure_central,
+         "Pulse Pressure Amplification" = pulse_pressure_amp,
+         "Pulse Pressure Amplification Ratio" = pulse_pressure_amp_ratio) %>% 
   na.exclude("Augmentation Index") %>%
   group_by(phase) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
@@ -208,7 +230,7 @@ kable(summary_stats_phase, digits = 2)
 # Correlation Matrix
 ### Data from all 6 phases
 ```{r}
-summary_correlation <- r00_full_joined_sphygmocor %>% 
+summary_correlation <- r00_model_data_outliers_removed %>% 
   select(aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
          sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>% 
@@ -220,7 +242,7 @@ cor(summary_correlation)
 
 ```{r}
 ## summary to include in plots below (geom_text)
-sphygmocor_means <- r00_full_joined_sphygmocor %>% 
+sphygmocor_means <- r00_model_data_outliers_removed %>% 
   select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
          sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
@@ -247,9 +269,9 @@ sphygmocor_means <- r00_full_joined_sphygmocor %>%
 ## AIx
 # boxplots by phase, faceted by study arm
 # means plotted in red
-sphygmocor_boxplot <- r00_full_joined_sphygmocor %>% 
-  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
-         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+sphygmocor_boxplot <- r00_model_data_outliers_removed %>% 
+  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
+         sys_bp_central, dia_bp_central, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
   na.exclude(aug_index) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
@@ -262,7 +284,8 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
             color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(aug_index)`), 
             size = 2, color = "red") +
-  ggtitle("AIx by Phase and Study Arm", subtitle = "means in red") +
+  ggtitle("AIx by Phase and Study Arm", 
+          subtitle = "means in red; 4 outliers >75 and <-25 removed") +
   facet_wrap(~study_arm) +
   xlab("Study Phase") +
   ylab("AIx (%)") +
@@ -276,9 +299,9 @@ sphygmocor_boxplot
 ## AIx75
 # boxplots by phase, faceted by study arm
 # means plotted in red
-sphygmocor_boxplot <- r00_full_joined_sphygmocor %>% 
-  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
-         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+sphygmocor_boxplot <- r00_model_data_outliers_removed %>% 
+  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
+         sys_bp_central, dia_bp_central, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
   na.exclude(aug_index) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
@@ -305,9 +328,9 @@ sphygmocor_boxplot
 ## Central Pulse Pressure
 # boxplots by phase, faceted by study arm
 # means plotted in red
-sphygmocor_boxplot <- r00_full_joined_sphygmocor %>% 
-  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
-         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
+sphygmocor_boxplot <- r00_model_data_outliers_removed %>% 
+  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
+         sys_bp_central, dia_bp_central, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
   na.exclude(aug_index) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
@@ -320,10 +343,40 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
             color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_central)`), 
             size = 2, color = "red") +
-  ggtitle("Central Pulse Pressure by Phase and Study Arm", subtitle = "means in red") +
+  ggtitle("Central Pulse Pressure by Phase and Study Arm", 
+          subtitle = "means in red; 4 outliers >75 removed") +
   facet_wrap(~study_arm) +
   xlab("Study Phase") +
   ylab("Central Pulse Pressure (mmHg)") +
+  theme_bw()
+sphygmocor_boxplot
+```
+
+\pagebreak  
+
+```{r}
+## Peripheral Pulse Pressure
+# boxplots by phase, faceted by study arm
+# means plotted in red
+sphygmocor_boxplot <- r00_model_data_outliers_removed %>% 
+  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
+         sys_bp_central, dia_bp_central, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central) %>%
+  na.exclude(pulse_pressure_periph) %>% 
+  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
+  ggplot(aes(phase, pulse_pressure_periph)) +
+  geom_boxplot(aes(phase, pulse_pressure_periph)) +
+  geom_text(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`, 
+                                    label = round(`mean(pulse_pressure_periph)`, digits = 1)),
+                                    size = 4, vjust = -2.5, color = "red") +
+  geom_line(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`, group = study_arm), 
+            color = "red") +
+  geom_point(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`), 
+            size = 2, color = "red") +
+  ggtitle("Peripheral Pulse Pressure by Phase and Study Arm", subtitle = "means in red") +
+  facet_wrap(~study_arm) +
+  xlab("Study Phase") +
+  ylab("Peripheral Pulse Pressure (mmHg)") +
   theme_bw()
 sphygmocor_boxplot
 ```
@@ -353,32 +406,6 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
   facet_wrap(~study_arm) +
   xlab("Study Phase") +
   ylab("HR (bpm)") +
-  theme_bw()
-#sphygmocor_boxplot
-
-
-## Peripheral Pulse Pressure
-# boxplots by phase, faceted by study arm
-# means plotted in red
-sphygmocor_boxplot <- r00_full_joined_sphygmocor %>% 
-  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
-         sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
-         pulse_pressure_periph, pulse_pressure_central) %>%
-  na.exclude(pulse_pressure_periph) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
-  ggplot(aes(phase, pulse_pressure_periph)) +
-  geom_boxplot(aes(phase, pulse_pressure_periph)) +
-  geom_text(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`, 
-                                    label = round(`mean(pulse_pressure_periph)`, digits = 1)),
-                                    size = 4, vjust = -2.5, color = "red") +
-  geom_line(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`, group = study_arm), 
-            color = "red") +
-  geom_point(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_periph)`), 
-            size = 2, color = "red") +
-  ggtitle("Peripheral Pulse Pressure by Phase and Study Arm", subtitle = "means in red") +
-  facet_wrap(~study_arm) +
-  xlab("Study Phase") +
-  ylab("Peripheral Pulse Pressure (mmHg)") +
   theme_bw()
 #sphygmocor_boxplot
 
@@ -440,7 +467,7 @@ sphygmocor_boxplot <- r00_full_joined_sphygmocor %>%
 # Bar charts for phases completed
 ```{r}
 # Summary data to include in plot below
-phases_completed_sphygmocor <- r00_full_joined_sphygmocor %>%
+phases_completed_sphygmocor <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, aug_index) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
@@ -471,7 +498,7 @@ ggplot(phases_completed_sphygmocor, aes(x= phase, y = number, fill = study_arm))
 
 # Number of visits completed with Sphygmocor data
 ```{r}
-all_6_phases <- r00_full_joined_sphygmocor %>% 
+all_6_phases <- r00_model_data_outliers_removed %>% 
   select(house_id, phase, study_arm, aug_index) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
@@ -534,7 +561,7 @@ kable(data_dbp_check)
 # Histograms for distribution of measurements
 ```{r}
 # AIx
-aix_histogram <- r00_full_joined_sphygmocor %>%
+aix_histogram <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, aug_index) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
@@ -559,7 +586,7 @@ aix_histogram
 
 ```{r}
 # AIx75
-aix75_histogram <- r00_full_joined_sphygmocor %>%
+aix75_histogram <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, aug_index_75) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
@@ -584,7 +611,7 @@ aix75_histogram
 
 ```{r}
 # pulse_pressure_central
-pulse_pressure_central_histogram <- r00_full_joined_sphygmocor %>%
+pulse_pressure_central_histogram <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, pulse_pressure_central) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(pulse_pressure_central) %>% 
@@ -609,7 +636,7 @@ pulse_pressure_central_histogram
 
 ```{r}
 # HR
-hr_histogram <- r00_full_joined_sphygmocor %>%
+hr_histogram <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, hr) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(hr) %>% 
@@ -630,7 +657,7 @@ hr_histogram <- r00_full_joined_sphygmocor %>%
 #hr_histogram
 
 # pulse_pressure_periph
-pulse_pressure_peripheral_histogram <- r00_full_joined_sphygmocor %>%
+pulse_pressure_peripheral_histogram <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, pulse_pressure_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(pulse_pressure_periph) %>% 
@@ -648,10 +675,10 @@ pulse_pressure_peripheral_histogram <- r00_full_joined_sphygmocor %>%
           legend.position= "none",
           plot.title = element_text(hjust = 0.5)) +
    ggtitle("Peripheral Pulse Pressure by Phase") 
-#pulse_pressure_peripheral_histogram
+pulse_pressure_peripheral_histogram
 
 # sys_bp_central
-sys_bp_central_histogram <- r00_full_joined_sphygmocor %>%
+sys_bp_central_histogram <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, sys_bp_central) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(sys_bp_central) %>% 
@@ -672,7 +699,7 @@ sys_bp_central_histogram <- r00_full_joined_sphygmocor %>%
 #sys_bp_central_histogram
 
 # dia_bp_central
-dia_bp_central_histogram <- r00_full_joined_sphygmocor %>%
+dia_bp_central_histogram <- r00_model_data_outliers_removed %>%
   select(phase, study_arm, dia_bp_central) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(dia_bp_central) %>% 
@@ -700,7 +727,7 @@ dia_bp_central_histogram <- r00_full_joined_sphygmocor %>%
 ### Red = decrease from phase to phase for a participant
 ```{r}
 # AIx
-line_plots <- r00_full_joined_sphygmocor %>% 
+line_plots <- r00_model_data_outliers_removed %>% 
   select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
@@ -721,7 +748,7 @@ line_plots
 
 ```{r}
 # AIx 75
-line_plots <- r00_full_joined_sphygmocor %>% 
+line_plots <- r00_model_data_outliers_removed %>% 
   select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
@@ -742,7 +769,7 @@ line_plots
 
 ```{r}
 # Central Pulse Pressure
-line_plots <- r00_full_joined_sphygmocor %>% 
+line_plots <- r00_model_data_outliers_removed %>% 
   select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
   na.exclude(aug_index) %>% 
