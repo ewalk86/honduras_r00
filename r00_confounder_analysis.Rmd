@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Analysis"
 author: "Ethan Walker"
-date: "February 18, 2019"
+date: "19 Feb 2019"
 output: pdf_document
 ---
 
@@ -45,57 +45,230 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 ```{r}
 # Databases for Phases 1 and 2
 r00_model_data_p1 <- r00_full_joined_sphygmocor %>% 
-  filter(phase == 1)
+  filter(phase == 1) %>% 
+  #split age at 40; >=40 = 1, <40 = 0
+  mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
+  #split bmi at 26; >=26 = 1, <26 = 0
+  mutate(bmi_cat_26 = if_else(bmi >= 26, 1, 0)) %>% 
+  #split ses assets at 2; >2 = 1, <=2 = 0
+  mutate(ses_cat_2 = if_else(ses_materials > 2, 1, 0)) %>% 
+  mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
+  mutate(bpp_cat = if_else(beds_new >=0.5, 1, 0)) %>% 
+  mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
+  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0))
 r00_model_data_p2 <- r00_full_joined_sphygmocor %>% 
-  filter(phase == 2)
+  filter(phase == 2) %>% 
+  #split age at 40; >=40 = 1, <40 = 0
+  mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
+  #split bmi at 26; >=26 = 1, <26 = 0
+  mutate(bmi_cat_26 = if_else(bmi >= 26, 1, 0)) %>% 
+  #split ses assets at 2; >2 = 1, <=2 = 0
+  mutate(ses_cat_2 = if_else(ses_materials > 2, 1, 0)) %>% 
+  mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
+  mutate(bpp_cat = if_else(beds_new >=0.5, 1, 0)) %>% 
+  mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
+  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0))
 ```
 
-# Simple linear models between potential confounders and AIx/CPP
+# Simple linear models between potential confounders and AIx
 ## Running models for Phases 1 and 2, separately
 ```{r}
-#AIx
+#Age - numeric
 aix_age_p1 <- lm(aug_index ~ as.numeric(age_baseline), data = r00_model_data_p1)
 tidy(aix_age_p1)
 aix_age_p2 <- lm(aug_index ~ as.numeric(age_baseline), data = r00_model_data_p2)
 tidy(aix_age_p2)
 
+#Age - categorical
+aix_age_cat_p1 <- lm(aug_index ~ as.factor(age_cat_40), data = r00_model_data_p1)
+tidy(aix_age_cat_p1)
+aix_age_cat_p2 <- lm(aug_index ~ as.factor(age_cat_40), data = r00_model_data_p2)
+tidy(aix_age_cat_p2)
+
+
+#BMI - numeric
 aix_bmi_p1 <- lm(aug_index ~ as.numeric(bmi), data = r00_model_data_p1)
 tidy(aix_bmi_p1)
 aix_bmi_p2 <- lm(aug_index ~ as.numeric(bmi), data = r00_model_data_p2)
 tidy(aix_bmi_p2)
 
+#BMI - categorical
+aix_bmi_cat_p1 <- lm(aug_index ~ as.factor(bmi_cat_26), data = r00_model_data_p1)
+tidy(aix_bmi_cat_p1)
+aix_bmi_cat_p2 <- lm(aug_index ~ as.factor(bmi_cat_26), data = r00_model_data_p2)
+tidy(aix_bmi_cat_p2)
+
+#WHR - categorical
+aix_whr_cat_p1 <- lm(aug_index ~ as.factor(whr_cat), data = r00_model_data_p1)
+tidy(aix_whr_cat_p1)
+aix_whr_cat_p2 <- lm(aug_index ~ as.factor(whr_cat), data = r00_model_data_p2)
+tidy(aix_whr_cat_p2)
+
+
+#BPP - numeric
 aix_bed_p1 <- lm(aug_index ~ as.numeric(beds_new), data = r00_model_data_p1)
 tidy(aix_bed_p1)
 aix_bed_p2 <- lm(aug_index ~ as.numeric(beds_new), data = r00_model_data_p2)
 tidy(aix_bed_p2)
 
-# also try with split at median?
+#BPP - categorical
+aix_bed_cat_p1 <- lm(aug_index ~ as.factor(bpp_cat), data = r00_model_data_p1)
+tidy(aix_bed_cat_p1)
+aix_bed_cat_p2 <- lm(aug_index ~ as.factor(bpp_cat), data = r00_model_data_p2)
+tidy(aix_bed_cat_p2)
+
+
+#SES Materials - numeric
 aix_ses_p1 <- lm(aug_index ~ as.numeric(ses_materials), data = r00_model_data_p1)
 tidy(aix_ses_p1)
 aix_ses_p2 <- lm(aug_index ~ as.numeric(ses_materials), data = r00_model_data_p2)
 tidy(aix_ses_p2)
 
+#SES Materials - categorical
+aix_ses_cat_p1 <- lm(aug_index ~ as.factor(ses_cat_2), data = r00_model_data_p1)
+tidy(aix_ses_cat_p1)
+aix_ses_cat_p2 <- lm(aug_index ~ as.factor(ses_cat_2), data = r00_model_data_p2)
+tidy(aix_ses_cat_p2)
+
+
+#School years - numeric
 aix_school_p1 <- lm(aug_index ~ as.numeric(school_self), data = r00_model_data_p1)
 tidy(aix_school_p1)
 aix_school_p2 <- lm(aug_index ~ as.numeric(school_self), data = r00_model_data_p2)
 tidy(aix_school_p2)
 
+#School - categorical
 # 1 >= 6 years
 aix_school_bi_p1 <- lm(aug_index ~ as.factor(school_bi), data = r00_model_data_p1)
 tidy(aix_school_bi_p1)
 aix_school_bi_p2 <- lm(aug_index ~ as.factor(school_bi), data = r00_model_data_p2)
 tidy(aix_school_bi_p2)
 
+
+#DDS - numeric
 aix_dds_p1 <- lm(aug_index ~ as.numeric(dds_total), data = r00_model_data_p1)
 tidy(aix_dds_p1)
 aix_dds_p2 <- lm(aug_index ~ as.numeric(dds_total), data = r00_model_data_p2)
 tidy(aix_dds_p2)
 
+#DDS - categorical
+aix_dds_cat_p1 <- lm(aug_index ~ as.factor(dds_cat), data = r00_model_data_p1)
+tidy(aix_dds_cat_p1)
+aix_dds_cat_p2 <- lm(aug_index ~ as.factor(dds_cat), data = r00_model_data_p2)
+tidy(aix_dds_cat_p2)
+
+
+#Phys Act - numeric
 aix_phys_act_p1 <- lm(aug_index ~ as.numeric(phys_act), data = r00_model_data_p1)
 tidy(aix_phys_act_p1)
 aix_phys_act_p2 <- lm(aug_index ~ as.numeric(phys_act), data = r00_model_data_p2)
 tidy(aix_phys_act_p2)
 
+#Phys Act - categorical
+aix_phys_act_cat_p1 <- lm(aug_index ~ as.factor(phys_act_cat), data = r00_model_data_p1)
+tidy(aix_phys_act_cat_p1)
+aix_phys_act_cat_p2 <- lm(aug_index ~ as.factor(phys_act_cat), data = r00_model_data_p2)
+tidy(aix_phys_act_cat_p2)
+```
 
+# Simple linear models between potential confounders and CPP
+## Running models for Phases 1 and 2, separately
+```{r}
+#Age - numeric
+cpp_age_p1 <- lm(pulse_pressure_central ~ as.numeric(age_baseline), data = r00_model_data_p1)
+tidy(cpp_age_p1)
+cpp_age_p2 <- lm(pulse_pressure_central ~ as.numeric(age_baseline), data = r00_model_data_p2)
+tidy(cpp_age_p2)
+
+#Age - categorical
+cpp_age_cat_p1 <- lm(pulse_pressure_central ~ as.factor(age_cat_40), data = r00_model_data_p1)
+tidy(cpp_age_cat_p1)
+cpp_age_cat_p2 <- lm(pulse_pressure_central ~ as.factor(age_cat_40), data = r00_model_data_p2)
+tidy(cpp_age_cat_p2)
+
+
+#BMI - numeric
+cpp_bmi_p1 <- lm(pulse_pressure_central ~ as.numeric(bmi), data = r00_model_data_p1)
+tidy(cpp_bmi_p1)
+cpp_bmi_p2 <- lm(pulse_pressure_central ~ as.numeric(bmi), data = r00_model_data_p2)
+tidy(cpp_bmi_p2)
+
+#BMI - categorical
+cpp_bmi_cat_p1 <- lm(pulse_pressure_central ~ as.factor(bmi_cat_26), data = r00_model_data_p1)
+tidy(cpp_bmi_cat_p1)
+cpp_bmi_cat_p2 <- lm(pulse_pressure_central ~ as.factor(bmi_cat_26), data = r00_model_data_p2)
+tidy(cpp_bmi_cat_p2)
+
+#WHR - categorical
+cpp_whr_cat_p1 <- lm(pulse_pressure_central ~ as.factor(whr_cat), data = r00_model_data_p1)
+tidy(cpp_whr_cat_p1)
+cpp_whr_cat_p2 <- lm(pulse_pressure_central ~ as.factor(whr_cat), data = r00_model_data_p2)
+tidy(cpp_whr_cat_p2)
+
+
+#BPP - numeric
+cpp_bed_p1 <- lm(pulse_pressure_central ~ as.numeric(beds_new), data = r00_model_data_p1)
+tidy(cpp_bed_p1)
+cpp_bed_p2 <- lm(pulse_pressure_central ~ as.numeric(beds_new), data = r00_model_data_p2)
+tidy(cpp_bed_p2)
+
+#BPP - categorical
+cpp_bed_cat_p1 <- lm(pulse_pressure_central ~ as.factor(bpp_cat), data = r00_model_data_p1)
+tidy(cpp_bed_cat_p1)
+cpp_bed_cat_p2 <- lm(pulse_pressure_central ~ as.factor(bpp_cat), data = r00_model_data_p2)
+tidy(cpp_bed_cat_p2)
+
+
+#SES Materials - numeric
+cpp_ses_p1 <- lm(pulse_pressure_central ~ as.numeric(ses_materials), data = r00_model_data_p1)
+tidy(cpp_ses_p1)
+cpp_ses_p2 <- lm(pulse_pressure_central ~ as.numeric(ses_materials), data = r00_model_data_p2)
+tidy(cpp_ses_p2)
+
+#SES Materials - categorical
+cpp_ses_cat_p1 <- lm(pulse_pressure_central ~ as.factor(ses_cat_2), data = r00_model_data_p1)
+tidy(cpp_ses_cat_p1)
+cpp_ses_cat_p2 <- lm(pulse_pressure_central ~ as.factor(ses_cat_2), data = r00_model_data_p2)
+tidy(cpp_ses_cat_p2)
+
+
+#School years - numeric
+cpp_school_p1 <- lm(pulse_pressure_central ~ as.numeric(school_self), data = r00_model_data_p1)
+tidy(cpp_school_p1)
+cpp_school_p2 <- lm(pulse_pressure_central ~ as.numeric(school_self), data = r00_model_data_p2)
+tidy(cpp_school_p2)
+
+#School - categorical
+# 1 >= 6 years
+cpp_school_bi_p1 <- lm(pulse_pressure_central ~ as.factor(school_bi), data = r00_model_data_p1)
+tidy(cpp_school_bi_p1)
+cpp_school_bi_p2 <- lm(pulse_pressure_central ~ as.factor(school_bi), data = r00_model_data_p2)
+tidy(cpp_school_bi_p2)
+
+
+#DDS - numeric
+cpp_dds_p1 <- lm(pulse_pressure_central ~ as.numeric(dds_total), data = r00_model_data_p1)
+tidy(cpp_dds_p1)
+cpp_dds_p2 <- lm(pulse_pressure_central ~ as.numeric(dds_total), data = r00_model_data_p2)
+tidy(cpp_dds_p2)
+
+#DDS - categorical
+cpp_dds_cat_p1 <- lm(pulse_pressure_central ~ as.factor(dds_cat), data = r00_model_data_p1)
+tidy(cpp_dds_cat_p1)
+cpp_dds_cat_p2 <- lm(pulse_pressure_central ~ as.factor(dds_cat), data = r00_model_data_p2)
+tidy(cpp_dds_cat_p2)
+
+
+#Phys Act - numeric
+cpp_phys_act_p1 <- lm(pulse_pressure_central ~ as.numeric(phys_act), data = r00_model_data_p1)
+tidy(cpp_phys_act_p1)
+cpp_phys_act_p2 <- lm(pulse_pressure_central ~ as.numeric(phys_act), data = r00_model_data_p2)
+tidy(cpp_phys_act_p2)
+
+#Phys Act - categorical
+cpp_phys_act_cat_p1 <- lm(pulse_pressure_central ~ as.factor(phys_act_cat), data = r00_model_data_p1)
+tidy(cpp_phys_act_cat_p1)
+cpp_phys_act_cat_p2 <- lm(pulse_pressure_central ~ as.factor(phys_act_cat), data = r00_model_data_p2)
+tidy(cpp_phys_act_cat_p2)
 ```
 
