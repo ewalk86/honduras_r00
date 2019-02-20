@@ -25,6 +25,8 @@ library(knitr)
 ```{r}
 #load full dataset
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
 # Secondary Stove Use
@@ -39,10 +41,10 @@ table(sec_stove_stats$sec_stove)
 # Pregnancies
 ## Current database says none reported across whole study?
 ```{r}
-pregnancies <- r00_full_joined_sphygmocor %>% 
-  select(phase, pregnant) %>% 
+pregnancies <- r00_full_long %>% 
+  select(study_arm, pregnant) %>% 
   mutate(pregnant = as.numeric(pregnant)) %>% 
-  group_by(phase) %>% 
+  group_by(study_arm) %>% 
   summarise(sum(pregnant, na.rm=TRUE))
 pregnancies
 ```
@@ -50,7 +52,7 @@ pregnancies
 # ETS - environmental tobacco smoke and smoking past 6 months
 ## Current database says only 1 self-reported smoking in last 6 months
 ```{r}
-smoke_summary <- r00_full_joined_sphygmocor %>% 
+smoke_summary <- r00_full_long %>% 
   select(study_arm, phase, smoke_6m, ets) %>% 
   na.exclude(study_arm) %>% 
   mutate(smoke_6m = as.numeric(smoke_6m), ets = as.numeric(ets)) %>% 
@@ -62,13 +64,13 @@ smoke_summary
 ```
 
 # Summary stats for categorical confounders
-## Grouped by study arm
-## Phases 1 and 2 only
+## Phase 1 data
 ```{r}
-cat_summary_stats <- r00_full_joined_sphygmocor %>% 
-  filter(phase == 1 | phase == 2) %>% 
-  select(phase, study_arm, aug_index, school_bi, age_baseline,
+cat_summary_stats <- r00_full_long %>% 
+  select(phase, assigned_stove, school_bi, age_baseline,
          bmi, ses_materials, whr_cat, beds_new, dds_total, phys_act) %>% 
+  filter(phase == 1) %>% 
+  filter(!is.na(assigned_stove)) %>% 
   #split age at 40; >=40 = 1, <40 = 0
   mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
   #split bmi at 26; >=26 = 1, <26 = 0
@@ -80,7 +82,6 @@ cat_summary_stats <- r00_full_joined_sphygmocor %>%
   mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
   mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) %>% 
   mutate(phase = as.factor(phase),
-         aug_index = as.numeric(aug_index),
          school_bi = as.numeric(school_bi), 
          age_cat_40 = as.numeric(age_cat_40),
          bmi_cat_26 = as.numeric(bmi_cat_26),
@@ -89,7 +90,61 @@ cat_summary_stats <- r00_full_joined_sphygmocor %>%
          bpp_cat = as.numeric(bpp_cat),
          dds_cat = as.numeric(dds_cat),
          phys_act_cat = as.numeric(phys_act_cat)) %>%
-  na.exclude(aug_index) %>% 
+  summarise("Total _(n)" = n(),
+            "Total _(%)" = n()/n()*100,
+            "6+ yrs school _(n)" = sum(school_bi, na.rm=TRUE),
+            "6+ yrs school _(%)" = sum(school_bi, na.rm=TRUE)/n()*100,
+            "40+ y/o _(n)" = sum(age_cat_40, na.rm=TRUE),
+            "40+ y/o _(%)" = sum(age_cat_40, na.rm=TRUE)/n()*100,
+            "26+ BMI _(n)" = sum(bmi_cat_26, na.rm=TRUE),
+            "26+ BMI _(%)" = sum(bmi_cat_26, na.rm=TRUE)/n()*100,
+            "WHR - Obese _(n)" = sum(whr_cat, na.rm=TRUE),
+            "WHR - Obese _(%)" = sum(whr_cat, na.rm=TRUE)/n()*100,
+            "3+ SES Assets _(n)" = sum(ses_cat_2, na.rm=TRUE),
+            "3+ SES Assets _(%)" = sum(ses_cat_2, na.rm=TRUE)/n()*100,
+            "0.5+ Bed/Person _(n)" = sum(bpp_cat, na.rm=TRUE),
+            "0.5+ Bed/Person _(%)" = sum(bpp_cat, na.rm=TRUE)/n()*100,
+            "6+ Diet Diversity _(n)" = sum(dds_cat, na.rm=TRUE),
+            "6+ Diet Diversity _(%)" = sum(dds_cat, na.rm=TRUE)/n()*100,
+            "300+ Phys Act _(n)" = sum(phys_act_cat, na.rm=TRUE),
+            "300+ Phys Act _(%)" = sum(phys_act_cat, na.rm=TRUE)/n()*100) %>% 
+  gather(Var, value) %>% 
+  separate(Var, into = c("Variable", "stat"), sep = "_") %>% 
+  spread(stat, value) %>% 
+  arrange(desc(Variable)) %>% 
+  select(Variable, "(n)", "(%)") %>% 
+  rename("n" = "(n)", "%" = "(%)")
+kable(cat_summary_stats, digits = 0)
+```
+
+# Summary stats for categorical confounders
+## Grouped by study arm
+## Phase 1 data
+```{r}
+cat_summary_stats <- r00_full_long %>% 
+  select(phase, study_arm, assigned_stove, school_bi, age_baseline,
+         bmi, ses_materials, whr_cat, beds_new, dds_total, phys_act) %>% 
+  filter(phase == 1) %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  #split age at 40; >=40 = 1, <40 = 0
+  mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
+  #split bmi at 26; >=26 = 1, <26 = 0
+  mutate(bmi_cat_26 = if_else(bmi >= 26, 1, 0)) %>% 
+  #split ses assets at 2; >2 = 1, <=2 = 0
+  mutate(ses_cat_2 = if_else(ses_materials > 2, 1, 0)) %>% 
+  mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
+  mutate(bpp_cat = if_else(beds_new >=0.5, 1, 0)) %>% 
+  mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
+  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) %>% 
+  mutate(phase = as.factor(phase),
+         school_bi = as.numeric(school_bi), 
+         age_cat_40 = as.numeric(age_cat_40),
+         bmi_cat_26 = as.numeric(bmi_cat_26),
+         ses_cat_2 = as.numeric(ses_cat_2), 
+         whr_cat = as.numeric(whr_cat),
+         bpp_cat = as.numeric(bpp_cat),
+         dds_cat = as.numeric(dds_cat),
+         phys_act_cat = as.numeric(phys_act_cat)) %>%
   group_by(study_arm) %>% 
   summarise("Total _(n)" = n(),
             "Total _(%)" = n()/n()*100,
@@ -120,8 +175,8 @@ kable(cat_summary_stats, digits = 0)
 
 ## Grouped by phase
 ```{r}
-cat_summary_stats <- r00_full_joined_sphygmocor %>% 
-  #filter(phase == 1 | phase == 2) %>% 
+cat_summary_stats <- r00_full_long %>% 
+  filter(!is.na(assigned_stove)) %>% 
   select(house_id, phase, study_arm, aug_index, school_bi, age_baseline,
          bmi, ses_materials, whr_cat, beds_new, dds_total, phys_act) %>% 
   #split age at 40; >=40 = 1, <40 = 0
@@ -145,7 +200,6 @@ cat_summary_stats <- r00_full_joined_sphygmocor %>%
          bpp_cat = as.numeric(bpp_cat),
          dds_cat = as.numeric(dds_cat),
          phys_act_cat = as.numeric(phys_act_cat)) %>%
-  na.exclude(aug_index) %>% 
   group_by(phase) %>% 
   summarise("Total _(n)" = n(),
             "Total _(%)" = n()/n()*100,
@@ -175,14 +229,14 @@ kable(cat_summary_stats, digits = 0)
 ```
 
 # Numeric summary stats for entire study population with Sphygmocor data
-### Data from phases 1 and 2
-### Sphygmocor malfunction during phase 2
+### Data from phase 1
 ```{r}
-summary_stats <- r00_full_joined_sphygmocor %>% 
-  select(house_id, phase, age_baseline, height, weight, bmi, ses_materials,
-         beds_new, dds_total, phys_act, school_self, whr, aug_index) %>% 
-  na.exclude(aug_index) %>% 
-  mutate("Baseline Age" = as.numeric(age_baseline), 
+summary_stats <- r00_full_long %>% 
+  select(house_id, phase, assigned_stove, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total, phys_act, school_self, whr, cook_years) %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline),
+         "Cook Years" = as.numeric(cook_years),
          "Height" = as.numeric(height), 
          "Weight" = as.numeric(weight),
          "Waist/Hip Ratio" = as.numeric(whr), 
@@ -192,18 +246,54 @@ summary_stats <- r00_full_joined_sphygmocor %>%
          "Dietary Diversity Score" = as.numeric(dds_total),
          "School - years" = as.numeric(school_self),
          "Phys Act" = as.numeric(phys_act)) %>% 
-  filter(phase == 1 | phase == 2) %>% 
+  filter(phase == 1) %>% 
   select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
-         -beds_new, -dds_total, -aug_index, -phys_act, - school_self) %>%
+         -beds_new, -dds_total, -assigned_stove, -phys_act, - school_self, 
+         -whr, -cook_years) %>%
   group_by(phase) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
-                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+                     "_min" = min, "_max" = max), na.rm=TRUE) %>% 
   gather(var, value, -phase) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
   arrange(var, phase) %>% 
-  select(var, phase, n, mean, sd, median, max, min) %>% 
+  select(var, phase, mean, sd, min, median, max) %>% 
   rename("Variable" = var, "Phase" = phase)
+kable(summary_stats, digits = 2)
+```
+
+# Numeric summary stats for entire study population with Sphygmocor data
+### Data from phase 1
+### Grouped by study arm
+```{r}
+summary_stats <- r00_full_long %>% 
+  select(house_id, phase, assigned_stove, age_baseline, height, weight, bmi, ses_materials,
+         beds_new, dds_total, phys_act, school_self, whr, study_arm, cook_years) %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  mutate("Baseline Age" = as.numeric(age_baseline), 
+         "Cook Years" = as.numeric(cook_years),
+         "Height" = as.numeric(height), 
+         "Weight" = as.numeric(weight),
+         "Waist/Hip Ratio" = as.numeric(whr), 
+         "Body Mass Index" = as.numeric(bmi), 
+         "SES Materials" = as.numeric(ses_materials), 
+         "Beds Per Person" = as.numeric(beds_new), 
+         "Dietary Diversity Score" = as.numeric(dds_total),
+         "School - years" = as.numeric(school_self),
+         "Phys Act" = as.numeric(phys_act)) %>% 
+  filter(phase == 1) %>% 
+  select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
+         -beds_new, -dds_total, -assigned_stove, -phys_act, - school_self, 
+         -whr, -cook_years) %>%
+  group_by(phase, study_arm) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max), na.rm=TRUE) %>% 
+  gather(var, value, -phase, -study_arm) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, phase, study_arm) %>% 
+  select(var, phase, study_arm, mean, sd, min, median, max) %>% 
+  rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm)
 kable(summary_stats, digits = 2)
 ```
 

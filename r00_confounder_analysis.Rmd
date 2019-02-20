@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Analysis"
 author: "Ethan Walker"
-date: "19 Feb 2019"
+date: "20 Feb 2019"
 output: pdf_document
 ---
 
@@ -55,7 +55,7 @@ r00_model_data_p1 <- r00_full_joined_sphygmocor %>%
   mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
   mutate(bpp_cat = if_else(beds_new >=0.5, 1, 0)) %>% 
   mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
-  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0))
+  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) 
 r00_model_data_p2 <- r00_full_joined_sphygmocor %>% 
   filter(phase == 2) %>% 
   #split age at 40; >=40 = 1, <40 = 0
@@ -67,7 +67,7 @@ r00_model_data_p2 <- r00_full_joined_sphygmocor %>%
   mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
   mutate(bpp_cat = if_else(beds_new >=0.5, 1, 0)) %>% 
   mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
-  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0))
+  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) 
 ```
 
 # Simple linear models between potential confounders and AIx
@@ -85,6 +85,12 @@ tidy(aix_age_cat_p1)
 aix_age_cat_p2 <- lm(aug_index ~ as.factor(age_cat_40), data = r00_model_data_p2)
 tidy(aix_age_cat_p2)
 
+#Cook Years - categorical
+aix_cook_years_p1 <- lm(aug_index ~ as.numeric(cook_years), data = r00_model_data_p1)
+tidy(aix_cook_years_p1)
+aix_cook_years_p2 <- lm(aug_index ~ as.numeric(cook_years), data = r00_model_data_p2)
+tidy(aix_cook_years_p2)
+
 
 #BMI - numeric
 aix_bmi_p1 <- lm(aug_index ~ as.numeric(bmi), data = r00_model_data_p1)
@@ -97,6 +103,13 @@ aix_bmi_cat_p1 <- lm(aug_index ~ as.factor(bmi_cat_26), data = r00_model_data_p1
 tidy(aix_bmi_cat_p1)
 aix_bmi_cat_p2 <- lm(aug_index ~ as.factor(bmi_cat_26), data = r00_model_data_p2)
 tidy(aix_bmi_cat_p2)
+
+
+#WHR - numeric
+aix_whr_p1 <- lm(aug_index ~ as.numeric(whr), data = r00_model_data_p1)
+tidy(aix_whr_p1)
+aix_whr_p2 <- lm(aug_index ~ as.numeric(whr), data = r00_model_data_p2)
+tidy(aix_whr_p2)
 
 #WHR - categorical
 aix_whr_cat_p1 <- lm(aug_index ~ as.factor(whr_cat), data = r00_model_data_p1)
@@ -169,6 +182,26 @@ aix_phys_act_cat_p1 <- lm(aug_index ~ as.factor(phys_act_cat), data = r00_model_
 tidy(aix_phys_act_cat_p1)
 aix_phys_act_cat_p2 <- lm(aug_index ~ as.factor(phys_act_cat), data = r00_model_data_p2)
 tidy(aix_phys_act_cat_p2)
+
+
+
+tidy(aix_age_p1)
+tidy(aix_age_cat_p1)
+tidy(aix_cook_years_p1)
+tidy(aix_bmi_p1)
+tidy(aix_bmi_cat_p1)
+tidy(aix_whr_p1)
+tidy(aix_whr_cat_p1)
+tidy(aix_bed_p1)
+tidy(aix_bed_cat_p1)
+tidy(aix_ses_p1)
+tidy(aix_ses_cat_p1)
+tidy(aix_school_p1)
+tidy(aix_school_bi_p1)
+tidy(aix_dds_p1)
+tidy(aix_dds_cat_p1)
+tidy(aix_phys_act_p1)
+tidy(aix_phys_act_cat_p1)
 ```
 
 # Simple linear models between potential confounders and CPP
@@ -186,6 +219,12 @@ tidy(cpp_age_cat_p1)
 cpp_age_cat_p2 <- lm(pulse_pressure_central ~ as.factor(age_cat_40), data = r00_model_data_p2)
 tidy(cpp_age_cat_p2)
 
+#Cook Years - categorical
+cpp_cook_years_p1 <- lm(pulse_pressure_central ~ as.numeric(cook_years), data = r00_model_data_p1)
+tidy(cpp_cook_years_p1)
+cpp_cook_years_p2 <- lm(pulse_pressure_central ~ as.numeric(cook_years), data = r00_model_data_p2)
+tidy(cpp_cook_years_p2)
+
 
 #BMI - numeric
 cpp_bmi_p1 <- lm(pulse_pressure_central ~ as.numeric(bmi), data = r00_model_data_p1)
@@ -198,6 +237,13 @@ cpp_bmi_cat_p1 <- lm(pulse_pressure_central ~ as.factor(bmi_cat_26), data = r00_
 tidy(cpp_bmi_cat_p1)
 cpp_bmi_cat_p2 <- lm(pulse_pressure_central ~ as.factor(bmi_cat_26), data = r00_model_data_p2)
 tidy(cpp_bmi_cat_p2)
+
+
+#WHR - numeric
+cpp_whr_p1 <- lm(pulse_pressure_central ~ as.numeric(whr), data = r00_model_data_p1)
+tidy(cpp_whr_p1)
+cpp_whr_p2 <- lm(pulse_pressure_central ~ as.numeric(whr), data = r00_model_data_p2)
+tidy(cpp_whr_p2)
 
 #WHR - categorical
 cpp_whr_cat_p1 <- lm(pulse_pressure_central ~ as.factor(whr_cat), data = r00_model_data_p1)
@@ -270,5 +316,25 @@ cpp_phys_act_cat_p1 <- lm(pulse_pressure_central ~ as.factor(phys_act_cat), data
 tidy(cpp_phys_act_cat_p1)
 cpp_phys_act_cat_p2 <- lm(pulse_pressure_central ~ as.factor(phys_act_cat), data = r00_model_data_p2)
 tidy(cpp_phys_act_cat_p2)
+
+
+
+tidy(cpp_age_p1)
+tidy(cpp_age_cat_p1)
+tidy(cpp_cook_years_p1)
+tidy(cpp_bmi_p1)
+tidy(cpp_bmi_cat_p1)
+tidy(cpp_whr_p1)
+tidy(cpp_whr_cat_p1)
+tidy(cpp_bed_p1)
+tidy(cpp_bed_cat_p1)
+tidy(cpp_ses_p1)
+tidy(cpp_ses_cat_p1)
+tidy(cpp_school_p1)
+tidy(cpp_school_bi_p1)
+tidy(cpp_dds_p1)
+tidy(cpp_dds_cat_p1)
+tidy(cpp_phys_act_p1)
+tidy(cpp_phys_act_cat_p1)
 ```
 
