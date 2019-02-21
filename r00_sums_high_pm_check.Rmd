@@ -1,0 +1,38 @@
+---
+title: "R00 High PM SUMs Check"
+author: "Ethan Walker"
+date: "21 Feb 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 6)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(knitr)
+```
+
+```{r, message=FALSE}
+#r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+r00_sums_full_dataset <- read_rds("output/r00_sums_full_dataset.rds")
+
+r00_sums_all_phases_clean <- read_rds("output/r00_sums_all_phases_clean.rds")
+```
+
+# Filter by house_id and phase and check variables against high PM values
+```{r}
+data_check_summary <- r00_sums_full_dataset %>% 
+  #filter(phase == 1) %>% 
+  filter(house_id == "PER065")
+data_check_summary
+
+data_check_long <- r00_sums_all_phases_clean %>% 
+  filter(phase == 2) %>% 
+  filter(prim_or_sec == "P") %>%
+  filter(house_id == "CER023") 
+data_check_long
+```
