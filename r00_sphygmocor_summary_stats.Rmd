@@ -1,7 +1,7 @@
 ---
 title: "Sphygmocor Summary Stats"
 author: "Ethan Walker"
-date: "20 Feb 2019"
+date: "23 Feb 2019"
 output: pdf_document
 ---
 
@@ -29,13 +29,20 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
-
+# Assessing outliers by phase and study arm
 ```{r}
-one_phase <- r00_full_joined_sphygmocor %>% 
-  filter(!is.na(aug_index)) %>% 
-  summarize(n_distinct(phase))
-```
+r00_model_data_outliers_aix <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, study_arm, aug_index, pulse_pressure_central) %>% 
+  # removes 6 potential "outliers" with high or low AIx
+  filter(aug_index > 75 | aug_index < -25) %>% 
+  group_by(phase, study_arm)
 
+r00_model_data_outliers_cpp <- r00_full_joined_sphygmocor %>% 
+  select(house_id, phase, study_arm, aug_index, pulse_pressure_central) %>%
+  # removes 4 potential "outliers" > 75mmHg CPP
+  filter(pulse_pressure_central > 75) %>% 
+  group_by(phase, study_arm)
+```
 
 # Variables grouped by study arm
 ### Data from phase 1
@@ -233,7 +240,9 @@ kable(summary_stats_bmi_cat, digits = 2)
 # Variables grouped by phase
 ```{r}
 summary_stats_phase <- r00_model_data_outliers_removed %>% 
-  select(phase, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>%
+  select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
@@ -242,11 +251,10 @@ summary_stats_phase <- r00_model_data_outliers_removed %>%
          "Pulse Pressure Central" = pulse_pressure_central,
          "Pulse Pressure Amplification" = pulse_pressure_amp,
          "Pulse Pressure Amplification Ratio" = pulse_pressure_amp_ratio) %>% 
-  na.exclude("Augmentation Index") %>%
-  group_by(phase) %>% 
+  group_by(phase, study_arm) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
-  gather(var, value, -phase) %>% 
+  gather(var, value, -phase, -study_arm) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
   arrange(var, phase) %>% 
@@ -529,10 +537,11 @@ ggplot(phases_completed_sphygmocor, aes(x= phase, y = number, fill = study_arm))
 # Number of visits completed with Sphygmocor data
 ```{r}
 all_6_phases <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
   select(house_id, phase, study_arm, aug_index) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(aug_index) %>% 
-  group_by(study_arm, house_id) %>% 
+  filter(!is.na(aug_index)) %>% 
+  group_by(house_id, study_arm) %>% 
   summarize("# Visits" = n()) %>% 
   group_by(`# Visits`, study_arm) %>% 
   summarise(n = n())
