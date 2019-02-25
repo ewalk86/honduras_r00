@@ -288,6 +288,16 @@ sums_all_phases_clean <- sums_all_phases_full %>%
 
 write_rds(sums_all_phases_clean, "output/r00_sums_all_phases_clean.rds")
 write_csv(sums_all_phases_clean, "output/r00_sums_all_phases_clean.csv")
+
+sums_summary <- sums_all_phases_clean %>% 
+  ungroup() %>% 
+  select(house_id, phase, prim_or_sec) %>% 
+  mutate(house_id = as.factor(house_id),
+         phase = as.factor(phase),
+         prim_or_sec = factor(prim_or_sec, levels = c("P", "S", "T", "Q"))) %>% 
+  group_by(phase, prim_or_sec) %>% 
+  summarise(n_distinct(house_id))
+sums_summary
 ```
 
 # create new vars for events of temp > 38 - primary stoves
@@ -302,16 +312,15 @@ sums_temp38_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 38+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_38_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_38_new_event = if_else(lag(temp_38_new_event) == 3, 2, temp_38_new_event)) %>% 
+  mutate(temp_38_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_38_new_event = if_else(lead(temp_38_new_event) == 2, 3, temp_38_new_event)) %>% 
   mutate(temp_38_new_event = if_else(is.na(time_diff), 1, temp_38_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_38_new_event = if_else(lead(temp_38_new_event) == 1, 3, temp_38_new_event)) %>% 
-  mutate(temp_38_new_event = if_else(is.na(time_diff), 1, temp_38_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_38_new_event == 1 | temp_38_new_event == 2 | temp_38_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
-  # new events and first events now equal
+  # new events and first events now equal - 1=start, 3=end
   mutate(temp_38_event_time = if_else(temp_38_new_event == 2, 1, temp_38_new_event)) %>% 
   spread(temp_38_event_time, exposure_datetime) %>% 
   mutate(event_start = `1`, event_end = `3`) %>% 
@@ -320,7 +329,8 @@ sums_temp38_clean <- sums_all_phases_clean %>%
   mutate(event_time_38 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_38)) %>% 
   # new event count var
-  mutate(event_count_38 = n_distinct(event_start)) %>% 
+  group_by(house_id, phase) %>% 
+  mutate(event_count_38 = n_distinct(event_time_38)) %>% 
   select(house_id, phase, temp_38_percent, event_time_38, event_count_38) %>% 
   # calc mean event time per household, per phase
   mutate(prim_sum_mean_event_time_38 = mean(event_time_38)) %>% 
@@ -471,7 +481,7 @@ write_csv(sums_temp50_clean, "output/r00_sums_temp50_clean.csv")
 ```{r}
 sums_temp38_secondary_clean <- sums_all_phases_clean %>% 
   # filter for secondary stoves only
-  filter(prim_or_sec == "S") %>% 
+  filter(prim_or_sec %in% c("S", "T", "Q")) %>% 
   group_by(house_id, phase) %>%
   # filter for 38 degree temp threshold
   filter(temp_38 == 1) %>% 
@@ -515,7 +525,7 @@ write_csv(sums_temp38_secondary_clean, "output/sums_temp38_secondary_clean.csv")
 ```{r}
 sums_temp40_secondary_clean <- sums_all_phases_clean %>% 
   # filter for secondary stoves only
-  filter(prim_or_sec == "S") %>% 
+  filter(prim_or_sec %in% c("S", "T", "Q")) %>% 
   group_by(house_id, phase) %>%
   # filter for 40 degree temp threshold
   filter(temp_40 == 1) %>% 
@@ -559,7 +569,7 @@ write_csv(sums_temp40_secondary_clean, "output/sums_temp40_secondary_clean.csv")
 ```{r}
 sums_temp45_secondary_clean <- sums_all_phases_clean %>% 
   # filter for secondary stoves only
-  filter(prim_or_sec == "S") %>% 
+  filter(prim_or_sec %in% c("S", "T", "Q")) %>% 
   group_by(house_id, phase) %>%
   # filter for 45 degree temp threshold
   filter(temp_45 == 1) %>% 
@@ -603,7 +613,7 @@ write_csv(sums_temp45_secondary_clean, "output/sums_temp45_secondary_clean.csv")
 ```{r}
 sums_temp50_secondary_clean <- sums_all_phases_clean %>% 
   # filter for secondary stoves only
-  filter(prim_or_sec == "S") %>% 
+  filter(prim_or_sec %in% c("S", "T", "Q")) %>% 
   group_by(house_id, phase) %>%
   # filter for 50 degree temp threshold
   filter(temp_50 == 1) %>% 
@@ -632,6 +642,7 @@ sums_temp50_secondary_clean <- sums_all_phases_clean %>%
   mutate(event_count_50 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_50_percent, event_time_50, event_count_50) %>% 
   # calc mean event time per household, per phase
+  group_by(house_id, phase) %>% 
   mutate(sec_sum_mean_event_time_50 = mean(event_time_50)) %>% 
   rename(sec_sum_temp_percent_50 = temp_50_percent,
          sec_sum_event_count_50 = event_count_50) %>% 
@@ -652,7 +663,9 @@ r00_sums_full_dataset <- sums_temp38_clean %>%
   full_join(sums_temp38_secondary_clean, by = c("house_id", "phase")) %>%
   full_join(sums_temp40_secondary_clean, by = c("house_id", "phase")) %>%
   full_join(sums_temp45_secondary_clean, by = c("house_id", "phase")) %>% 
-  full_join(sums_temp50_secondary_clean, by = c("house_id", "phase"))
+  full_join(sums_temp50_secondary_clean, by = c("house_id", "phase")) %>% 
+  ungroup() %>% 
+  mutate(phase = as.factor(phase))
 
 # replace na values with 0
 r00_sums_full_dataset[is.na(r00_sums_full_dataset)] <- 0
@@ -669,8 +682,9 @@ write_csv(r00_sums_full_dataset, "output/r00_sums_full_dataset.csv")
 r00_full_repeated_by_phase <- r00_full_repeated_by_phase %>% 
   mutate(phase = as.factor(phase)) %>% 
   full_join(r00_sums_full_dataset, by = c("house_id", "phase"))
+  
 
 write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
-write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv")
+write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```
 

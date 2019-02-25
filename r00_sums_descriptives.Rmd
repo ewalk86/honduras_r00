@@ -1,7 +1,7 @@
 ---
 title: "SUMs Summary Statistics"
 author: "Ethan Walker"
-date: "21 Feb 2019"
+date: "25 Feb 2019"
 output: pdf_document
 ---
 
@@ -18,7 +18,22 @@ library(knitr)
 ```{r, message=FALSE}
 r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 
+sums_all_phases_clean <- read_rds("output/r00_sums_all_phases_clean.rds")
+
 #r00_sums_full_dataset <- read_rds("output/r00_sums_full_dataset.rds")
+```
+
+# SUMs per phase
+```{r}
+sums_summary <- sums_all_phases_clean %>% 
+  ungroup() %>% 
+  select(house_id, phase, prim_or_sec) %>% 
+  mutate(house_id = as.factor(house_id),
+         phase = as.factor(phase),
+         prim_or_sec = factor(prim_or_sec, levels = c("P", "S", "T", "Q"))) %>% 
+  group_by(phase, prim_or_sec) %>% 
+  summarise(n_distinct(house_id))
+kable(sums_summary)
 ```
 
 # Variables grouped by study arm
