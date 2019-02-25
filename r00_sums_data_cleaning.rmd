@@ -1,7 +1,7 @@
 ---
 title: "SUMs Data Cleaning"
 author: "Ethan Walker"
-date: "21 Feb 2019"
+date: "25 Feb 2019"
 output: pdf_document
 ---
 
@@ -356,12 +356,11 @@ sums_temp40_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 40+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_40_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_40_new_event = if_else(lag(temp_40_new_event) == 3, 2, temp_40_new_event)) %>% 
+  mutate(temp_40_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_40_new_event = if_else(lead(temp_40_new_event) == 2, 3, temp_40_new_event)) %>% 
   mutate(temp_40_new_event = if_else(is.na(time_diff), 1, temp_40_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_40_new_event = if_else(lead(temp_40_new_event) == 1, 3, temp_40_new_event)) %>% 
-  mutate(temp_40_new_event = if_else(is.na(time_diff), 1, temp_40_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_40_new_event == 1 | temp_40_new_event == 2 | temp_40_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
@@ -374,6 +373,7 @@ sums_temp40_clean <- sums_all_phases_clean %>%
   mutate(event_time_40 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_40)) %>% 
   # new event count var
+  group_by(house_id, phase) %>% 
   mutate(event_count_40 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_40_percent, event_time_40, event_count_40) %>% 
   # calc mean event time per household, per phase
@@ -400,12 +400,11 @@ sums_temp45_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 45+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_45_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_45_new_event = if_else(lag(temp_45_new_event) == 3, 2, temp_45_new_event)) %>% 
+  mutate(temp_45_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_45_new_event = if_else(lead(temp_45_new_event) == 2, 3, temp_45_new_event)) %>% 
   mutate(temp_45_new_event = if_else(is.na(time_diff), 1, temp_45_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_45_new_event = if_else(lead(temp_45_new_event) == 1, 3, temp_45_new_event)) %>% 
-  mutate(temp_45_new_event = if_else(is.na(time_diff), 1, temp_45_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_45_new_event == 1 | temp_45_new_event == 2 | temp_45_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
@@ -418,6 +417,7 @@ sums_temp45_clean <- sums_all_phases_clean %>%
   mutate(event_time_45 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_45)) %>% 
   # new event count var
+  group_by(house_id, phase) %>% 
   mutate(event_count_45 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_45_percent, event_time_45, event_count_45) %>% 
   # calc mean event time per household, per phase
@@ -444,12 +444,11 @@ sums_temp50_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 50+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_50_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_50_new_event = if_else(lag(temp_50_new_event) == 3, 2, temp_50_new_event)) %>% 
+  mutate(temp_50_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_50_new_event = if_else(lead(temp_50_new_event) == 2, 3, temp_50_new_event)) %>% 
   mutate(temp_50_new_event = if_else(is.na(time_diff), 1, temp_50_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_50_new_event = if_else(lead(temp_50_new_event) == 1, 3, temp_50_new_event)) %>% 
-  mutate(temp_50_new_event = if_else(is.na(time_diff), 1, temp_50_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_50_new_event == 1 | temp_50_new_event == 2 | temp_50_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
@@ -462,6 +461,7 @@ sums_temp50_clean <- sums_all_phases_clean %>%
   mutate(event_time_50 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_50)) %>% 
   # new event count var
+  group_by(house_id, phase) %>% 
   mutate(event_count_50 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_50_percent, event_time_50, event_count_50) %>% 
   # calc mean event time per household, per phase
@@ -489,12 +489,11 @@ sums_temp38_secondary_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 38+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_38_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_38_new_event = if_else(lag(temp_38_new_event) == 3, 2, temp_38_new_event)) %>% 
+  mutate(temp_38_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_38_new_event = if_else(lead(temp_38_new_event) == 2, 3, temp_38_new_event)) %>% 
   mutate(temp_38_new_event = if_else(is.na(time_diff), 1, temp_38_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_38_new_event = if_else(lead(temp_38_new_event) == 1, 3, temp_38_new_event)) %>% 
-  mutate(temp_38_new_event = if_else(is.na(time_diff), 1, temp_38_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_38_new_event == 1 | temp_38_new_event == 2 | temp_38_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
@@ -507,6 +506,7 @@ sums_temp38_secondary_clean <- sums_all_phases_clean %>%
   mutate(event_time_38 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_38)) %>% 
   # new event count var
+  group_by(house_id, phase) %>% 
   mutate(event_count_38 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_38_percent, event_time_38, event_count_38) %>% 
   # calc mean event time per household, per phase
@@ -533,12 +533,11 @@ sums_temp40_secondary_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 40+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_40_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_40_new_event = if_else(lag(temp_40_new_event) == 3, 2, temp_40_new_event)) %>% 
+  mutate(temp_40_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_40_new_event = if_else(lead(temp_40_new_event) == 2, 3, temp_40_new_event)) %>% 
   mutate(temp_40_new_event = if_else(is.na(time_diff), 1, temp_40_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_40_new_event = if_else(lead(temp_40_new_event) == 1, 3, temp_40_new_event)) %>% 
-  mutate(temp_40_new_event = if_else(is.na(time_diff), 1, temp_40_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_40_new_event == 1 | temp_40_new_event == 2 | temp_40_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
@@ -551,6 +550,7 @@ sums_temp40_secondary_clean <- sums_all_phases_clean %>%
   mutate(event_time_40 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_40)) %>% 
   # new event count var
+  group_by(house_id, phase) %>% 
   mutate(event_count_40 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_40_percent, event_time_40, event_count_40) %>% 
   # calc mean event time per household, per phase
@@ -577,12 +577,11 @@ sums_temp45_secondary_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 45+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_45_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_45_new_event = if_else(lag(temp_45_new_event) == 3, 2, temp_45_new_event)) %>% 
+  mutate(temp_45_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_45_new_event = if_else(lead(temp_45_new_event) == 2, 3, temp_45_new_event)) %>% 
   mutate(temp_45_new_event = if_else(is.na(time_diff), 1, temp_45_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_45_new_event = if_else(lead(temp_45_new_event) == 1, 3, temp_45_new_event)) %>% 
-  mutate(temp_45_new_event = if_else(is.na(time_diff), 1, temp_45_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_45_new_event == 1 | temp_45_new_event == 2 | temp_45_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
@@ -595,6 +594,7 @@ sums_temp45_secondary_clean <- sums_all_phases_clean %>%
   mutate(event_time_45 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_45)) %>% 
   # new event count var
+  group_by(house_id, phase) %>% 
   mutate(event_count_45 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_45_percent, event_time_45, event_count_45) %>% 
   # calc mean event time per household, per phase
@@ -621,12 +621,11 @@ sums_temp50_secondary_clean <- sums_all_phases_clean %>%
   # calc time difference between each datapoint that was 50+ temperature
   mutate(time_diff = exposure_datetime - exposure_datetime_lag) %>% 
   # first event of recording session = 1, new event (>1hr apart) = 2, end event = 3
-  mutate(temp_50_new_event = if_else(time_diff>3600, 3, 0)) %>% 
-  mutate(temp_50_new_event = if_else(lag(temp_50_new_event) == 3, 2, temp_50_new_event)) %>% 
+  mutate(temp_50_new_event = if_else(time_diff>3600, 2, 0)) %>% 
+  mutate(temp_50_new_event = if_else(lead(temp_50_new_event) == 2, 3, temp_50_new_event)) %>% 
   mutate(temp_50_new_event = if_else(is.na(time_diff), 1, temp_50_new_event)) %>% 
   ungroup() %>% 
   mutate(temp_50_new_event = if_else(lead(temp_50_new_event) == 1, 3, temp_50_new_event)) %>% 
-  mutate(temp_50_new_event = if_else(is.na(time_diff), 1, temp_50_new_event)) %>% 
   # keep only times when events began or ended
   filter(temp_50_new_event == 1 | temp_50_new_event == 2 | temp_50_new_event ==3) %>% 
   group_by(house_id, phase) %>% 
@@ -639,6 +638,7 @@ sums_temp50_secondary_clean <- sums_all_phases_clean %>%
   mutate(event_time_50 = (event_end - event_start)/60) %>% 
   filter(!is.na(event_time_50)) %>% 
   # new event count var
+  group_by(house_id, phase) %>% 
   mutate(event_count_50 = n_distinct(event_start)) %>% 
   select(house_id, phase, temp_50_percent, event_time_50, event_count_50) %>% 
   # calc mean event time per household, per phase
@@ -680,6 +680,7 @@ write_csv(r00_sums_full_dataset, "output/r00_sums_full_dataset.csv")
 # Join with full dataset and save
 ```{r}
 r00_full_repeated_by_phase <- r00_full_repeated_by_phase %>% 
+  select(-prim_sum_temp_percent_38:-sec_sum_mean_event_time_50) %>% 
   mutate(phase = as.factor(phase)) %>% 
   full_join(r00_sums_full_dataset, by = c("house_id", "phase"))
   

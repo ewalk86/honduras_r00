@@ -120,7 +120,7 @@ kable(summary_secondary_stoves, digits = 2)
 ## Number of events per household above specified temperature
 ## New event = > 1hr below specified temperature
 ## Primary Stoves
-## SUMs data from 1088 household visits
+## SUMs data from 1083 household visits
 ```{r}
 histogram_primary_stoves <- r00_full_repeated_by_phase %>% 
   select(phase, study_arm, 
