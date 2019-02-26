@@ -1,7 +1,7 @@
 ---
 title: "SUMs Summary Statistics"
 author: "Ethan Walker"
-date: "25 Feb 2019"
+date: "26 Feb 2019"
 output: pdf_document
 ---
 
@@ -36,11 +36,13 @@ sums_summary <- sums_all_phases_clean %>%
 kable(sums_summary)
 ```
 
+\pagebreak  
+
 # Variables grouped by study arm
 ## Primary stoves
 ```{r}
 summary_primary_stoves <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, 
+  select(study_arm, 
          "Events 38C" = prim_sum_event_count_38, 
          "Events 40C" = prim_sum_event_count_40, 
          "Events 45C" = prim_sum_event_count_45, 
@@ -55,22 +57,22 @@ summary_primary_stoves <- r00_full_repeated_by_phase %>%
          "Percent 50C" = prim_sum_temp_percent_50) %>% 
   na.exclude("Events 38C") %>% 
   #filter(phase == 1 | phase == 2) %>% 
-  group_by(study_arm, phase) %>% 
+  group_by(study_arm) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_sums" = n(),
                      "_total" = sum)) %>% 
-  gather(var, value, -study_arm, -phase) %>% 
+  gather(var, value, -study_arm) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
-  arrange(var, phase, study_arm) %>% 
-  select(var, phase, study_arm, sums, total, mean, sd, min, median, max) %>% 
+  arrange(var, study_arm) %>% 
+  select(var, study_arm, sums, total, mean, sd, min, median, max) %>% 
   mutate(mean = round(mean, digits = 2), 
          sd = round(sd, digits = 2), 
          median = round(median, digits = 2), 
          max = round(max, digits = 0), 
          min = round(min, digits = 0),
          total = round(total, digits = 0)) %>% 
-  rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm, "Total SUMs" = sums) 
+  rename("Variable" = var, "Study Arm" = study_arm, "Total SUMs" = sums) 
 kable(summary_primary_stoves, digits = 2)
 ```
 
@@ -80,7 +82,7 @@ kable(summary_primary_stoves, digits = 2)
 ## Secondary stoves
 ```{r}
 summary_secondary_stoves <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, 
+  select(study_arm, 
          "Events 38C" = sec_sum_event_count_38, 
          "Events 40C" = sec_sum_event_count_40, 
          "Events 45C" = sec_sum_event_count_45, 
@@ -95,22 +97,102 @@ summary_secondary_stoves <- r00_full_repeated_by_phase %>%
          "Percent 50C" = sec_sum_temp_percent_50) %>% 
   na.exclude("Events 38C") %>% 
   #filter(phase == 1 | phase == 2) %>% 
-  group_by(study_arm, phase) %>% 
+  group_by(study_arm) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_sums" = n(),
                      "_total" = sum)) %>% 
-  gather(var, value, -study_arm, -phase) %>% 
+  gather(var, value, -study_arm) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
-  arrange(var, phase, study_arm) %>% 
-  select(var, phase, study_arm, sums, total, mean, sd, min, median, max) %>% 
+  arrange(var, study_arm) %>% 
+  select(var, study_arm, sums, total, mean, sd, min, median, max) %>% 
   mutate(mean = round(mean, digits = 2), 
          sd = round(sd, digits = 2), 
          median = round(median, digits = 2), 
          max = round(max, digits = 0), 
          min = round(min, digits = 0),
          total = round(total, digits = 0)) %>% 
-  rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm, "Total SUMs" = sums) 
+  rename("Variable" = var, "Study Arm" = study_arm, "Total SUMs" = sums) 
+kable(summary_secondary_stoves, digits = 2)
+```
+
+\pagebreak  
+
+# Variables grouped by phase
+## Primary stoves
+```{r}
+summary_primary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, 
+         "Events 38C" = prim_sum_event_count_38, 
+         "Events 40C" = prim_sum_event_count_40, 
+         "Events 45C" = prim_sum_event_count_45, 
+         "Events 50C" = prim_sum_event_count_50,
+         "Mean event time 38C" = prim_sum_mean_event_time_38, 
+         "Mean event time 40C" = prim_sum_mean_event_time_40, 
+         "Mean event time 45C" = prim_sum_mean_event_time_45, 
+         "Mean event time 50C" = prim_sum_mean_event_time_50,
+         "Percent 38C" = prim_sum_temp_percent_38, 
+         "Percent 40C" = prim_sum_temp_percent_40, 
+         "Percent 45C" = prim_sum_temp_percent_45,
+         "Percent 50C" = prim_sum_temp_percent_50) %>% 
+  na.exclude("Events 38C") %>% 
+  #filter(phase == 1 | phase == 2) %>% 
+  group_by(phase) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_sums" = n(),
+                     "_total" = sum)) %>% 
+  gather(var, value, -phase) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, phase) %>% 
+  select(var, phase, sums, total, mean, sd, min, median, max) %>% 
+  mutate(mean = round(mean, digits = 2), 
+         sd = round(sd, digits = 2), 
+         median = round(median, digits = 2), 
+         max = round(max, digits = 0), 
+         min = round(min, digits = 0),
+         total = round(total, digits = 0)) %>% 
+  rename("Variable" = var, "Phase" = phase, "Total SUMs" = sums) 
+kable(summary_primary_stoves, digits = 2)
+```
+
+\pagebreak  
+
+# Variables grouped by phase
+## Secondary stoves
+```{r}
+summary_secondary_stoves <- r00_full_repeated_by_phase %>% 
+  select(phase, 
+         "Events 38C" = sec_sum_event_count_38, 
+         "Events 40C" = sec_sum_event_count_40, 
+         "Events 45C" = sec_sum_event_count_45, 
+         "Events 50C" = sec_sum_event_count_50,
+         "Mean event time 38C" = sec_sum_mean_event_time_38, 
+         "Mean event time 40C" = sec_sum_mean_event_time_40, 
+         "Mean event time 45C" = sec_sum_mean_event_time_45, 
+         "Mean event time 50C" = sec_sum_mean_event_time_50,
+         "Percent 38C" = sec_sum_temp_percent_38, 
+         "Percent 40C" = sec_sum_temp_percent_40, 
+         "Percent 45C" = sec_sum_temp_percent_45,
+         "Percent 50C" = sec_sum_temp_percent_50) %>% 
+  na.exclude("Events 38C") %>% 
+  #filter(phase == 1 | phase == 2) %>% 
+  group_by(phase) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_sums" = n(),
+                     "_total" = sum)) %>% 
+  gather(var, value, -phase) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, phase) %>% 
+  select(var, phase, sums, total, mean, sd, min, median, max) %>% 
+  mutate(mean = round(mean, digits = 2), 
+         sd = round(sd, digits = 2), 
+         median = round(median, digits = 2), 
+         max = round(max, digits = 0), 
+         min = round(min, digits = 0),
+         total = round(total, digits = 0)) %>% 
+  rename("Variable" = var, "Phase" = phase, "Total SUMs" = sums) 
 kable(summary_secondary_stoves, digits = 2)
 ```
 
