@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Summary Stats"
 author: "Ethan Walker"
-date: "19 Feb 2019"
+date: "27 Feb 2019"
 output: pdf_document
 ---
 
@@ -28,6 +28,21 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
+
+
+```{r}
+#Calculating and verifying method of categorizing waist/hip ratio
+#WHR greater than or equal to 0.85 is counted as abdominal obesity
+wthr_check <- r00_full_long %>% 
+  select(whr, phase, house_id, assigned_stove, study_arm) %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(phase == 1) %>% 
+  #split wthr at 0.85; >=0.85 = 1, <0.85 = 0
+  mutate(wthr_cat = if_else(whr >= 0.85, 1, 0)) %>%
+  group_by(study_arm) %>% 
+  summarize(sum(wthr_cat, na.rm=TRUE))
+```
+
 
 # Secondary Stove Use
 ```{r}
