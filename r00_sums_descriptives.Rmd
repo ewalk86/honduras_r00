@@ -1,5 +1,5 @@
 ---
-title: "SUMs Summary Statistics"
+title: "SUMs Descriptive Statistics"
 author: "Ethan Walker"
 date: "4 March 2019"
 output: pdf_document
