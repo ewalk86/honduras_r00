@@ -248,7 +248,8 @@ kable(cat_summary_stats, digits = 0)
 ```{r}
 summary_stats <- r00_full_long %>% 
   select(house_id, phase, assigned_stove, age_baseline, height, weight, bmi, ses_materials,
-         beds_new, dds_total, phys_act, school_self, whr, cook_years) %>% 
+         beds_new, dds_total, phys_act, school_self, whr, cook_years, salt, sugar,
+         manteca) %>% 
   filter(!is.na(assigned_stove)) %>% 
   mutate("Baseline Age" = as.numeric(age_baseline),
          "Cook Years" = as.numeric(cook_years),
@@ -260,11 +261,14 @@ summary_stats <- r00_full_long %>%
          "Beds Per Person" = as.numeric(beds_new), 
          "Dietary Diversity Score" = as.numeric(dds_total),
          "School - years" = as.numeric(school_self),
-         "Phys Act" = as.numeric(phys_act)) %>% 
+         "Phys Act" = as.numeric(phys_act),
+         "Salt" = as.numeric(salt),
+         "Sugar" = as.numeric(sugar),
+         "Manteca" = as.numeric(manteca)) %>% 
   filter(phase == 1) %>% 
   select(-house_id, -age_baseline, -height, -weight, -bmi, -ses_materials,
          -beds_new, -dds_total, -assigned_stove, -phys_act, - school_self, 
-         -whr, -cook_years) %>%
+         -whr, -cook_years, -salt, -sugar, -manteca) %>%
   group_by(phase) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max), na.rm=TRUE) %>% 

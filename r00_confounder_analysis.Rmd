@@ -55,7 +55,10 @@ r00_model_data_p1 <- r00_full_joined_sphygmocor %>%
   mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
   mutate(bpp_cat = if_else(beds_new >=0.5, 1, 0)) %>% 
   mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
-  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) 
+  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) %>% 
+  mutate(salt_cat = if_else(salt >=8, 1, 0)) %>% 
+  mutate(sugar_cat = if_else(sugar >=4, 1, 0)) %>% 
+  mutate(manteca_cat = if_else(manteca >=7, 1, 0))
 r00_model_data_p2 <- r00_full_joined_sphygmocor %>% 
   filter(phase == 2) %>% 
   #split age at 40; >=40 = 1, <40 = 0
@@ -67,7 +70,10 @@ r00_model_data_p2 <- r00_full_joined_sphygmocor %>%
   mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
   mutate(bpp_cat = if_else(beds_new >=0.5, 1, 0)) %>% 
   mutate(dds_cat = if_else(dds_total >=6, 1, 0)) %>% 
-  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) 
+  mutate(phys_act_cat = if_else(phys_act >=300, 1, 0)) %>% 
+  mutate(salt_cat = if_else(salt >=8, 1, 0)) %>% 
+  mutate(sugar_cat = if_else(sugar >=4, 1, 0)) %>% 
+  mutate(manteca_cat = if_else(manteca >=7, 1, 0))
 ```
 
 # Simple linear models between potential confounders and AIx
@@ -183,6 +189,41 @@ tidy(aix_phys_act_cat_p1)
 aix_phys_act_cat_p2 <- lm(aug_index ~ as.factor(phys_act_cat), data = r00_model_data_p2)
 tidy(aix_phys_act_cat_p2)
 
+#Salt - numeric
+aix_salt_p1 <- lm(aug_index ~ as.numeric(salt), data = r00_model_data_p1)
+tidy(aix_salt_p1)
+aix_salt_p2 <- lm(aug_index ~ as.numeric(salt), data = r00_model_data_p2)
+tidy(aix_salt_p2)
+
+#Salt - categorical
+aix_salt_cat_p1 <- lm(aug_index ~ as.factor(salt_cat), data = r00_model_data_p1)
+tidy(aix_salt_cat_p1)
+aix_salt_cat_p2 <- lm(aug_index ~ as.factor(salt_cat), data = r00_model_data_p2)
+tidy(aix_salt_cat_p2)
+
+#Sugar - numeric
+aix_sugar_p1 <- lm(aug_index ~ as.numeric(sugar), data = r00_model_data_p1)
+tidy(aix_sugar_p1)
+aix_sugar_p2 <- lm(aug_index ~ as.numeric(sugar), data = r00_model_data_p2)
+tidy(aix_sugar_p2)
+
+#Sugar - categorical
+aix_sugar_cat_p1 <- lm(aug_index ~ as.factor(sugar_cat), data = r00_model_data_p1)
+tidy(aix_sugar_cat_p1)
+aix_sugar_cat_p2 <- lm(aug_index ~ as.factor(sugar_cat), data = r00_model_data_p2)
+tidy(aix_sugar_cat_p2)
+
+#Manteca - numeric
+aix_manteca_p1 <- lm(aug_index ~ as.numeric(manteca), data = r00_model_data_p1)
+tidy(aix_manteca_p1)
+aix_manteca_p2 <- lm(aug_index ~ as.numeric(manteca), data = r00_model_data_p2)
+tidy(aix_manteca_p2)
+
+#Manteca - categorical
+aix_manteca_cat_p1 <- lm(aug_index ~ as.factor(manteca_cat), data = r00_model_data_p1)
+tidy(aix_manteca_cat_p1)
+aix_manteca_cat_p2 <- lm(aug_index ~ as.factor(manteca_cat), data = r00_model_data_p2)
+tidy(aix_manteca_cat_p2)
 
 
 tidy(aix_age_p1)
@@ -317,6 +358,41 @@ tidy(cpp_phys_act_cat_p1)
 cpp_phys_act_cat_p2 <- lm(pulse_pressure_central ~ as.factor(phys_act_cat), data = r00_model_data_p2)
 tidy(cpp_phys_act_cat_p2)
 
+#Salt - numeric
+cpp_salt_p1 <- lm(pulse_pressure_central ~ as.numeric(salt), data = r00_model_data_p1)
+tidy(cpp_salt_p1)
+cpp_salt_p2 <- lm(pulse_pressure_central ~ as.numeric(salt), data = r00_model_data_p2)
+tidy(cpp_salt_p2)
+
+#Salt - categorical
+cpp_salt_cat_p1 <- lm(pulse_pressure_central ~ as.factor(salt_cat), data = r00_model_data_p1)
+tidy(cpp_salt_cat_p1)
+cpp_salt_cat_p2 <- lm(pulse_pressure_central ~ as.factor(salt_cat), data = r00_model_data_p2)
+tidy(cpp_salt_cat_p2)
+
+#Sugar - numeric
+cpp_sugar_p1 <- lm(pulse_pressure_central ~ as.numeric(sugar), data = r00_model_data_p1)
+tidy(cpp_sugar_p1)
+cpp_sugar_p2 <- lm(pulse_pressure_central ~ as.numeric(sugar), data = r00_model_data_p2)
+tidy(cpp_sugar_p2)
+
+#Sugar - categorical
+cpp_sugar_cat_p1 <- lm(pulse_pressure_central ~ as.factor(sugar_cat), data = r00_model_data_p1)
+tidy(cpp_sugar_cat_p1)
+cpp_sugar_cat_p2 <- lm(pulse_pressure_central ~ as.factor(sugar_cat), data = r00_model_data_p2)
+tidy(cpp_sugar_cat_p2)
+
+#Manteca - numeric
+cpp_manteca_p1 <- lm(pulse_pressure_central ~ as.numeric(manteca), data = r00_model_data_p1)
+tidy(cpp_manteca_p1)
+cpp_manteca_p2 <- lm(pulse_pressure_central ~ as.numeric(manteca), data = r00_model_data_p2)
+tidy(cpp_manteca_p2)
+
+#Manteca - categorical
+cpp_manteca_cat_p1 <- lm(pulse_pressure_central ~ as.factor(manteca_cat), data = r00_model_data_p1)
+tidy(cpp_manteca_cat_p1)
+cpp_manteca_cat_p2 <- lm(pulse_pressure_central ~ as.factor(manteca_cat), data = r00_model_data_p2)
+tidy(cpp_manteca_cat_p2)
 
 
 tidy(cpp_age_p1)
