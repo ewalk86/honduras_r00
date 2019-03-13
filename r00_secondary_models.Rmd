@@ -32,12 +32,13 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 ```{r}
 #load full dataset
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
 
 ```{r}
 ## Data prep
-r00_model_data <- r00_full_joined_sphygmocor %>% 
+r00_model_data <- r00_full_long %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
   mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 
@@ -57,13 +58,7 @@ r00_model_data <- r00_full_joined_sphygmocor %>%
                                  labels = c("Traditional", "Justa"))) %>% 
   select(sys_bp_central, dia_bp_central, aug_index, aug_index_75, hr, pulse_pressure_periph,
          pulse_pressure_central, assigned_stove, house_id, age_cat, age_current, 
-         age_baseline, bmi_cat, bmi, phase, study_arm, date_sphygmo) %>% 
-  
-  ### Check for influential outliers - Currently excluding 6 observations ###
-  
-  mutate(aug_index = as.character(aug_index)) %>%
-  mutate(aug_index = if_else(aug_index < 75 & aug_index > -25, aug_index, "NA")) %>% 
-  mutate(aug_index = as.numeric(aug_index))
+         age_baseline, bmi_cat, bmi, phase, study_arm, date_sphygmo) 
 ```
 
 # Simple linear models between outcomes and potential confounders/effect modifiers
@@ -97,10 +92,12 @@ r00_arm1_phase2 <- r00_model_data %>%
   filter(study_arm == 1 & phase == 2)
 
 r00_arm1_phase3 <- r00_model_data %>% 
-  filter(study_arm == 1 & phase == 3)
+  filter(study_arm == 1 & phase == 3) %>% 
+  filter(!is.na(aug_index))
 
 r00_arm1_phase4 <- r00_model_data %>% 
-  filter(study_arm == 1 & phase == 4)
+  filter(study_arm == 1 & phase == 4) %>% 
+  filter(!is.na(aug_index))
 
 r00_arm1_phase5 <- r00_model_data %>% 
   filter(study_arm == 1 & phase == 5)
@@ -119,10 +116,12 @@ r00_arm2_phase2 <- r00_model_data %>%
   filter(study_arm == 2 & phase == 2)
 
 r00_arm2_phase3 <- r00_model_data %>% 
-  filter(study_arm == 2 & phase == 3)
+  filter(study_arm == 2 & phase == 3) %>% 
+  filter(!is.na(aug_index))
 
 r00_arm2_phase4 <- r00_model_data %>% 
-  filter(study_arm == 2 & phase == 4)
+  filter(study_arm == 2 & phase == 4) %>% 
+  filter(!is.na(aug_index))
 
 r00_arm2_phase5 <- r00_model_data %>% 
   filter(study_arm == 2 & phase == 5)

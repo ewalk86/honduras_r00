@@ -1,0 +1,58 @@
+---
+title: "Exposure Database Wide to Long"
+author: "Ethan Walker"
+date: "March 13, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(naniar)
+```
+
+```{r, message=FALSE}
+# Load data
+r00_exposure_wide <- read_xlsx("input/R00_exposure_wide_30July2018_by.xlsx")
+
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+```
+
+##### Convert Dataset from Wide to Long #####
+```{r}
+r00_exposure_long <- r00_exposure_wide %>% 
+  #transform data to long format with only 3 columns
+  gather(key = "variable", value = "value", -house_id) %>% 
+  #arrange data by house_id, descending
+  arrange(house_id)
+
+r00_exposure_repeated_by_phase <- r00_exposure_long %>%
+  #separate variable to create new phase column
+  separate(variable, c("variable", "phase"), sep = "_r00_p") %>%
+  mutate(value = if_else(value == ".", "99999", value)) %>% 
+  replace_with_na(replace = list(value = 99999)) %>% 
+  #spread out into columns, grouped by house_id and phase
+  group_by(house_id, phase) %>% 
+  spread(key = "variable", value = "value") %>% 
+  arrange(house_id) 
+
+# Check number of house_id
+n_distinct(r00_exposure_repeated_by_phase$house_id)
+```
+
+# Combine with cleaned health database
+```{r}
+r00_joined <- r00_full_long %>% 
+  full_join(r00_exposure_repeated_by_phase, by = c("house_id", "phase")) 
+```
+
+
+# Save datasets
+```{r}
+write_rds(r00_joined, "output/r00_full_repeated_by_phase.rds")
+write_csv(r00_joined, "output/r00_full_repeated_by_phase.csv", na = " ")
+```

@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Analysis"
 author: "Ethan Walker"
-date: "20 Feb 2019"
+date: "13 March 2019"
 output: pdf_document
 ---
 
@@ -39,12 +39,14 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 #load full datasets
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
 #r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
 ```{r}
 # Databases for Phases 1 and 2
-r00_model_data_p1 <- r00_full_joined_sphygmocor %>% 
+r00_model_data_p1 <- r00_full_long %>% 
   filter(phase == 1) %>% 
   #split age at 40; >=40 = 1, <40 = 0
   mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
@@ -59,7 +61,7 @@ r00_model_data_p1 <- r00_full_joined_sphygmocor %>%
   mutate(salt_cat = if_else(salt >=8, 1, 0)) %>% 
   mutate(sugar_cat = if_else(sugar >=4, 1, 0)) %>% 
   mutate(manteca_cat = if_else(manteca >=7, 1, 0))
-r00_model_data_p2 <- r00_full_joined_sphygmocor %>% 
+r00_model_data_p2 <- r00_full_long %>% 
   filter(phase == 2) %>% 
   #split age at 40; >=40 = 1, <40 = 0
   mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
@@ -224,6 +226,12 @@ aix_manteca_cat_p1 <- lm(aug_index ~ as.factor(manteca_cat), data = r00_model_da
 tidy(aix_manteca_cat_p1)
 aix_manteca_cat_p2 <- lm(aug_index ~ as.factor(manteca_cat), data = r00_model_data_p2)
 tidy(aix_manteca_cat_p2)
+
+#Kitchen temp - numeric
+aix_kitchen_temp_p1 <- lm(aug_index ~ as.numeric(mean_temp), data = r00_model_data_p1)
+tidy(aix_kitchen_temp_p1)
+aix_kitchen_temp_p2 <- lm(aug_index ~ as.numeric(mean_temp), data = r00_model_data_p2)
+tidy(aix_kitchen_temp_p2)
 
 
 tidy(aix_age_p1)
@@ -393,6 +401,13 @@ cpp_manteca_cat_p1 <- lm(pulse_pressure_central ~ as.factor(manteca_cat), data =
 tidy(cpp_manteca_cat_p1)
 cpp_manteca_cat_p2 <- lm(pulse_pressure_central ~ as.factor(manteca_cat), data = r00_model_data_p2)
 tidy(cpp_manteca_cat_p2)
+
+#Kitchen temp - numeric
+cpp_kitchen_temp_p1 <- lm(pulse_pressure_central ~ as.numeric(mean_temp), data = r00_model_data_p1)
+tidy(cpp_kitchen_temp_p1)
+cpp_kitchen_temp_p2 <- lm(pulse_pressure_central ~ as.numeric(mean_temp), data = r00_model_data_p2)
+tidy(cpp_kitchen_temp_p2)
+
 
 
 tidy(cpp_age_p1)
