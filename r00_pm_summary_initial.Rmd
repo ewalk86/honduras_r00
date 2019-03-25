@@ -1,0 +1,246 @@
+---
+title: "R00 Initial PM Summary Stats"
+author: "Ethan Walker"
+date: "March 25, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 6)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(knitr)
+```
+
+```{r, message=FALSE}
+r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
+```
+
+# Area PM observations per phase
+```{r}
+area_pm_summary <- r00_full_repeated_by_phase %>% 
+  filter(!is.na(study_arm)) %>% 
+  select(house_id, phase, a_twa, p_twa) %>% 
+  mutate(house_id = as.factor(house_id),
+         phase = as.factor(phase),
+         a_twa = as.numeric(a_twa),
+         p_twa = as.numeric(p_twa)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  group_by(phase) %>% 
+  summarise(n_distinct(house_id))
+kable(area_pm_summary, digits = 1)
+```
+
+# Personal PM observations per phase
+```{r}
+personal_pm_summary <- r00_full_repeated_by_phase %>% 
+  filter(!is.na(study_arm)) %>% 
+  select(house_id, phase, a_twa, p_twa) %>% 
+  mutate(house_id = as.factor(house_id),
+         phase = as.factor(phase),
+         a_twa = as.numeric(a_twa),
+         p_twa = as.numeric(p_twa)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  group_by(phase) %>% 
+  summarise(n_distinct(house_id))
+kable(personal_pm_summary, digits = 1)
+```
+
+\pagebreak  
+
+# Area PM grouped by study arm
+```{r}
+summary_area_pm_study_arm <- r00_full_repeated_by_phase %>% 
+  select(study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  group_by(study_arm) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(a_twa),
+            "SD" = sd(a_twa), 
+            "Min" = min(a_twa), 
+            "Median" = median(a_twa),
+            "Max" = max(a_twa))
+kable(summary_area_pm_study_arm, digits = 1)
+```
+
+# Personal PM grouped by study arm
+```{r}
+summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>% 
+  select(study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  group_by(study_arm) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(p_twa),
+            "SD" = sd(p_twa), 
+            "Min" = min(p_twa), 
+            "Median" = median(p_twa),
+            "Max" = max(p_twa))
+kable(summary_personal_pm_study_arm, digits = 1)
+```
+
+\pagebreak  
+
+# Area PM grouped by phase and study arm
+```{r}
+summary_area_pm_phase <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  group_by(phase, study_arm) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(a_twa),
+            "SD" = sd(a_twa), 
+            "Min" = min(a_twa), 
+            "Median" = median(a_twa),
+            "Max" = max(a_twa))
+kable(summary_area_pm_phase, digits = 1)
+```
+
+# Personal PM grouped by phase and study arm
+```{r}
+summary_personal_pm_phase <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  group_by(phase, study_arm) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(p_twa),
+            "SD" = sd(p_twa), 
+            "Min" = min(p_twa), 
+            "Median" = median(p_twa),
+            "Max" = max(p_twa))
+kable(summary_personal_pm_phase, digits = 1)
+```
+
+\pagebreak  
+
+# Area PM grouped by assigned stove type
+```{r}
+summary_area_pm_stove <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  group_by(assigned_stove) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(a_twa),
+            "SD" = sd(a_twa), 
+            "Min" = min(a_twa), 
+            "Median" = median(a_twa),
+            "Max" = max(a_twa))
+kable(summary_area_pm_stove, digits = 1)
+```
+
+# Personal PM grouped by assigned stove type
+```{r}
+summary_personal_pm_stove <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  group_by(assigned_stove) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(p_twa),
+            "SD" = sd(p_twa), 
+            "Min" = min(p_twa), 
+            "Median" = median(p_twa),
+            "Max" = max(p_twa))
+kable(summary_personal_pm_stove, digits = 1)
+```
+
+\pagebreak  
+
+# Area PM boxplots by study arm and phase
+```{r}
+area_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, a_twa)) +
+  facet_wrap(~phase)
+area_pm_boxplot
+
+log_area_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, a_twa) %>% 
+  mutate(log_a_twa = log(a_twa)) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, log_a_twa)) +
+  facet_wrap(~phase)
+log_area_pm_boxplot
+```
+
+\pagebreak  
+
+# Personal PM boxplots by study arm and phase
+```{r}
+personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, p_twa)) +
+  facet_wrap(~phase)
+personal_pm_boxplot
+
+log_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, p_twa) %>% 
+  mutate(log_p_twa = log(p_twa)) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(study_arm, log_p_twa)) +
+  facet_wrap(~phase)
+log_personal_pm_boxplot
+```
+
+
+\pagebreak  
+
+# Area PM boxplots by assigned stove
+```{r}
+area_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(assigned_stove, a_twa)) 
+area_pm_boxplot
+
+log_area_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, a_twa) %>% 
+  mutate(log_a_twa = log(a_twa)) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(assigned_stove, log_a_twa)) 
+log_area_pm_boxplot
+```
+
+\pagebreak  
+
+# Personal PM boxplots by assigned stove
+```{r}
+personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(assigned_stove, p_twa)) 
+personal_pm_boxplot
+
+log_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, p_twa) %>% 
+  mutate(log_p_twa = log(p_twa)) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes(assigned_stove, log_p_twa)) 
+log_personal_pm_boxplot
+```
+

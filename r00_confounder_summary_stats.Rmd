@@ -98,6 +98,19 @@ cor(prim_sums_kitchen_temp)
 cor(sec_sums_kitchen_temp)
 ```
 
+# Summary stats for all phases, by study arm
+```{r}
+summary_stats <- r00_full_long %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
+  mutate(bmi_cat_26 = if_else(bmi >= 26, 1, 0)) %>% 
+  mutate(whr_cat = if_else(whr_cat == "obese", 1, 0)) %>% 
+  select(aug_index, study_arm, age_cat_40, bmi_cat_26, whr_cat) %>% 
+  filter(!is.na(aug_index)) %>% 
+  group_by(study_arm, whr_cat) %>% 
+  summarise(n())
+kable(summary_stats, digits = 2)
+```
 
 # Summary stats for categorical confounders
 ## Phase 1 data

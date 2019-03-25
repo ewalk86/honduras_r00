@@ -1,0 +1,66 @@
+---
+title: "R00 Clean Final PM Database"
+author: "Ethan Walker"
+date: "March 25, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(naniar)
+```
+
+```{r, message=FALSE}
+# Load data
+r00_area_pm <- read_xlsx("input/r00_area_pm_database.xlsx")
+r00_personal_pm <- read_xlsx("input/r00_personal_pm_database.xlsx")
+
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+```
+
+##### Clean personal and area databases #####
+```{r}
+r00_area_pm_clean <- r00_area_pm %>% 
+  rename_all(tolower) %>% 
+  rename(filter_id_area = filter_id) %>% 
+  separate(phase, c("p", "phase"), sep = "P") %>% 
+  select(-p, -study_arm)
+
+r00_personal_pm_clean <- r00_personal_pm %>% 
+  rename_all(tolower) %>% 
+  rename(filter_id_personal = filter_id, 
+         cartridge_personal = cartridge, 
+         cyclone_personal = cyclone) %>% 
+  separate(phase, c("p", "phase"), sep = "P") %>% 
+  select(-p, -study_arm)
+```
+
+# Combine personal and area databases
+```{r}
+r00_pm_joined <- r00_personal_pm_clean %>% 
+  full_join(r00_area_pm_clean, by = c("house_id", "phase")) 
+```
+
+# Combine with cleaned health database
+```{r}
+r00_full_joined <- r00_full_long %>% 
+  full_join(r00_pm_joined, by = c("house_id", "phase")) 
+```
+
+
+# Save datasets
+```{r}
+write_rds(r00_pm_joined, "output/r00_pm_final.rds")
+write_csv(r00_pm_joined, "output/r00_pm_final.csv", na = " ")
+
+write_rds(r00_full_joined, "output/r00_health_pm_joined.rds")
+write_csv(r00_full_joined, "output/r00_health_pm_joined.csv", na = " ")
+
+write_rds(r00_full_joined, "output/r00_full_repeated_by_phase.rds")
+write_csv(r00_full_joined, "output/r00_full_repeated_by_phase.csv", na = " ")
+```

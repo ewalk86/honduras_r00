@@ -33,12 +33,16 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 #load full dataset
 r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+# USE THIS DATASET FOR ANALYSES!!!
+## Removes values >75 for AIx and CPP, and <-25 for AIx
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
 
 ```{r}
 ## Data prep
-r00_model_data <- r00_full_long %>% 
+r00_model_data <- r00_model_data_outliers_removed %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
   mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 

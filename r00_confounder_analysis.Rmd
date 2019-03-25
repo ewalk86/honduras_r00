@@ -41,12 +41,12 @@ r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
-#r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
 ```{r}
 # Databases for Phases 1 and 2
-r00_model_data_p1 <- r00_full_long %>% 
+r00_model_data_p1 <- r00_model_data_outliers_removed %>% 
   filter(phase == 1) %>% 
   #split age at 40; >=40 = 1, <40 = 0
   mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
@@ -61,7 +61,7 @@ r00_model_data_p1 <- r00_full_long %>%
   mutate(salt_cat = if_else(salt >=8, 1, 0)) %>% 
   mutate(sugar_cat = if_else(sugar >=4, 1, 0)) %>% 
   mutate(manteca_cat = if_else(manteca >=7, 1, 0))
-r00_model_data_p2 <- r00_full_long %>% 
+r00_model_data_p2 <- r00_model_data_outliers_removed %>% 
   filter(phase == 2) %>% 
   #split age at 40; >=40 = 1, <40 = 0
   mutate(age_cat_40 = if_else(age_baseline >= 40, 1, 0)) %>% 
@@ -251,6 +251,13 @@ tidy(aix_dds_p1)
 tidy(aix_dds_cat_p1)
 tidy(aix_phys_act_p1)
 tidy(aix_phys_act_cat_p1)
+tidy(aix_salt_p1)
+tidy(aix_salt_cat_p1)
+tidy(aix_sugar_p1)
+tidy(aix_sugar_cat_p1)
+tidy(aix_manteca_p1)
+tidy(aix_manteca_cat_p1)
+tidy(aix_kitchen_temp_p1)
 ```
 
 # Simple linear models between potential confounders and CPP
@@ -427,5 +434,12 @@ tidy(cpp_dds_p1)
 tidy(cpp_dds_cat_p1)
 tidy(cpp_phys_act_p1)
 tidy(cpp_phys_act_cat_p1)
+tidy(cpp_salt_p1)
+tidy(cpp_salt_cat_p1)
+tidy(cpp_sugar_p1)
+tidy(cpp_sugar_cat_p1)
+tidy(cpp_manteca_p1)
+tidy(cpp_manteca_cat_p1)
+tidy(cpp_kitchen_temp_p1)
 ```
 

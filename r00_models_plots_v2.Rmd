@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 Models and Plots"
 author: "Ethan Walker"
-date: "4 March 2019"
+date: "14 March 2019"
 output: pdf_document
 ---
 
@@ -162,10 +162,6 @@ tidy(sphygmo_model_season, conf.int = TRUE)
 sphygmo_model_season_6phases <- lmer(aug_index ~ assigned_stove + season + 
                           (1 | house_id), r00_model_data_6phases)
 #  summary(sphygmo_model_6phases)
-
-sphygmo_model_season_outliers <- lmer(aug_index ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_outliers_aix)
-#  summary(sphygmo_model_season_outliers)
 
 sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_baseline + season + 
                           (1 | house_id), r00_model_data)
@@ -388,10 +384,6 @@ tidy(sphygmo_model_season, conf.int = TRUE)
 sphygmo_model_season_6phases <- lmer(pulse_pressure_central ~ assigned_stove + season +
                           (1 | house_id), r00_model_data_6phases)
 #  summary(sphygmo_model_season_6phases)
-
-sphygmo_model_season_outliers <- lmer(pulse_pressure_central ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_outliers_cpp)
-#  summary(sphygmo_model_season_outliers)
 
 sphygmo_model_age <- lmer(pulse_pressure_central ~ assigned_stove + age_baseline + 
                           season +  (1 | house_id), r00_model_data)
