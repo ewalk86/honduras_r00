@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 PM Models and Plots"
 author: "Ethan Walker"
-date: "February 25, 2019"
+date: "April 2, 2019"
 output: pdf_document
 ---
 
@@ -35,17 +35,34 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 ```{r}
 #load full dataset
-r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
+# USE THIS DATASET FOR ANALYSES!!!
+## Removes values >75 for AIx and CPP, and <-25 for AIx
+```{r}
+r00_model_data_outliers_removed <- r00_full_repeated_by_phase %>% 
+  # removes 6 potential "outliers" with high or low AIx
+  # removes 4 potential "outliers" > 75mmHg CPP
+  filter(aug_index < 75 | is.na(aug_index)) %>% 
+  filter(aug_index > -25 | is.na(aug_index)) %>% 
+  filter(pulse_pressure_central < 75 | is.na(pulse_pressure_central))
+write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed.rds")
+```
+
 
 ```{r}
 ## Data prep
-r00_model_data <- r00_full_joined_sphygmocor %>% 
+r00_model_data <- r00_model_data_outliers_removed %>% 
+  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central, hr, bmi, 
+         whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
+         dds_total, phys_act, school_self, beds_new, ses_materials, 
+         a_twa, p_twa) %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
   mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
   mutate(aug_index = as.numeric(aug_index)) %>% 
@@ -54,6 +71,12 @@ r00_model_data <- r00_full_joined_sphygmocor %>%
   mutate(pulse_pressure_central = as.numeric(pulse_pressure_central)) %>% 
   mutate(hr = as.numeric(hr)) %>% 
   mutate(bmi = as.numeric(bmi)) %>% 
+  mutate(whr = as.numeric(whr)) %>% 
+  mutate(dds_total = as.numeric(dds_total)) %>% 
+  mutate(phys_act = as.numeric(phys_act)) %>% 
+  mutate(beds_new = as.numeric(beds_new)) %>% 
+  mutate(ses_materials = as.numeric(ses_materials)) %>% 
+  mutate(school_self = as.numeric(school_self)) %>%
   mutate(age_baseline = as.numeric(age_baseline)) %>% 
   mutate(phase = as.factor(phase)) %>%
   mutate(house_id = as.factor(house_id)) %>%
@@ -65,7 +88,10 @@ r00_model_data <- r00_full_joined_sphygmocor %>%
   mutate(bmi_cat = as.factor(bmi_cat)) %>%
   mutate(season = as.factor(season)) %>%
   mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
-                                 labels = c("Traditional", "Justa"))) 
+                                 labels = c("Traditional", "Justa"))) %>% 
+  #standardizing based on IQR
+  mutate(a_twa_iqr = as.numeric(a_twa/200)) %>% 
+  mutate(p_twa_iqr = as.numeric(p_twa/75))
 
 
 r00_model_data_6phases <- r00_model_data %>% 
@@ -73,34 +99,46 @@ r00_model_data_6phases <- r00_model_data %>%
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
   filter(sum(phase_complete) == 6)
-
-r00_model_data_baseline <- r00_model_data %>% 
-  filter(phase == 1)
-r00_model_data_p2 <- r00_model_data %>% 
-  filter(phase == 2)
-r00_model_data_p3 <- r00_model_data %>% 
-  filter(phase == 3)
-r00_model_data_p4 <- r00_model_data %>% 
-  filter(phase == 4)
-r00_model_data_p5 <- r00_model_data %>% 
-  filter(phase == 5)
-r00_model_data_p6 <- r00_model_data %>% 
-  filter(phase == 6)
 ```
 
 
 \pagebreak  
 
-# AIx analyses assessing Age and BMI as interaction terms
+# Primary analyses with a priori confounders
 ```{r}
 ## Model Summaries
 ## Honduras R00 Initial AIx Models
 ## Base model using season to account for time
+## age_baseline + whr + phys_act + dds_total + beds_new + ses_materials + school_self
 
-sphygmo_model_season <- lmer(aug_index ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_season)
+aix_model_apm <- lmer(aug_index ~ a_twa_iqr + season + age_baseline +
+                             whr + phys_act + dds_total + beds_new +
+                             ses_materials + school_self +
+                             (1 | house_id), r00_model_data)
+summary(aix_model_apm)
 
+aix_model_ppm <- lmer(aug_index ~ p_twa_iqr + season + age_baseline +
+                             whr + phys_act + dds_total + beds_new +
+                             ses_materials + school_self +
+                             (1 | house_id), r00_model_data)
+summary(aix_model_ppm)
+
+
+cpp_model_apm <- lmer(pulse_pressure_central ~ a_twa_iqr + season + age_baseline +
+                             whr + phys_act + dds_total + beds_new +
+                             ses_materials + school_self +
+                             (1 | house_id), r00_model_data)
+summary(cpp_model_apm)
+
+cpp_model_ppm <- lmer(pulse_pressure_central ~ p_twa_iqr + season + age_baseline +
+                             whr + phys_act + dds_total + beds_new +
+                             ses_materials + school_self +
+                             (1 | house_id), r00_model_data)
+summary(cpp_model_ppm)
+```
+
+# Potential secondary analyses and interaction
+```{r}
 sphygmo_model_season_6phases <- lmer(aug_index ~ assigned_stove + season + 
                           (1 | house_id), r00_model_data_6phases)
 #  summary(sphygmo_model_6phases)
