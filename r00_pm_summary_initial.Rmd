@@ -63,6 +63,40 @@ personal_pm_summary <- r00_full_repeated_by_phase %>%
 kable(personal_pm_summary, digits = 1)
 ```
 
+\pagebreak 
+
+# Area PM - total
+```{r}
+summary_area_pm_study_arm <- r00_full_repeated_by_phase %>% 
+  select(study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>%
+  summarise("n" = n(),
+            "Mean" = mean(a_twa),
+            "SD" = sd(a_twa), 
+            "Min" = min(a_twa), 
+            "Median" = median(a_twa),
+            "Max" = max(a_twa),
+            "IQR" = IQR(a_twa))
+kable(summary_area_pm_study_arm, digits = 0)
+```
+
+# Personal PM - total
+```{r}
+summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>% 
+  select(study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>%
+  summarise("n" = n(),
+            "Mean" = mean(p_twa),
+            "SD" = sd(p_twa), 
+            "Min" = min(p_twa), 
+            "Median" = median(p_twa),
+            "Max" = max(p_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_personal_pm_study_arm, digits = 0)
+```
+
 \pagebreak  
 
 # Area PM grouped by study arm
@@ -77,8 +111,9 @@ summary_area_pm_study_arm <- r00_full_repeated_by_phase %>%
             "SD" = sd(a_twa), 
             "Min" = min(a_twa), 
             "Median" = median(a_twa),
-            "Max" = max(a_twa))
-kable(summary_area_pm_study_arm, digits = 1)
+            "Max" = max(a_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_area_pm_study_arm, digits = 0)
 ```
 
 # Personal PM grouped by study arm
@@ -93,8 +128,9 @@ summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>%
             "SD" = sd(p_twa), 
             "Min" = min(p_twa), 
             "Median" = median(p_twa),
-            "Max" = max(p_twa))
-kable(summary_personal_pm_study_arm, digits = 1)
+            "Max" = max(p_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_personal_pm_study_arm, digits = 0)
 ```
 
 \pagebreak  
@@ -111,8 +147,9 @@ summary_area_pm_phase <- r00_full_repeated_by_phase %>%
             "SD" = sd(a_twa), 
             "Min" = min(a_twa), 
             "Median" = median(a_twa),
-            "Max" = max(a_twa))
-kable(summary_area_pm_phase, digits = 1)
+            "Max" = max(a_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_area_pm_phase, digits = 0)
 ```
 
 # Personal PM grouped by phase and study arm
@@ -127,8 +164,9 @@ summary_personal_pm_phase <- r00_full_repeated_by_phase %>%
             "SD" = sd(p_twa), 
             "Min" = min(p_twa), 
             "Median" = median(p_twa),
-            "Max" = max(p_twa))
-kable(summary_personal_pm_phase, digits = 1)
+            "Max" = max(p_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_personal_pm_phase, digits = 0)
 ```
 
 \pagebreak  
@@ -145,8 +183,9 @@ summary_area_pm_stove <- r00_full_repeated_by_phase %>%
             "SD" = sd(a_twa), 
             "Min" = min(a_twa), 
             "Median" = median(a_twa),
-            "Max" = max(a_twa))
-kable(summary_area_pm_stove, digits = 1)
+            "Max" = max(a_twa),
+            "IQR" = IQR(a_twa))
+kable(summary_area_pm_stove, digits = 0)
 ```
 
 # Personal PM grouped by assigned stove type
@@ -161,8 +200,9 @@ summary_personal_pm_stove <- r00_full_repeated_by_phase %>%
             "SD" = sd(p_twa), 
             "Min" = min(p_twa), 
             "Median" = median(p_twa),
-            "Max" = max(p_twa))
-kable(summary_personal_pm_stove, digits = 1)
+            "Max" = max(p_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_personal_pm_stove, digits = 0)
 ```
 
 \pagebreak  
