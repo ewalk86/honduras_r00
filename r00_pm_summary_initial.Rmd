@@ -207,6 +207,50 @@ kable(summary_personal_pm_stove, digits = 0)
 
 \pagebreak  
 
+# Area PM boxplots - all participants
+```{r}
+area_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes("all participants", a_twa))
+area_pm_boxplot
+
+log_area_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, a_twa) %>% 
+  mutate(log_a_twa = log(a_twa)) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes("all participants", log_a_twa)) 
+log_area_pm_boxplot
+```
+
+\pagebreak  
+
+# Personal PM boxplots - all participants
+```{r}
+personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes("all participants", p_twa))
+personal_pm_boxplot
+
+log_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(phase, study_arm, p_twa) %>% 
+  mutate(log_p_twa = log(p_twa)) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  ggplot() +
+  geom_boxplot(aes("all participants", log_p_twa)) 
+log_personal_pm_boxplot
+```
+
+\pagebreak  
+
 # Area PM boxplots by study arm and phase
 ```{r}
 area_pm_boxplot <- r00_full_repeated_by_phase %>% 
