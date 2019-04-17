@@ -169,8 +169,8 @@ sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_baseline + season +
 
 sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*age_cat + season + 
                           (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_age_int)
 age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
+summary(sphygmo_model_age_int)
 summary(age_int_emmeans, conf.int = TRUE)
 plot(age_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove") 
 
