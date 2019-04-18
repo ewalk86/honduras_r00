@@ -36,12 +36,10 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 ---
 
 ```{r}
-#load full datasets
-r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
-
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
-
+#load full dataset
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+
+# r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
 ```{r}
@@ -61,6 +59,7 @@ r00_model_data_p1 <- r00_model_data_outliers_removed %>%
   mutate(salt_cat = if_else(salt >=8, 1, 0)) %>% 
   mutate(sugar_cat = if_else(sugar >=4, 1, 0)) %>% 
   mutate(manteca_cat = if_else(manteca >=7, 1, 0))
+
 r00_model_data_p2 <- r00_model_data_outliers_removed %>% 
   filter(phase == 2) %>% 
   #split age at 40; >=40 = 1, <40 = 0

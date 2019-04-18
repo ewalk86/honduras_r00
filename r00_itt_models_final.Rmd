@@ -1,5 +1,5 @@
 ---
-title: "Honduras R00 Models and Plots"
+title: "Honduras R00 Intent-to-treat Models and Plots"
 author: "Ethan Walker"
 date: "14 March 2019"
 output: pdf_document
@@ -35,7 +35,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 ```{r}
 #load full dataset
-r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+# r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
@@ -103,16 +103,18 @@ r00_model_data_p6 <- r00_model_data %>%
   filter(phase == 6)
 ```
 
+
+```{r}
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
-```{r}
-r00_model_data_outliers_removed <- r00_full_joined_sphygmocor %>% 
+## This dataset is already saved -- use code above to load
+#r00_model_data_outliers_removed <- r00_full_joined_sphygmocor %>% 
   # removes 6 potential "outliers" with high or low AIx
   # removes 4 potential "outliers" > 75mmHg CPP
-  filter(aug_index < 75 | is.na(aug_index)) %>% 
-  filter(aug_index > -25 | is.na(aug_index)) %>% 
-  filter(pulse_pressure_central < 75 | is.na(pulse_pressure_central))
-write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed.rds")
+#  filter(aug_index < 75 | is.na(aug_index)) %>% 
+#  filter(aug_index > -25 | is.na(aug_index)) %>% 
+#  filter(pulse_pressure_central < 75 | is.na(pulse_pressure_central))
+#write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed.rds")
 ```
 
 
@@ -148,25 +150,31 @@ tidy(aix_bmi)
 
 \pagebreak  
 
-# AIx analyses assessing Age and BMI as interaction terms
+# AIx intent-to-treat analyses
 ```{r}
 ## Model Summaries
 ## Honduras R00 Initial AIx Models
-## Base model using season to account for time
 
+# Base model using season to account for time
 sphygmo_model_season <- lmer(aug_index ~ assigned_stove + season + 
                           (1 | house_id), r00_model_data)
 tidy(sphygmo_model_season, conf.int = TRUE)
-#  summary(sphygmo_model_season)
+  # summary(sphygmo_model_season)
 
+
+# Analysis using participants who completed all 6 phases
 sphygmo_model_season_6phases <- lmer(aug_index ~ assigned_stove + season + 
                           (1 | house_id), r00_model_data_6phases)
-#  summary(sphygmo_model_6phases)
+  # summary(sphygmo_model_6phases)
 
+
+# Analysis including baseline age
 sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_baseline + season + 
                           (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_age)
+  # summary(sphygmo_model_age)
 
+
+# Analysis including age_cat as interaction term
 sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*age_cat + season + 
                           (1 | house_id), r00_model_data)
 age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
@@ -174,22 +182,27 @@ summary(sphygmo_model_age_int)
 summary(age_int_emmeans, conf.int = TRUE)
 plot(age_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove") 
 
+
+# Analysis including bmi
 sphygmo_model_bmi <- lmer(aug_index ~ assigned_stove + bmi + season + 
                           (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_bmi)
+  # summary(sphygmo_model_bmi)
 
+
+# Analysis including bmi_cat as interaction term
 sphygmo_model_bmi_int <- lmer(aug_index ~ assigned_stove*bmi_cat + season + 
                           (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_bmi_int)
 bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
+summary(sphygmo_model_bmi_int)
 summary(bmi_int_emmeans, conf.int = TRUE)
 plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
 
 
+# Analysis including whr_cat as interaction term
 sphygmo_model_whr_int <- lmer(aug_index ~ assigned_stove*whr_cat + season + 
                           (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_whr_int)
 whr_int_emmeans <- emmeans(sphygmo_model_whr_int, pairwise ~ assigned_stove | whr_cat)
+summary(sphygmo_model_whr_int)
 summary(whr_int_emmeans, conf.int = TRUE)
 plot(whr_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
 ```
@@ -201,6 +214,7 @@ plot(whr_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove
 ## Analyses with 6 outliers removed: 2 below -25 and 4 above 75
 ## Keep these outliers out for all future analyses (AIx and CPP)
 ```{r}
+# Prep model data for plotting
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
@@ -209,18 +223,14 @@ tidy_sphygmo_model_season_6phases <- tidy(sphygmo_model_season_6phases, conf.int
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
-tidy_sphygmo_model_season_outliers <- tidy(sphygmo_model_season_outliers, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "6 outliers removed", "na")) 
 
+# Combine prepped data for plotting
 sphygmo_model_final_results <- rbind(tidy_sphygmo_model_season,
-                                     tidy_sphygmo_model_season_6phases,
-                                     tidy_sphygmo_model_season_outliers)
+                                     tidy_sphygmo_model_season_6phases)
 kable(sphygmo_model_final_results)
 
 
-## Plot model estimates with age
+## Plot model estimates
 plot_estimates <- sphygmo_model_final_results %>%
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -229,7 +239,7 @@ plot_estimates <- sphygmo_model_final_results %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   ggtitle(label = "AIx Models", 
-          subtitle = "Full dataset vs sensitivity analyses") +
+          subtitle = "Full dataset vs sensitivity analysis") +
   labs(y = "Estimate (%): Justa vs Traditional") +
   labs(x = "") +
   theme(title = element_text(size = 19), 
@@ -249,8 +259,7 @@ plot_estimates
 \pagebreak  
 
 ```{r}
-
-## Format and plot models - age
+# Prep model data for plotting - analysis using age
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
@@ -260,10 +269,10 @@ tidy_sphygmo_model_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>%
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
 
+# Combine prepped data for plotting
 sphygmo_model_final_results_age <- rbind(tidy_sphygmo_model_season,
                                          tidy_sphygmo_model_age)
 kable(sphygmo_model_final_results_age)
-
 
 ## Plot model estimates with age
 plot_estimates <- sphygmo_model_final_results_age %>%
@@ -293,8 +302,7 @@ plot_estimates
 \pagebreak  
 
 ```{r}
-
-## Format and plot models - bmi
+# Prep model data for plotting - including bmi
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
@@ -343,12 +351,6 @@ plot(sphygmo_model_season, main = "AIx primary model",
 
 qqnorm(residuals(sphygmo_model_season), main = "AIx primary model QQ Plot")
 
-plot(sphygmo_model_season_outliers, main = "AIx - 6 outliers removed", 
-     xlab = "fitted values", ylab = "residuals")
-
-qqnorm(residuals(sphygmo_model_season_outliers), main = "AIx - 6 outliers removed QQ Plot")
-
-
 #aix_influential <- influence(sphygmo_model_season, obs = TRUE)
 
 #aix_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
@@ -371,47 +373,58 @@ tidy(cpp_bmi)
 
 \pagebreak  
 
-# Central Pulse Pressure analyses assessing Age and BMI as interaction terms
+# Central Pulse Pressure intent-to-treat analyses
 ```{r}
 ## Model Summaries
 ## Honduras R00 Initial Central Pulse Pressure Models ##
 
+# Primary model using season to account for time
 sphygmo_model_season <- lmer(pulse_pressure_central ~ assigned_stove + season +
                           (1 | house_id), r00_model_data)
 tidy(sphygmo_model_season, conf.int = TRUE)
-#  summary(sphygmo_model_season)
+  # summary(sphygmo_model_season)
 
+
+# Model with participants who completed all 6 phases
 sphygmo_model_season_6phases <- lmer(pulse_pressure_central ~ assigned_stove + season +
                           (1 | house_id), r00_model_data_6phases)
-#  summary(sphygmo_model_season_6phases)
+  # summary(sphygmo_model_season_6phases)
 
+
+# Model including age
 sphygmo_model_age <- lmer(pulse_pressure_central ~ assigned_stove + age_baseline + 
                           season +  (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_age)
+  # summary(sphygmo_model_age)
 
+
+# Model including age_cat as interaction term
 sphygmo_model_age_int <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + 
                               season + (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_age_int)
+summary(sphygmo_model_age_int)
 age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
 summary(age_int_emmeans)
 plot(age_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
 
+
+# Model including bmi
 sphygmo_model_bmi <- lmer(pulse_pressure_central ~ assigned_stove + bmi + 
                           season + (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_bmi)
+  # summary(sphygmo_model_bmi)
 
+
+# Model including bmi_cat at interaction term
 sphygmo_model_bmi_int <- lmer(pulse_pressure_central ~ assigned_stove*bmi_cat + 
                               season + (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_bmi_int)
+summary(sphygmo_model_bmi_int)
 bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
 summary(bmi_int_emmeans)
 plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
 
 
-
+# Model including whr_cat as interaction term
 sphygmo_model_whr_int <- lmer(pulse_pressure_central ~ assigned_stove*whr_cat + season + 
                           (1 | house_id), r00_model_data)
-#  summary(sphygmo_model_whr_int)
+summary(sphygmo_model_whr_int)
 whr_int_emmeans <- emmeans(sphygmo_model_whr_int, pairwise ~ assigned_stove | whr_cat)
 summary(whr_int_emmeans, conf.int = TRUE)
 plot(whr_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
@@ -421,9 +434,9 @@ plot(whr_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove
 
 # Central Pulse Pressure Model Summaries and Plots
 ## Using season to account for time
-## 6 AIx outliers removed from CPP dataset for analyses: n = 1380
+## 6 AIx and 4 CPP outliers removed from dataset for analyses
 ```{r}
-
+# Prep model data for plotting
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
@@ -431,19 +444,14 @@ tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>%
 tidy_sphygmo_model_season_6phases <- tidy(sphygmo_model_season_6phases, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
-tidy_sphygmo_model_season_outliers <- tidy(sphygmo_model_season_outliers, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "4 CPP outliers removed", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na"))
 
 sphygmo_model_final_results <- rbind(tidy_sphygmo_model_season,
-                                     tidy_sphygmo_model_season_6phases,
-                                     tidy_sphygmo_model_season_outliers)
+                                     tidy_sphygmo_model_season_6phases)
 kable(sphygmo_model_final_results)
 
 
-## Plot model estimates with age
+# Plot model estimates - primary model vs sensitivity analysis
 plot_estimates <- sphygmo_model_final_results %>%
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -452,7 +460,7 @@ plot_estimates <- sphygmo_model_final_results %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   ggtitle(label = "Central Pulse Pressure Models", 
-          subtitle = "Full dataset vs sensitivity analyses") +
+          subtitle = "Full dataset vs sensitivity analysis") +
   labs(y = "Estimate (mmHg): Justa vs Traditional") +
   labs(x = "") +
   theme(title = element_text(size = 19), 
@@ -472,8 +480,7 @@ plot_estimates
 \pagebreak  
 
 ```{r}
-
-## Format and plot models - age
+# Format and plot models - age
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
@@ -488,7 +495,7 @@ sphygmo_model_final_results_age <- rbind(tidy_sphygmo_model_season,
 kable(sphygmo_model_final_results_age)
 
 
-## Plot model estimates with age
+# Plot model estimates with age
 plot_estimates <- sphygmo_model_final_results_age %>%
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -517,8 +524,7 @@ plot_estimates
 \pagebreak  
 
 ```{r}
-
-## Format and plot models - bmi
+# Format and plot models - bmi
 tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned', term)) %>% 
     rename(ci_low = conf.low, ci_hi = conf.high) %>% 
@@ -533,7 +539,7 @@ sphygmo_model_final_results_bmi <- rbind(tidy_sphygmo_model_season,
 kable(sphygmo_model_final_results_bmi)
 
 
-## Plot model estimates with bmi
+# Plot model estimates with bmi
 plot_estimates <- sphygmo_model_final_results_bmi %>%
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -568,14 +574,6 @@ plot(sphygmo_model_season, main = "Central Pulse Pressure primary model",
 
 qqnorm(residuals(sphygmo_model_season), main = "Central Pulse Pressure primary model QQ Plot")
 
-plot(sphygmo_model_season_outliers, 
-     main = "Central Pulse Pressure - 42 CPP outliers removed", 
-     xlab = "fitted values", ylab = "residuals")
-
-qqnorm(residuals(sphygmo_model_season_outliers), 
-       main = "Central Pulse Pressure - 42 CPP outliers removed QQ Plot")
-
-
 #cpp_influential <- influence(sphygmo_model_season, obs = TRUE)
 
 #cpp_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
@@ -586,7 +584,8 @@ qqnorm(residuals(sphygmo_model_season_outliers),
 
 \pagebreak  
 
-# PPAmp analyses
+##### Briefly assessing pulse pressure amplification and ratio #####
+##### Not using as part of dissertation or manuscript #####
 ```{r}
 ## Model Summaries
 ## Honduras R00 Initial AIx Models

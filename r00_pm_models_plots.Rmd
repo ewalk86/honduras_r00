@@ -35,7 +35,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 ```{r}
 #load full dataset
-r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
+# r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
@@ -45,6 +45,7 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 ```{r}
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
+## This dataset has already been saved -- load using code above
 #r00_model_data_outliers_removed <- r00_full_repeated_by_phase %>% 
 #  # removes 6 potential "outliers" with high or low AIx
 #  # removes 4 potential "outliers" > 75mmHg CPP
