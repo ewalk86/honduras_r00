@@ -1,0 +1,152 @@
+---
+title: "R00 Potential Effect Modifiers"
+author: "Ethan Walker"
+date: "April 24, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 6)
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(magrittr)
+library(gridExtra)
+library(lubridate)
+library(haven)
+library(knitr)
+```
+
+---
+
+```{r}
+#load full dataset
+#r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+```
+
+# Baseline frequencies of potential effect modifiers
+```{r}
+# Sys BP
+r00_bp <- r00_full_long %>%
+  filter(!is.na(study_arm)) %>% 
+  filter(phase == 1) %>% 
+  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
+  mutate(sys_bp_periph = as.numeric((sys_bp_periph))) %>% 
+  #filter(!is.na(sys_bp_periph)) %>% 
+  mutate(sys_bp_cat = if_else(sys_bp_periph < 119.9, "sbp < 120", "sbp >=120"))
+
+bp_table <- table(r00_bp$sys_bp_cat)
+prop.table(bp_table)
+
+
+# BMI
+r00_bmi <- r00_full_long %>%
+  filter(!is.na(study_arm)) %>% 
+  filter(phase == 1) %>% 
+  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
+  mutate(bmi = as.numeric((bmi))) %>% 
+  #filter(!is.na(bmi)) %>% 
+  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) 
+
+bmi_table <- table(r00_bmi$bmi_cat)
+prop.table(bmi_table)
+
+
+# Hba1c
+r00_hba1c <- r00_full_long %>%
+  filter(!is.na(study_arm)) %>% 
+  filter(phase == 1) %>% 
+  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
+  mutate(hba1c = as.numeric((hba1c))) %>% 
+  #filter(!is.na(hba1c)) %>% 
+  mutate(hba1c_cat = if_else(hba1c < 5.59, "a1c < 5.6", "a1c >=5.6")) 
+
+hba1c_table <- table(r00_hba1c$hba1c_cat)
+prop.table(hba1c_table)
+
+
+# Age
+r00_age <- r00_full_long %>%
+  filter(!is.na(study_arm)) %>% 
+  filter(phase == 1) %>% 
+  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
+  mutate(age_baseline = as.numeric((age_baseline))) %>% 
+  #filter(!is.na(age_baseline)) %>% 
+  mutate(age_cat = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) 
+
+age_table <- table(r00_age$age_cat)
+prop.table(age_table)
+
+
+# Waist Circ
+r00_waist <- r00_full_long %>%
+  filter(!is.na(study_arm)) %>% 
+  filter(phase == 1) %>% 
+  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
+  mutate(waist = as.numeric((waist))) %>% 
+  mutate(waist_cm = as.numeric(waist * 2.54)) %>% 
+  #filter(!is.na(waist)) %>% 
+  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>% 
+  mutate(waist_cat = factor(waist_cat, levels = c("waist < 80cm", "waist >= 80cm")))
+
+waist_table <- table(r00_waist$waist_cat)
+prop.table(waist_table)
+
+
+# WHR
+r00_whr <- r00_full_long %>%
+  filter(!is.na(study_arm)) %>% 
+  filter(phase == 1) %>% 
+  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
+  #filter(!is.na(whr_cat)) %>% 
+  mutate(whr_cat = as.character((whr_cat))) %>% 
+  mutate(whr_cat = factor(whr_cat, labels = c("whr not obese", "whr obese")))
+
+whr_table <- table(r00_whr$whr_cat)
+prop.table(whr_table)
+
+
+# Metabolic Syndrome
+r00_metsyn <- r00_full_long %>%
+  filter(!is.na(study_arm)) %>% 
+  filter(phase == 1) %>% 
+  select(sys_bp_periph, dia_bp_periph, waist, hba1c, hdl, triglycerides) %>% 
+  mutate(sys_bp_periph = as.numeric(sys_bp_periph),
+         dia_bp_periph = as.numeric(dia_bp_periph),
+         waist = as.numeric(waist),
+         hba1c = as.numeric(hba1c),
+         hdl = as.numeric(hdl),
+         triglycerides = as.numeric(triglycerides)) %>% 
+  mutate(waist_cm = (waist * 2.54)) %>% 
+  mutate(sys_bp_ms = if_else(sys_bp_periph >= 130, 1, 0),
+         dia_bp_ms = if_else(dia_bp_periph >= 85, 1, 0),
+         trigs_ms = if_else(triglycerides > 200, 1, 0),
+         hdl_ms = if_else(hdl < 50, 1, 0),
+         a1c_ms = if_else(hba1c > 5.6, 1, 0),
+         waist_ms = if_else(waist_cm > 80, 1, 0)) %>% 
+  mutate(ms_sum = (sys_bp_ms + dia_bp_ms + trigs_ms + hdl_ms + a1c_ms)) %>% 
+  #filter(!is.na(ms_sum)) %>% 
+  mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
+  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn")))
+
+metsyn_table <- table(r00_metsyn$met_syn)
+prop.table(metsyn_table)
+```
+
+# 2x2 Tables
+```{r}
+metsyn_whr <- table(r00_metsyn$met_syn, r00_whr$whr_cat)
+prop.table(metsyn_whr)
+
+metsyn_waist <- table(r00_metsyn$met_syn, r00_waist$waist_cat)
+prop.table(metsyn_waist)
+
+metsyn_bmi <- table(r00_metsyn$met_syn, r00_bmi$bmi_cat)
+prop.table(metsyn_bmi)
+```
+

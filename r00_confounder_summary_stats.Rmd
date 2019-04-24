@@ -24,9 +24,27 @@ library(knitr)
 
 ```{r}
 #load full dataset
-r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
+#r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+```
+
+# Frequency of meds
+```{r}
+r00_meds <- r00_full_long %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  select(phase, 
+         med_bp, med_ibuprof, med_acetamin, med_vitamin,
+         med_lipids, med_misc_pain) %>% 
+  group_by(phase) %>% 
+  mutate(med_bp = as.numeric(med_bp),
+         med_ibuprof = as.numeric(med_ibuprof),
+         med_acetamin = as.numeric(med_acetamin),
+         med_vitamin = as.numeric(med_vitamin),
+         med_lipids = as.numeric(med_lipids),
+         med_misc_pain = as.numeric(med_misc_pain)) %>% 
+  summarise_all(funs("sum" = sum), na.rm = TRUE)
+r00_meds
 ```
 
 
