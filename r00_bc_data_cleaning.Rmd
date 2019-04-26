@@ -1,7 +1,7 @@
 ---
 title: "BC Cleaning"
 author: "Ethan Walker"
-date: "November 8, 2018"
+date: "26 April 2019"
 output: pdf_document
 ---
 
@@ -21,8 +21,8 @@ r00_phase1_bc <- read_xlsx("input/r00_phase1_bc.xlsx",
                            col_types = c("text", "date", "text", "guess", "numeric",
                                          "numeric", "numeric", "numeric", "numeric",
                                          "numeric", "text"))
-r00_phase2_bc_post <- read_csv("input/r00_phase2_bc_post.csv")
-r00_phase2_bc_pre <- read_csv("input/r00_phase2_bc_pre.csv")
+r00_phase2_bc_post <- read_csv("input/pollution/r00_phase2_bc_post.csv")
+r00_phase2_bc_pre <- read_csv("input/pollution/r00_phase2_bc_pre.csv")
 r00_phase3_bc_post <- read_csv("input/r00_phase3_bc_post.csv")
 r00_phase3_bc_pre <- read_csv("input/r00_phase3_bc_pre.csv")
 r00_phase4_bc_post <- read_csv("input/r00_phase4_bc_post.csv")
@@ -33,6 +33,7 @@ r00_phase6_bc_post <- read_csv("input/r00_phase6_bc_post.csv")
 r00_phase6_bc_pre <- read_csv("input/r00_phase6_bc_pre.csv")
 
 r00_phase1_field_data <- read_xlsx("input/r00_phase1_field_data.xlsx")
+r00_phase2_field_data <- read_csv("input/pollution/r00_phase2_field_data.csv")
 r00_phase4_field_data <- read_csv("input/r00_phase4_field_data.csv")
 r00_phase5_field_data <- read_csv("input/r00_phase5_field_data.csv")
 
@@ -58,6 +59,7 @@ r00_phase6_bc <- full_join(r00_phase6_bc_pre, r00_phase6_bc_post, by = "filter_i
 #Join BC sootscan data with field data
 ```{r}
 r00_phase1_bc_full <- full_join(r00_phase1_bc, r00_phase1_field_data, by = "filter_id")
+r00_phase2_bc_full <- full_join(r00_phase2_bc, r00_phase2_field_data, by = "filter_id")
 r00_phase4_bc_full <- full_join(r00_phase4_bc, r00_phase4_field_data, by = "filter_id")
 r00_phase5_bc_full <- full_join(r00_phase5_bc, r00_phase5_field_data, by = "filter_id")
 ```
