@@ -29,6 +29,7 @@ library(knitr)
 library(influence.ME)
 library(boxcoxmix)
 library(gamm4)
+library(sjstats)
 jvPalette <- c("#330099","#CC0066","#FF6633", 
                  "#0099CC", "#FF9900","#CC6633",
                   "#FF3366", "#33CC99", "#33999")
@@ -187,6 +188,7 @@ tidy_model_apm_p1 <- tidy(model_apm_p1, conf.int = TRUE) %>%
 model_apm <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_self + (1 | house_id), r00_model_data)
 #summary(model_apm)
+# Intraclass correlation coefficient
 tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
     mutate(model = if_else(term == "log_a_twa", "primary", "na")) 
