@@ -72,7 +72,12 @@ r00_model_data <- r00_model_data_outliers_removed %>%
          hr, pulse_pressure_periph, season, sys_bp_periph, dia_bp_periph, 
          pulse_pressure_central, assigned_stove, house_id, age_cat, age_current, 
          age_baseline, bmi_cat, bmi, phase, study_arm, date_sphygmo, whr_cat, 
-         pulse_pressure_amp, pulse_pressure_amp_ratio, map_central, map_periph) 
+         pulse_pressure_amp, pulse_pressure_amp_ratio, map_central, map_periph, med_bp) 
+
+# Filtering out medication users
+r00_model_data_meds <- r00_model_data %>% 
+  #filtering out bp med users
+  filter(is.na(med_bp))
 
 r00_model_data_6phases <- r00_model_data %>% 
   group_by(house_id) %>% 
@@ -155,95 +160,89 @@ tidy(aix_bmi)
 ## Model Summaries
 ## Honduras R00 Initial AIx Models
 
-# Base model using season to account for time
-sphygmo_model_season <- lmer(aug_index ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data)
-tidy(sphygmo_model_season, conf.int = TRUE)
-  # summary(sphygmo_model_season)
+##### AIx ITT base model - spline with 6 df
+model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                 (1 | house_id), r00_model_data)
+#summary(model_itt)
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "primary", "na")) 
 
 
-# Analysis using participants who completed all 6 phases
-sphygmo_model_season_6phases <- lmer(aug_index ~ assigned_stove + season + 
+##### AIx ITT model - bp meds removed (57 obs)
+model_no_bp_meds <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                 (1 | house_id), r00_model_data_meds)
+#summary(model_no_bp_meds)
+tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "no bp meds", "na")) 
+
+
+##### AIx ITT model - phase instead of spline
+model_phase <- lmer(aug_index ~ assigned_stove + phase + 
+                 (1 | house_id), r00_model_data)
+#summary(model_phase)
+tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "phase", "na")) 
+
+
+##### AIx ITT model - season instead of spline
+model_season <- lmer(aug_index ~ assigned_stove + season + 
+                 (1 | house_id), r00_model_data)
+#summary(model_season)
+tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "season", "na")) 
+
+
+##### AIx ITT model - participants who completed all 6 phases
+model_6phases <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
                           (1 | house_id), r00_model_data_6phases)
-  # summary(sphygmo_model_6phases)
+# summary(model_6phases)
+tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "6 phases", "na")) 
 
 
-# Analysis including baseline age
-sphygmo_model_age <- lmer(aug_index ~ assigned_stove + age_baseline + season + 
-                          (1 | house_id), r00_model_data)
-  # summary(sphygmo_model_age)
+##### AIx ITT model - including baseline age
+model_age <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
+                  age_baseline + (1 | house_id), r00_model_data)
+# summary(model_age)
+tidy_model_age <- tidy(model_age, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "age", "na")) 
 
 
-# Analysis including age_cat as interaction term
-sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*age_cat + season + 
-                          (1 | house_id), r00_model_data)
-age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
-summary(sphygmo_model_age_int)
-summary(age_int_emmeans, conf.int = TRUE)
-plot(age_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove") 
-
-
-# Analysis including bmi
-sphygmo_model_bmi <- lmer(aug_index ~ assigned_stove + bmi + season + 
-                          (1 | house_id), r00_model_data)
-  # summary(sphygmo_model_bmi)
-
-
-# Analysis including bmi_cat as interaction term
-sphygmo_model_bmi_int <- lmer(aug_index ~ assigned_stove*bmi_cat + season + 
-                          (1 | house_id), r00_model_data)
-bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
-summary(sphygmo_model_bmi_int)
-summary(bmi_int_emmeans, conf.int = TRUE)
-plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-# Analysis including whr_cat as interaction term
-sphygmo_model_whr_int <- lmer(aug_index ~ assigned_stove*whr_cat + season + 
-                          (1 | house_id), r00_model_data)
-whr_int_emmeans <- emmeans(sphygmo_model_whr_int, pairwise ~ assigned_stove | whr_cat)
-summary(sphygmo_model_whr_int)
-summary(whr_int_emmeans, conf.int = TRUE)
-plot(whr_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
+# Combine prepped data for plotting
+aix_results <- rbind(tidy_model_itt,
+                     tidy_model_no_bp_meds,
+                     tidy_model_6phases,
+                     tidy_model_phase,
+                     tidy_model_season,
+                     tidy_model_age)
 ```
 
 \pagebreak  
 
 # AIx Model Summaries and Plots
-## Using season to account for time
 ## Analyses with 6 outliers removed: 2 below -25 and 4 above 75
 ## Keep these outliers out for all future analyses (AIx and CPP)
 ```{r}
-# Prep model data for plotting
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "full dataset", "na")) 
-tidy_sphygmo_model_season_6phases <- tidy(sphygmo_model_season_6phases, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
-
-# Combine prepped data for plotting
-sphygmo_model_final_results <- rbind(tidy_sphygmo_model_season,
-                                     tidy_sphygmo_model_season_6phases)
-kable(sphygmo_model_final_results)
-
-
-## Plot model estimates
-plot_estimates <- sphygmo_model_final_results %>%
+plot_estimates <- aix_results %>%
+  mutate(model = factor(model, levels = c("primary", "no bp meds",
+                                          "6 phases", "phase", "season", "age"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx Models", 
-          subtitle = "Full dataset vs sensitivity analysis") +
-  labs(y = "Estimate (%): Justa vs Traditional") +
+  ggtitle(label = "AIx ITT Models - Justa vs Traditional") +
+  labs(y = "Estimate (%)") +
   labs(x = "") +
   theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
+          axis.text.x = element_text(angle = 25, hjust = 1, 
                                      size = 18, colour = "black"),
           axis.text.y = element_text(size = 18, colour = "black"),
           axis.title.y = element_text(size = 18),
@@ -256,100 +255,15 @@ plot_estimates <- sphygmo_model_final_results %>%
 plot_estimates
 ```
 
-\pagebreak  
-
-```{r}
-# Prep model data for plotting - analysis using age
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "no age", "na")) 
-tidy_sphygmo_model_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
-
-# Combine prepped data for plotting
-sphygmo_model_final_results_age <- rbind(tidy_sphygmo_model_season,
-                                         tidy_sphygmo_model_age)
-kable(sphygmo_model_final_results_age)
-
-## Plot model estimates with age
-plot_estimates <- sphygmo_model_final_results_age %>%
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "AIx Models", subtitle = "Primary model vs model with age") +
-  labs(y = "Estimate (%): Justa vs Traditional") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```
 
 \pagebreak  
 
+# AIx ITT primary model diagnostic plots
 ```{r}
-# Prep model data for plotting - including bmi
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "no bmi", "na")) 
-tidy_sphygmo_model_bmi <- tidy(sphygmo_model_bmi, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "bmi", "na")) 
-
-sphygmo_model_final_results_bmi <- rbind(tidy_sphygmo_model_season,
-                                         tidy_sphygmo_model_bmi)
-kable(sphygmo_model_final_results_bmi)
-
-
-## Plot model estimates with bmi
-plot_estimates <- sphygmo_model_final_results_bmi %>%
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "AIx Models", subtitle = "Primary model vs model with bmi") +
-  labs(y = "Estimate (%): Justa vs Traditional") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```
-
-\pagebreak  
-
-# AIx primary model diagnostic plots
-```{r}
-plot(sphygmo_model_season, main = "AIx primary model", 
+plot(model_itt, main = "AIx primary model", 
      xlab = "fitted values", ylab = "residuals")
 
-qqnorm(residuals(sphygmo_model_season), main = "AIx primary model QQ Plot")
+qqnorm(residuals(model_itt), main = "AIx primary model QQ Plot")
 
 #aix_influential <- influence(sphygmo_model_season, obs = TRUE)
 
@@ -373,186 +287,92 @@ tidy(cpp_bmi)
 
 \pagebreak  
 
-# Central Pulse Pressure intent-to-treat analyses
+# CPP intent-to-treat analyses
 ```{r}
 ## Model Summaries
-## Honduras R00 Initial Central Pulse Pressure Models ##
+## Honduras R00 Initial CPP Models
 
-# Primary model using season to account for time
-sphygmo_model_season <- lmer(pulse_pressure_central ~ assigned_stove + season +
-                          (1 | house_id), r00_model_data)
-tidy(sphygmo_model_season, conf.int = TRUE)
-  # summary(sphygmo_model_season)
+##### CPP ITT base model - spline with 6 df
+model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                 (1 | house_id), r00_model_data)
+#summary(model_itt)
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "primary", "na")) 
 
 
-# Model with participants who completed all 6 phases
-sphygmo_model_season_6phases <- lmer(pulse_pressure_central ~ assigned_stove + season +
+##### CPP ITT model - bp meds removed (57 obs)
+model_no_bp_meds <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                 (1 | house_id), r00_model_data_meds)
+#summary(model_no_bp_meds)
+tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "no bp meds", "na")) 
+
+
+##### CPP ITT model - phase instead of spline
+model_phase <- lmer(pulse_pressure_central ~ assigned_stove + phase + 
+                 (1 | house_id), r00_model_data)
+#summary(model_phase)
+tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "phase", "na")) 
+
+
+##### CPP ITT model - season instead of spline
+model_season <- lmer(pulse_pressure_central ~ assigned_stove + season + 
+                 (1 | house_id), r00_model_data)
+#summary(model_season)
+tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "season", "na")) 
+
+
+##### CPP ITT model - participants who completed all 6 phases
+model_6phases <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
                           (1 | house_id), r00_model_data_6phases)
-  # summary(sphygmo_model_season_6phases)
+# summary(model_6phases)
+tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "6 phases", "na")) 
 
 
-# Model including age
-sphygmo_model_age <- lmer(pulse_pressure_central ~ assigned_stove + age_baseline + 
-                          season +  (1 | house_id), r00_model_data)
-  # summary(sphygmo_model_age)
+##### CPP ITT model - including baseline age
+model_age <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
+                  age_baseline + (1 | house_id), r00_model_data)
+# summary(model_age)
+tidy_model_age <- tidy(model_age, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove1', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove1", "age", "na")) 
 
 
-# Model including age_cat as interaction term
-sphygmo_model_age_int <- lmer(pulse_pressure_central ~ assigned_stove*age_cat + 
-                              season + (1 | house_id), r00_model_data)
-summary(sphygmo_model_age_int)
-age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
-summary(age_int_emmeans)
-plot(age_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-# Model including bmi
-sphygmo_model_bmi <- lmer(pulse_pressure_central ~ assigned_stove + bmi + 
-                          season + (1 | house_id), r00_model_data)
-  # summary(sphygmo_model_bmi)
-
-
-# Model including bmi_cat at interaction term
-sphygmo_model_bmi_int <- lmer(pulse_pressure_central ~ assigned_stove*bmi_cat + 
-                              season + (1 | house_id), r00_model_data)
-summary(sphygmo_model_bmi_int)
-bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
-summary(bmi_int_emmeans)
-plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-# Model including whr_cat as interaction term
-sphygmo_model_whr_int <- lmer(pulse_pressure_central ~ assigned_stove*whr_cat + season + 
-                          (1 | house_id), r00_model_data)
-summary(sphygmo_model_whr_int)
-whr_int_emmeans <- emmeans(sphygmo_model_whr_int, pairwise ~ assigned_stove | whr_cat)
-summary(whr_int_emmeans, conf.int = TRUE)
-plot(whr_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
+# Combine prepped data for plotting
+cpp_results <- rbind(tidy_model_itt,
+                     tidy_model_no_bp_meds,
+                     tidy_model_6phases,
+                     tidy_model_phase,
+                     tidy_model_season,
+                     tidy_model_age)
 ```
 
 \pagebreak  
 
-# Central Pulse Pressure Model Summaries and Plots
-## Using season to account for time
-## 6 AIx and 4 CPP outliers removed from dataset for analyses
+# CPP Model Summaries and Plots
 ```{r}
-# Prep model data for plotting
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "full dataset", "na")) 
-tidy_sphygmo_model_season_6phases <- tidy(sphygmo_model_season_6phases, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na"))
-
-sphygmo_model_final_results <- rbind(tidy_sphygmo_model_season,
-                                     tidy_sphygmo_model_season_6phases)
-kable(sphygmo_model_final_results)
-
-
-# Plot model estimates - primary model vs sensitivity analysis
-plot_estimates <- sphygmo_model_final_results %>%
+plot_estimates <- cpp_results %>%
+  mutate(model = factor(model, levels = c("primary", "no bp meds",
+                                          "6 phases", "phase", "season", "age"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Central Pulse Pressure Models", 
-          subtitle = "Full dataset vs sensitivity analysis") +
-  labs(y = "Estimate (mmHg): Justa vs Traditional") +
+  ggtitle(label = "CPP ITT Models - Justa vs Traditional") +
+  labs(y = "Estimate (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```
-
-\pagebreak  
-
-```{r}
-# Format and plot models - age
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "no age", "na")) 
-tidy_sphygmo_model_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
-
-sphygmo_model_final_results_age <- rbind(tidy_sphygmo_model_season,
-                                         tidy_sphygmo_model_age)
-kable(sphygmo_model_final_results_age)
-
-
-# Plot model estimates with age
-plot_estimates <- sphygmo_model_final_results_age %>%
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "Central Pulse Pressure", 
-          subtitle = "Primary model vs model with age") +
-  labs(y = "Estimate (mmHg): Justa vs Traditional") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```
-
-\pagebreak  
-
-```{r}
-# Format and plot models - bmi
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "no bmi", "na")) 
-tidy_sphygmo_model_bmi <- tidy(sphygmo_model_bmi, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "bmi", "na")) 
-
-sphygmo_model_final_results_bmi <- rbind(tidy_sphygmo_model_season,
-                                         tidy_sphygmo_model_bmi)
-kable(sphygmo_model_final_results_bmi)
-
-
-# Plot model estimates with bmi
-plot_estimates <- sphygmo_model_final_results_bmi %>%
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "Central Pulse Pressure", 
-          subtitle = "Primary model vs model with bmi") +
-  labs(y = "Estimate (mmHg): Justa vs Traditional") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
+          axis.text.x = element_text(angle = 25, hjust = 1, 
                                      size = 18, colour = "black"),
           axis.text.y = element_text(size = 18, colour = "black"),
           axis.title.y = element_text(size = 18),
@@ -569,10 +389,10 @@ plot_estimates
 
 # Central Pulse Pressure primary model diagnostic plots
 ```{r}
-plot(sphygmo_model_season, main = "Central Pulse Pressure primary model", 
+plot(model_itt, main = "Central Pulse Pressure primary model", 
      xlab = "fitted values", ylab = "residuals")
 
-qqnorm(residuals(sphygmo_model_season), main = "Central Pulse Pressure primary model QQ Plot")
+qqnorm(residuals(model_itt), main = "Central Pulse Pressure primary model QQ Plot")
 
 #cpp_influential <- influence(sphygmo_model_season, obs = TRUE)
 
@@ -581,256 +401,3 @@ qqnorm(residuals(sphygmo_model_season), main = "Central Pulse Pressure primary m
 #plot.estex(cpp_influential, which = "cook")
 ```
 
-
-\pagebreak  
-
-##### Briefly assessing pulse pressure amplification and ratio #####
-##### Not using as part of dissertation or manuscript #####
-```{r}
-## Model Summaries
-## Honduras R00 Initial AIx Models
-## Base model using season to account for time
-
-sphygmo_model_season <- lmer(pulse_pressure_amp ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_season)
-
-sphygmo_model_season_6phases <- lmer(pulse_pressure_amp ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_6phases)
-#  summary(sphygmo_model_6phases)
-
-sphygmo_model_age <- lmer(pulse_pressure_amp ~ assigned_stove + age_baseline + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_age)
-
-sphygmo_model_age_int <- lmer(pulse_pressure_amp ~ assigned_stove*age_cat + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_age_int)
-age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
-summary(age_int_emmeans)
-plot(age_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove") 
-
-sphygmo_model_bmi <- lmer(pulse_pressure_amp ~ assigned_stove + bmi + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_bmi)
-
-sphygmo_model_bmi_int <- lmer(pulse_pressure_amp ~ assigned_stove*bmi_cat + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_bmi_int)
-bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
-summary(bmi_int_emmeans)
-plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-## save model results
-# write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
-```
-
-\pagebreak  
-
-# PPAmp Model Summaries and Plots
-## Using season to account for time
-```{r}
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "full dataset", "na")) 
-tidy_sphygmo_model_season_6phases <- tidy(sphygmo_model_season_6phases, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
-tidy_sphygmo_model_season_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
-tidy_sphygmo_model_season_bmi <- tidy(sphygmo_model_bmi, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "bmi", "na")) 
-
-sphygmo_model_final_results <- rbind(tidy_sphygmo_model_season,
-                                     tidy_sphygmo_model_season_6phases,
-                                     tidy_sphygmo_model_season_age,
-                                     tidy_sphygmo_model_season_bmi)
-kable(sphygmo_model_final_results)
-
-
-## Plot model estimates with age
-plot_estimates <- sphygmo_model_final_results %>%
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "Pulse Pressure Amplification Models", 
-          subtitle = "") +
-  labs(y = "Estimate (mmHg): Justa vs Traditional") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```
-
-\pagebreak  
-
-# PPamp primary model diagnostic plots
-```{r}
-plot(sphygmo_model_season, main = "PPAmp primary model", 
-     xlab = "fitted values", ylab = "residuals")
-
-qqnorm(residuals(sphygmo_model_season), main = "PPAmp primary model QQ Plot")
-
-#aix_influential <- influence(sphygmo_model_season, obs = TRUE)
-
-#aix_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
-
-#plot.estex(aix_influential, which = "cook")
-```
-
-\pagebreak  
-
-
-# Simple linear models between PPamp and age/bmi
-```{r}
-#Central Pulse Pressure
-ppamp_age <- lm(pulse_pressure_amp ~ age_baseline, data = r00_model_data_baseline)
-tidy(ppamp_age)
-
-ppamp_bmi <- lm(pulse_pressure_amp ~ bmi, data = r00_model_data_baseline)
-tidy(ppamp_bmi)
-```
-
-\pagebreak  
-
-# PPAmp Ratio analyses
-```{r}
-## Model Summaries
-## Honduras R00 Initial AIx Models
-## Base model using season to account for time
-
-sphygmo_model_season <- lmer(pulse_pressure_amp_ratio ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_season)
-
-sphygmo_model_season_6phases <- lmer(pulse_pressure_amp_ratio ~ assigned_stove + season + 
-                          (1 | house_id), r00_model_data_6phases)
-#  summary(sphygmo_model_6phases)
-
-sphygmo_model_age <- lmer(pulse_pressure_amp_ratio ~ assigned_stove + age_baseline + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_age)
-
-sphygmo_model_age_int <- lmer(pulse_pressure_amp_ratio ~ assigned_stove*age_cat + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_age_int)
-age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat)
-summary(age_int_emmeans)
-plot(age_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove") 
-
-sphygmo_model_bmi <- lmer(pulse_pressure_amp_ratio ~ assigned_stove + bmi + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_bmi)
-
-sphygmo_model_bmi_int <- lmer(pulse_pressure_amp_ratio ~ assigned_stove*bmi_cat + season + 
-                          (1 | house_id), r00_model_data_outliers_removed)
-#  summary(sphygmo_model_bmi_int)
-bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
-summary(bmi_int_emmeans)
-plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-## save model results
-# write_rds(sphygmo_model_spline, "output/aix_model_17nov18.RDS")
-```
-
-\pagebreak  
-
-# PPAmp Ratio Model Summaries and Plots
-## Using season to account for time
-```{r}
-tidy_sphygmo_model_season <- tidy(sphygmo_model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "full dataset", "na")) 
-tidy_sphygmo_model_season_6phases <- tidy(sphygmo_model_season_6phases, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
-tidy_sphygmo_model_season_age <- tidy(sphygmo_model_age, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
-tidy_sphygmo_model_season_bmi <- tidy(sphygmo_model_bmi, conf.int = TRUE) %>% 
-    filter(grepl('assigned', term)) %>% 
-    rename(ci_low = conf.low, ci_hi = conf.high) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "bmi", "na")) 
-
-sphygmo_model_final_results <- rbind(tidy_sphygmo_model_season,
-                                     tidy_sphygmo_model_season_6phases,
-                                     tidy_sphygmo_model_season_age,
-                                     tidy_sphygmo_model_season_bmi)
-kable(sphygmo_model_final_results)
-
-
-## Plot model estimates with age
-plot_estimates <- sphygmo_model_final_results %>%
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=ci_low, ymax=ci_hi), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "Pulse Pressure Amplification Ratio Models", 
-          subtitle = "") +
-  labs(y = "Estimate (mmHg): Justa vs Traditional") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 15, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```
-
-\pagebreak  
-
-# PPamp Ratio primary model diagnostic plots
-```{r}
-plot(sphygmo_model_season, main = "PPAmp primary model", 
-     xlab = "fitted values", ylab = "residuals")
-
-qqnorm(residuals(sphygmo_model_season), main = "PPAmp primary model QQ Plot")
-
-#aix_influential <- influence(sphygmo_model_season, obs = TRUE)
-
-#aix_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
-
-#plot.estex(aix_influential, which = "cook")
-```
-
-\pagebreak  
-
-
-# Simple linear models between PPamp Ratio and age/bmi
-```{r}
-#Central Pulse Pressure
-ppamp_age <- lm(pulse_pressure_amp ~ age_baseline, data = r00_model_data_baseline)
-tidy(ppamp_age)
-
-ppamp_bmi <- lm(pulse_pressure_amp ~ bmi, data = r00_model_data_baseline)
-tidy(ppamp_bmi)
-```

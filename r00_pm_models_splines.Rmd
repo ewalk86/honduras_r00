@@ -1,0 +1,143 @@
+---
+title: "R00 Analysis - PM Using Splines"
+author: "Ethan Walker"
+date: "April 30, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+library(gamm4)
+library(sjstats)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+```{r}
+# USE THIS DATASET FOR ANALYSES!!!
+## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+```
+
+```{r}
+## Data prep - primary model dataset
+r00_model_data <- r00_model_data_outliers_removed %>% 
+  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central, hr, bmi, waist,
+         whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
+         dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
+         a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp) %>% 
+  mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
+  mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
+  mutate(aug_index = as.numeric(aug_index)) %>% 
+  mutate(aug_index_75 = as.numeric(aug_index_75)) %>% 
+  mutate(pulse_pressure_periph = as.numeric(pulse_pressure_periph))%>% 
+  mutate(pulse_pressure_central = as.numeric(pulse_pressure_central)) %>% 
+  mutate(hr = as.numeric(hr)) %>% 
+  mutate(bmi = as.numeric(bmi)) %>% 
+  mutate(whr = as.numeric(whr)) %>% 
+  mutate(waist = as.numeric(waist)) %>% 
+  mutate(waist_cm = as.numeric(waist * 2.54)) %>% 
+  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>% 
+  mutate(dds_total = as.numeric(dds_total)) %>% 
+  mutate(phys_act = as.numeric(phys_act)) %>% 
+  mutate(beds_new = as.numeric(beds_new)) %>% 
+  mutate(ses_materials = as.numeric(ses_materials)) %>% 
+  mutate(school_self = as.numeric(school_self)) %>%
+  mutate(age_baseline = as.numeric(age_baseline)) %>% 
+  mutate(phase = as.factor(phase)) %>%
+  mutate(house_id = as.factor(house_id)) %>%
+  #split age at 40; >40 = 1, <=40 = 0
+  mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
+  mutate(age_cat = as.factor(age_cat)) %>% 
+  mutate(school_bi = as.factor(school_bi)) %>% 
+  #split bmi at 26; >26 = 1, <=26 = 0
+  mutate(bmi_cat = if_else(bmi >= 26, ">=26", "<26")) %>% 
+  mutate(bmi_cat = as.factor(bmi_cat)) %>%
+  mutate(whr_cat = as.factor(whr_cat)) %>% 
+  mutate(season = as.factor(season)) %>%
+  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
+                                 labels = c("Traditional", "Justa"))) %>% 
+  #log transforming and standardizing based on IQR
+  mutate(log_a_twa_iqr = as.numeric(log(a_twa)/1.78)) %>% 
+  mutate(log_p_twa_iqr = as.numeric(log(p_twa)/1.14)) %>% 
+  #standardizing based on IQR
+  mutate(a_twa_iqr = as.numeric(a_twa/200)) %>% 
+  mutate(p_twa_iqr = as.numeric(p_twa/75)) %>% 
+  #log transforming
+  mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
+  mutate(log_p_twa = as.numeric(log(p_twa))) 
+```
+
+
+### Spline for PM using gamm4
+```{r}
+# s() is the command for a spline
+# fx=TRUE makes a fixed df regression spline, as opposed to a penalized spline
+# bs = "cr" makes this a cubic regression spline
+## Default is "tp" for thin plate regression spline
+## Both seem to have the same effect on the model
+# k = 6 sets the degrees of freedom (df = k-1)
+# s() has problems with dates, so using phase in this model instead of spline with date
+
+##### AIx and spline area PM
+model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_apm_spline$gam)
+summary(model_apm_spline$gam)
+summary(model_apm_spline$mer)
+
+
+##### AIx and spline personal PM
+model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_ppm_spline$gam)
+summary(model_ppm_spline$gam)
+summary(model_ppm_spline$mer)
+
+
+##### CPP and spline area PM
+model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_apm_spline$gam)
+summary(model_apm_spline$gam)
+summary(model_apm_spline$mer)
+
+
+##### CPP and spline personal PM
+model_ppm_spline <- gamm4(pulse_pressure_central ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_ppm_spline$gam)
+summary(model_ppm_spline$gam)
+summary(model_ppm_spline$mer)
+```

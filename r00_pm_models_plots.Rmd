@@ -188,7 +188,6 @@ tidy_model_apm_p1 <- tidy(model_apm_p1, conf.int = TRUE) %>%
 model_apm <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_self + (1 | house_id), r00_model_data)
 #summary(model_apm)
-# Intraclass correlation coefficient
 tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
     mutate(model = if_else(term == "log_a_twa", "primary", "na")) 
@@ -197,7 +196,7 @@ tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>%
 
 model_apm_no_bp_meds <- lmer(aug_index ~ log_a_twa + 
                                     ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
+                      waist_cm + school_self + (1 | house_id), r00_model_data_meds)
 #summary(model_apm_no_bp_meds)
 tidy_model_apm_no_bp_meds <- tidy(model_apm_no_bp_meds, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -349,7 +348,7 @@ aix_results <- rbind(tidy_model_apm,
                      tidy_model_apm_pa,
                      tidy_model_apm_dds,
                      tidy_model_apm_full)
-kable(aix_results)
+#kable(aix_results)
 ```
 
 
@@ -428,7 +427,7 @@ tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>%
 
 model_ppm_no_bp_meds <- lmer(aug_index ~ log_p_twa + 
                                     ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
+                      waist_cm + school_self + (1 | house_id), r00_model_data_meds)
 #summary(model_ppm_no_bp_meds)
 tidy_model_ppm_no_bp_meds <- tidy(model_ppm_no_bp_meds, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -580,7 +579,7 @@ aix_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_pa,
                      tidy_model_ppm_dds,
                      tidy_model_ppm_full)
-kable(aix_results)
+#kable(aix_results)
 ```
 
 ## Plot model estimates - AIx and Personal PM
@@ -659,7 +658,7 @@ tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>%
 
 model_apm_no_bp_meds <- lmer(pulse_pressure_central ~ log_a_twa + 
                     ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
+                      waist_cm + school_self + (1 | house_id), r00_model_data_meds)
 #summary(model_apm_no_bp_meds)
 tidy_model_apm_no_bp_meds <- tidy(model_apm_no_bp_meds, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -812,7 +811,7 @@ cpp_results <- rbind(tidy_model_apm,
                      tidy_model_apm_pa,
                      tidy_model_apm_dds,
                      tidy_model_apm_full)
-kable(cpp_results)
+#kable(cpp_results)
 ```
 
 ## Plot model estimates - CPP and Area PM
@@ -907,7 +906,7 @@ tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>%
 
 model_ppm_no_bp_meds <- lmer(pulse_pressure_central ~ log_p_twa + 
                     ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
+                      waist_cm + school_self + (1 | house_id), r00_model_data_meds)
 #summary(model_ppm_no_bp_meds)
 tidy_model_ppm_no_bp_meds <- tidy(model_ppm_no_bp_meds, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -1059,7 +1058,7 @@ cpp_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_pa,
                      tidy_model_ppm_dds,
                      tidy_model_ppm_full)
-kable(cpp_results)
+#kable(cpp_results)
 ```
 
 ## Plot model estimates - CPP and Personal PM
@@ -1119,107 +1118,3 @@ qqnorm(residuals(model_ppm_logcpp), main = "Log CPP and personal PM")
 #plot.estex(cpp_influential, which = "cook")
 ```
 
---------------------
-
-### Spline for PM using gamm4
-```{r}
-# s() is the command for a spline
-# fx=TRUE makes a fixed df regression spline, as opposed to a penalized spline
-# bs = "cr" makes this a cubic regression spline
-## Default is "tp" for thin plate regression spline
-## Both seem to have the same effect on the model
-# k = 6 sets the degrees of freedom (df = k-1)
-# s() has problems with dates, so using phase in this model instead of spline with date
-
-##### AIx and spline area PM
-model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
-                             age_baseline +  waist_cm + school_self + phase, 
-                             data = r00_model_data,
-                             random = ~(1 | house_id))
-plot(model_apm_spline$gam)
-summary(model_apm_spline$gam)
-summary(model_apm_spline$mer)
-
-
-##### AIx and spline personal PM
-model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
-                             age_baseline +  waist_cm + school_self + phase, 
-                             data = r00_model_data,
-                             random = ~(1 | house_id))
-plot(model_ppm_spline$gam)
-summary(model_ppm_spline$gam)
-summary(model_ppm_spline$mer)
-
-
-##### CPP and spline area PM
-model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
-                             age_baseline +  waist_cm + school_self + phase, 
-                             data = r00_model_data,
-                             random = ~(1 | house_id))
-plot(model_apm_spline$gam)
-summary(model_apm_spline$gam)
-summary(model_apm_spline$mer)
-
-
-##### CPP and spline personal PM
-model_ppm_spline <- gamm4(pulse_pressure_central ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
-                             age_baseline +  waist_cm + school_self + phase, 
-                             data = r00_model_data,
-                             random = ~(1 | house_id))
-plot(model_ppm_spline$gam)
-summary(model_ppm_spline$gam)
-summary(model_ppm_spline$mer)
-```
-
-### Age interaction analysis
-```{r}
-# AIx and area pm
-model_apm_age_int <- lmer(aug_index ~ log_a_twa*age_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_apm_age_int)
-
-
-# AIx and personal pm
-model_ppm_age_int <- lmer(aug_index ~ log_p_twa*age_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_age_int)
-
-
-# CPP and area pm
-model_apm_age_int <- lmer(pulse_pressure_central ~ log_a_twa*age_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_apm_age_int)
-
-
-# CPP and personal pm
-model_ppm_age_int <- lmer(pulse_pressure_central ~ log_p_twa*age_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_age_int)
-```
-
-### WHR interaction analysis
-```{r}
-# AIx and area pm
-model_apm_whr_int <- lmer(aug_index ~ log_a_twa*whr_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_apm_whr_int)
-tidy(model_apm_whr_int, conf.int = TRUE)
-
-
-# AIx and personal pm
-model_ppm_whr_int <- lmer(aug_index ~ log_p_twa*whr_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_whr_int)
-
-
-# CPP and area pm
-model_apm_whr_int <- lmer(pulse_pressure_central ~ log_a_twa*whr_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_apm_whr_int)
-
-
-# CPP and personal pm
-model_ppm_whr_int <- lmer(pulse_pressure_central ~ log_p_twa*whr_cat + ns(date_sphygmo, df=6) +
-                      whr + school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_whr_int)
-```
