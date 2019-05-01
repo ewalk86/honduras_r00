@@ -92,8 +92,8 @@ r00_model_data <- r00_model_data_outliers_removed %>%
 ```
 
 
-### Spline for PM using gamm4
-```{r}
+## AIx and spline area PM
+```{r, echo=TRUE}
 # s() is the command for a spline
 # fx=TRUE makes a fixed df regression spline, as opposed to a penalized spline
 # bs = "cr" makes this a cubic regression spline
@@ -102,7 +102,6 @@ r00_model_data <- r00_model_data_outliers_removed %>%
 # k = 6 sets the degrees of freedom (df = k-1)
 # s() has problems with dates, so using phase in this model instead of spline with date
 
-##### AIx and spline area PM
 model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
                              age_baseline +  waist_cm + school_self + phase, 
                              data = r00_model_data,
@@ -110,9 +109,12 @@ model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) 
 plot(model_apm_spline$gam)
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
+```
 
+\pagebreak  
 
-##### AIx and spline personal PM
+## AIx and spline personal PM
+```{r}
 model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
                              age_baseline +  waist_cm + school_self + phase, 
                              data = r00_model_data,
@@ -120,9 +122,12 @@ model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) 
 plot(model_ppm_spline$gam)
 summary(model_ppm_spline$gam)
 summary(model_ppm_spline$mer)
+```
 
+\pagebreak  
 
-##### CPP and spline area PM
+## CPP and spline area PM
+```{r}
 model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
                              age_baseline +  waist_cm + school_self + phase, 
                              data = r00_model_data,
@@ -130,9 +135,12 @@ model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = 
 plot(model_apm_spline$gam)
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
+```
 
+\pagebreak  
 
-##### CPP and spline personal PM
+## CPP and spline personal PM
+```{r}
 model_ppm_spline <- gamm4(pulse_pressure_central ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
                              age_baseline +  waist_cm + school_self + phase, 
                              data = r00_model_data,

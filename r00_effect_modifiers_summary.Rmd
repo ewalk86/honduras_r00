@@ -41,7 +41,7 @@ r00_bp <- r00_full_long %>%
   mutate(sys_bp_cat = if_else(sys_bp_periph < 119.9, "sbp < 120", "sbp >=120"))
 
 bp_table <- table(r00_bp$sys_bp_cat)
-prop.table(bp_table)
+kable(prop.table(bp_table))
 
 
 # BMI
@@ -54,7 +54,7 @@ r00_bmi <- r00_full_long %>%
   mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) 
 
 bmi_table <- table(r00_bmi$bmi_cat)
-prop.table(bmi_table)
+kable(prop.table(bmi_table))
 
 
 # Hba1c
@@ -67,7 +67,7 @@ r00_hba1c <- r00_full_long %>%
   mutate(hba1c_cat = if_else(hba1c < 5.59, "a1c < 5.6", "a1c >=5.6")) 
 
 hba1c_table <- table(r00_hba1c$hba1c_cat)
-prop.table(hba1c_table)
+kable(prop.table(hba1c_table))
 
 
 # Age
@@ -77,10 +77,14 @@ r00_age <- r00_full_long %>%
   select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
   mutate(age_baseline = as.numeric((age_baseline))) %>% 
   #filter(!is.na(age_baseline)) %>% 
-  mutate(age_cat = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) 
+  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
+  mutate(age_cat_30 = if_else(age_baseline < 29.9, "age < 30", "age >= 30")) 
 
-age_table <- table(r00_age$age_cat)
-prop.table(age_table)
+age_table_40 <- table(r00_age$age_cat_40)
+kable(prop.table(age_table_40))
+
+age_table_30 <- table(r00_age$age_cat_30)
+kable(prop.table(age_table_30))
 
 
 # Waist Circ
@@ -95,7 +99,7 @@ r00_waist <- r00_full_long %>%
   mutate(waist_cat = factor(waist_cat, levels = c("waist < 80cm", "waist >= 80cm")))
 
 waist_table <- table(r00_waist$waist_cat)
-prop.table(waist_table)
+kable(prop.table(waist_table))
 
 
 # WHR
@@ -108,7 +112,7 @@ r00_whr <- r00_full_long %>%
   mutate(whr_cat = factor(whr_cat, labels = c("whr not obese", "whr obese")))
 
 whr_table <- table(r00_whr$whr_cat)
-prop.table(whr_table)
+kable(prop.table(whr_table))
 
 
 # Metabolic Syndrome
@@ -135,18 +139,24 @@ r00_metsyn <- r00_full_long %>%
   mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn")))
 
 metsyn_table <- table(r00_metsyn$met_syn)
-prop.table(metsyn_table)
+kable(prop.table(metsyn_table))
 ```
 
 # 2x2 Tables
 ```{r}
 metsyn_whr <- table(r00_metsyn$met_syn, r00_whr$whr_cat)
-prop.table(metsyn_whr)
+kable(prop.table(metsyn_whr))
 
 metsyn_waist <- table(r00_metsyn$met_syn, r00_waist$waist_cat)
-prop.table(metsyn_waist)
+kable(prop.table(metsyn_waist))
 
 metsyn_bmi <- table(r00_metsyn$met_syn, r00_bmi$bmi_cat)
-prop.table(metsyn_bmi)
+kable(prop.table(metsyn_bmi))
+
+metsyn_bp <- table(r00_metsyn$met_syn, r00_bp$sys_bp_cat)
+kable(prop.table(metsyn_bp))
+
+metsyn_hba1c <- table(r00_metsyn$met_syn, r00_hba1c$hba1c_cat)
+kable(prop.table(metsyn_hba1c))
 ```
 

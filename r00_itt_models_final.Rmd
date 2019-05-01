@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 Intent-to-treat Models and Plots"
 author: "Ethan Walker"
-date: "14 March 2019"
+date: "30 April 2019"
 output: pdf_document
 ---
 
@@ -108,7 +108,6 @@ r00_model_data_p6 <- r00_model_data %>%
   filter(phase == 6)
 ```
 
-
 ```{r}
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
@@ -122,10 +121,8 @@ r00_model_data_p6 <- r00_model_data %>%
 #write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed.rds")
 ```
 
-
+```{r, eval=FALSE}
 # Simple linear models between AIx and age/bmi
-```{r}
-#AIx
 aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_baseline)
 tidy(aix_age)
 aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p2)
@@ -153,16 +150,14 @@ aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p6)
 tidy(aix_bmi)
 ```
 
-\pagebreak  
 
-# AIx intent-to-treat analyses
-```{r}
-## Model Summaries
-## Honduras R00 Initial AIx Models
-
-##### AIx ITT base model - spline with 6 df
+```{r, echo=TRUE}
+##### AIx ITT primary model - spline with 6 df
 model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
                  (1 | house_id), r00_model_data)
+```
+
+```{r}
 #summary(model_itt)
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stove1', term)) %>% 
@@ -221,14 +216,13 @@ aix_results <- rbind(tidy_model_itt,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_age)
+kable(aix_results)
 ```
 
-\pagebreak  
 
+```{r}
 # AIx Model Summaries and Plots
 ## Analyses with 6 outliers removed: 2 below -25 and 4 above 75
-## Keep these outliers out for all future analyses (AIx and CPP)
-```{r}
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds",
                                           "6 phases", "phase", "season", "age"))) %>% 
@@ -275,9 +269,8 @@ qqnorm(residuals(model_itt), main = "AIx primary model QQ Plot")
 \pagebreak  
 
 
+```{r, eval=FALSE}
 # Simple linear models between CPP and age/bmi
-```{r}
-#Central Pulse Pressure
 cpp_age <- lm(pulse_pressure_central ~ age_baseline, data = r00_model_data_baseline)
 tidy(cpp_age)
 
@@ -285,16 +278,14 @@ cpp_bmi <- lm(pulse_pressure_central ~ bmi, data = r00_model_data_baseline)
 tidy(cpp_bmi)
 ```
 
-\pagebreak  
 
-# CPP intent-to-treat analyses
-```{r}
-## Model Summaries
-## Honduras R00 Initial CPP Models
-
-##### CPP ITT base model - spline with 6 df
+```{r, echo=TRUE}
+##### CPP ITT primary model - spline with 6 df
 model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
                  (1 | house_id), r00_model_data)
+```
+
+```{r}
 #summary(model_itt)
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stove1', term)) %>% 
@@ -353,12 +344,12 @@ cpp_results <- rbind(tidy_model_itt,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_age)
+kable(cpp_results)
 ```
 
-\pagebreak  
 
-# CPP Model Summaries and Plots
 ```{r}
+# CPP Model Plots
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds",
                                           "6 phases", "phase", "season", "age"))) %>% 

@@ -124,11 +124,13 @@ r00_model_data_p6 <- r00_model_data %>%
 
 # Stove use analyses with a priori confounders
 ## Try following variables as main IV in primary model:
-## sums_stack, sec_stove, hours_primary, hours_secondary,
-## prim_sum_temp_percent_50, sec_sum_temp_percent_50, sec_stove_sums
+### sums_stack, sec_stove, hours_primary, hours_secondary,
+### prim_sum_temp_percent_50, sec_sum_temp_percent_50, sec_stove_sums
 
-# AIx and Stove use variables
+
 ```{r}
+# AIx and Stove use variables
+
 ##### AIx and sums_stack (1 = 1 sum, 2 = 2+ sums)
 
 model_sums_1vs2plus <- lmer(aug_index ~ sums_stack + ns(date_sphygmo, df=6) + age_baseline +
@@ -206,8 +208,9 @@ aix_results <- rbind(tidy_model_sums_1vs2plus,
 #kable(aix_results)
 ```
 
-## Plot model estimates - AIx and Stove use vars
+
 ```{r}
+## Plot model estimates - AIx and Stove use vars
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("2+ sums", "sec event 50C (sums)",
                                           "prim sum 50C (%)", "sec sum 50C (%)", 
@@ -236,9 +239,9 @@ plot_estimates <- aix_results %>%
 plot_estimates
 ```
 
-
-# CPP and Stove use variables
 ```{r}
+# CPP and Stove use variables
+
 ##### CPP and sums_stack (1 = 1 sum, 2 = 2+ sums)
 
 model_sums_1vs2plus <- lmer(pulse_pressure_central ~ sums_stack + 
@@ -319,8 +322,10 @@ cpp_results <- rbind(tidy_model_sums_1vs2plus,
 #kable(cpp_results)
 ```
 
-## Plot model estimates - CPP and Stove use vars
+
 ```{r}
+## Plot model estimates - CPP and Stove use vars
+
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("2+ sums", "sec event 50C (sums)",
                                           "prim sum 50C (%)", "sec sum 50C (%)", 
