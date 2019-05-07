@@ -109,6 +109,12 @@ model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) 
 plot(model_apm_spline$gam)
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
+
+model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 4) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_apm_spline$gam)
 ```
 
 \pagebreak  
@@ -122,6 +128,12 @@ model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) 
 plot(model_ppm_spline$gam)
 summary(model_ppm_spline$gam)
 summary(model_ppm_spline$mer)
+
+model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 4) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_ppm_spline$gam)
 ```
 
 \pagebreak  
@@ -135,6 +147,12 @@ model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = 
 plot(model_apm_spline$gam)
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
+
+model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 4) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_apm_spline$gam)
 ```
 
 \pagebreak  
@@ -148,4 +166,10 @@ model_ppm_spline <- gamm4(pulse_pressure_central ~ s(log_p_twa, fx = TRUE, bs = 
 plot(model_ppm_spline$gam)
 summary(model_ppm_spline$gam)
 summary(model_ppm_spline$mer)
+
+model_ppm_spline <- gamm4(pulse_pressure_central ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 4) + 
+                             age_baseline +  waist_cm + school_self + phase, 
+                             data = r00_model_data,
+                             random = ~(1 | house_id))
+plot(model_ppm_spline$gam)
 ```

@@ -37,10 +37,12 @@ r00_bp <- r00_full_long %>%
   filter(phase == 1) %>% 
   select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
   mutate(sys_bp_periph = as.numeric((sys_bp_periph))) %>% 
-  #filter(!is.na(sys_bp_periph)) %>% 
-  mutate(sys_bp_cat = if_else(sys_bp_periph < 119.9, "sbp < 120", "sbp >=120"))
+  mutate(dia_bp_periph = as.numeric((dia_bp_periph))) %>% 
+  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
+                          "bp norm", "bp high")) %>% 
+  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high")))
 
-bp_table <- table(r00_bp$sys_bp_cat)
+bp_table <- table(r00_bp$bp_cat)
 kable(prop.table(bp_table))
 
 
@@ -64,7 +66,7 @@ r00_hba1c <- r00_full_long %>%
   select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
   mutate(hba1c = as.numeric((hba1c))) %>% 
   #filter(!is.na(hba1c)) %>% 
-  mutate(hba1c_cat = if_else(hba1c < 5.59, "a1c < 5.6", "a1c >=5.6")) 
+  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >=5.7")) 
 
 hba1c_table <- table(r00_hba1c$hba1c_cat)
 kable(prop.table(hba1c_table))
@@ -153,10 +155,19 @@ kable(prop.table(metsyn_waist))
 metsyn_bmi <- table(r00_metsyn$met_syn, r00_bmi$bmi_cat)
 kable(prop.table(metsyn_bmi))
 
-metsyn_bp <- table(r00_metsyn$met_syn, r00_bp$sys_bp_cat)
+metsyn_bp <- table(r00_metsyn$met_syn, r00_bp$bp_cat)
 kable(prop.table(metsyn_bp))
 
 metsyn_hba1c <- table(r00_metsyn$met_syn, r00_hba1c$hba1c_cat)
 kable(prop.table(metsyn_hba1c))
+
+whr_waist <- table(r00_whr$whr_cat, r00_waist$waist_cat)
+kable(prop.table(whr_waist))
+
+whr_bmi <- table(r00_whr$whr_cat, r00_bmi$bmi_cat)
+kable(prop.table(whr_bmi))
+
+waist_bmi <- table(r00_waist$waist_cat, r00_bmi$bmi_cat)
+kable(prop.table(waist_bmi))
 ```
 
