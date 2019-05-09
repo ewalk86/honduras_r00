@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 Intent-to-treat Models and Plots"
 author: "Ethan Walker"
-date: "30 April 2019"
+date: "9 May 2019"
 output: pdf_document
 ---
 
@@ -44,35 +44,82 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 
 
 ```{r}
-## Data prep
+## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  mutate(sys_bp_central = as.numeric(sys_bp_central))%>% 
-  mutate(dia_bp_central = as.numeric(dia_bp_central)) %>% 
-  mutate(aug_index = as.numeric(aug_index)) %>% 
-  mutate(aug_index_75 = as.numeric(aug_index_75)) %>% 
-  mutate(pulse_pressure_periph = as.numeric(pulse_pressure_periph))%>% 
-  mutate(pulse_pressure_central = as.numeric(pulse_pressure_central)) %>% 
-  mutate(hr = as.numeric(hr)) %>% 
-  mutate(bmi = as.numeric(bmi)) %>% 
-  mutate(age_baseline = as.numeric(age_baseline)) %>% 
-  mutate(phase = as.factor(phase)) %>%
-  mutate(house_id = as.factor(house_id)) %>%
-  #split age at 40; >40 = 1, <=40 = 0
-  mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
-  mutate(age_cat = as.factor(age_cat)) %>% 
-  #split bmi at 26; >26 = 1, <=26 = 0
-  mutate(bmi_cat = if_else(bmi >= 26, ">=26", "<26")) %>% 
+  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central, hr, bmi, waist,
+         whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
+         dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
+         a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
+         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides) %>% 
+  mutate(sys_bp_central = as.numeric(sys_bp_central),
+         dia_bp_central = as.numeric(dia_bp_central),
+         sys_bp_periph = as.numeric(sys_bp_periph),
+         dia_bp_periph = as.numeric(dia_bp_periph),
+         aug_index = as.numeric(aug_index),
+         aug_index_75 = as.numeric(aug_index_75),
+         pulse_pressure_periph = as.numeric(pulse_pressure_periph),
+         pulse_pressure_central = as.numeric(pulse_pressure_central),
+         hr = as.numeric(hr),
+         bmi = as.numeric(bmi),
+         whr = as.numeric(whr),
+         waist = as.numeric(waist),
+         waist_cm = as.numeric(waist * 2.54),
+         dds_total = as.numeric(dds_total),
+         phys_act = as.numeric(phys_act),
+         beds_new = as.numeric(beds_new),
+         ses_materials = as.numeric(ses_materials),
+         school_self = as.numeric(school_self),
+         age_baseline = as.numeric(age_baseline),
+         hba1c = as.numeric(hba1c),
+         hdl = as.numeric(hdl),
+         triglycerides = as.numeric(triglycerides))%>% 
+  mutate(phase = as.factor(phase),
+         season = as.factor(season),
+         house_id = as.factor(house_id),
+         school_bi = as.factor(school_bi),
+         whr_cat = as.factor(whr_cat)) %>%
+  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
+                                 labels = c("Traditional", "Justa"))) %>% 
+  #split waist at 80cm
+  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>%
+  mutate(waist_cat = as.factor(waist_cat)) %>% 
+  #split age at 40
+  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
+  mutate(age_cat_40 = as.factor(age_cat_40)) %>% 
+  #split age at 30
+  mutate(age_cat_30 = if_else(age_baseline < 29.9, "age < 30", "age >= 30")) %>% 
+  mutate(age_cat_30 = as.factor(age_cat_30)) %>% 
+  #split bmi at 25
+  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) %>% 
   mutate(bmi_cat = as.factor(bmi_cat)) %>%
-  mutate(whr_cat = as.factor(whr_cat)) %>%
-  mutate(season = as.factor(season)) %>%
-  #pulse pressure amplification vars
-  mutate(pulse_pressure_amp = as.numeric(pulse_pressure_periph - pulse_pressure_central)) %>%
-  mutate(pulse_pressure_amp_ratio = as.numeric(pulse_pressure_periph/pulse_pressure_central)) %>%
-  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75, aug_pressure, 
-         hr, pulse_pressure_periph, season, sys_bp_periph, dia_bp_periph, 
-         pulse_pressure_central, assigned_stove, house_id, age_cat, age_current, 
-         age_baseline, bmi_cat, bmi, phase, study_arm, date_sphygmo, whr_cat, 
-         pulse_pressure_amp, pulse_pressure_amp_ratio, map_central, map_periph, med_bp) 
+  #split a1c at 5.7
+  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >=5.7")) %>% 
+  mutate(hba1c_cat = as.factor(hba1c_cat)) %>%
+  #bp normal/high
+  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
+                          "bp norm", "bp high")) %>% 
+  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high"))) %>% 
+  #new metsyn variable
+  mutate(sys_bp_ms = if_else(sys_bp_periph >= 130, 1, 0),
+         dia_bp_ms = if_else(dia_bp_periph >= 85, 1, 0),
+         trigs_ms = if_else(triglycerides > 200, 1, 0),
+         hdl_ms = if_else(hdl < 50, 1, 0),
+         a1c_ms = if_else(hba1c > 5.6, 1, 0),
+         waist_ms = if_else(waist_cm > 80, 1, 0)) %>% 
+  mutate(ms_sum = (sys_bp_ms + dia_bp_ms + trigs_ms + hdl_ms + a1c_ms)) %>% 
+  mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
+  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn"))) %>% 
+  #log transforming and standardizing based on IQR
+  mutate(log_a_twa_iqr = as.numeric(log(a_twa)/1.78)) %>% 
+  mutate(log_p_twa_iqr = as.numeric(log(p_twa)/1.14)) %>% 
+  #standardizing based on IQR
+  mutate(a_twa_iqr = as.numeric(a_twa/200)) %>% 
+  mutate(p_twa_iqr = as.numeric(p_twa/75)) %>% 
+  #log transforming
+  mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
+  mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
+  filter(!is.na(assigned_stove))
 
 # Filtering out medication users
 r00_model_data_meds <- r00_model_data %>% 
@@ -154,50 +201,50 @@ tidy(aix_bmi)
 ```{r, echo=TRUE}
 ##### AIx ITT primary model - spline with 6 df
 model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                 (1 | house_id), r00_model_data)
+                  (1 | house_id), r00_model_data)
 ```
 
 ```{r}
 #summary(model_itt)
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "primary", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "primary", "na")) 
 
 
 ##### AIx ITT model - bp meds removed (57 obs)
 model_no_bp_meds <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                 (1 | house_id), r00_model_data_meds)
+                         (1 | house_id), r00_model_data_meds)
 #summary(model_no_bp_meds)
 tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "no bp meds", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no bp meds", "na")) 
 
 
 ##### AIx ITT model - phase instead of spline
 model_phase <- lmer(aug_index ~ assigned_stove + phase + 
-                 (1 | house_id), r00_model_data)
+                    (1 | house_id), r00_model_data)
 #summary(model_phase)
 tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "phase", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na")) 
 
 
 ##### AIx ITT model - season instead of spline
 model_season <- lmer(aug_index ~ assigned_stove + season + 
-                 (1 | house_id), r00_model_data)
+                     (1 | house_id), r00_model_data)
 #summary(model_season)
 tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "season", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
 
 
 ##### AIx ITT model - participants who completed all 6 phases
 model_6phases <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
-                          (1 | house_id), r00_model_data_6phases)
+                      (1 | house_id), r00_model_data_6phases)
 # summary(model_6phases)
 tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "6 phases", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
 
 
 ##### AIx ITT model - including baseline age
@@ -205,8 +252,8 @@ model_age <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
                   age_baseline + (1 | house_id), r00_model_data)
 # summary(model_age)
 tidy_model_age <- tidy(model_age, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "age", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
 
 
 # Combine prepped data for plotting
@@ -216,7 +263,7 @@ aix_results <- rbind(tidy_model_itt,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_age)
-kable(aix_results)
+#kable(aix_results)
 ```
 
 
@@ -282,50 +329,50 @@ tidy(cpp_bmi)
 ```{r, echo=TRUE}
 ##### CPP ITT primary model - spline with 6 df
 model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                 (1 | house_id), r00_model_data)
+                  (1 | house_id), r00_model_data)
 ```
 
 ```{r}
 #summary(model_itt)
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "primary", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "primary", "na")) 
 
 
 ##### CPP ITT model - bp meds removed (57 obs)
 model_no_bp_meds <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                 (1 | house_id), r00_model_data_meds)
+                         (1 | house_id), r00_model_data_meds)
 #summary(model_no_bp_meds)
 tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "no bp meds", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no bp meds", "na")) 
 
 
 ##### CPP ITT model - phase instead of spline
 model_phase <- lmer(pulse_pressure_central ~ assigned_stove + phase + 
-                 (1 | house_id), r00_model_data)
+                    (1 | house_id), r00_model_data)
 #summary(model_phase)
 tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "phase", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na")) 
 
 
 ##### CPP ITT model - season instead of spline
 model_season <- lmer(pulse_pressure_central ~ assigned_stove + season + 
-                 (1 | house_id), r00_model_data)
+                     (1 | house_id), r00_model_data)
 #summary(model_season)
 tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "season", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
 
 
 ##### CPP ITT model - participants who completed all 6 phases
 model_6phases <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
-                          (1 | house_id), r00_model_data_6phases)
+                      (1 | house_id), r00_model_data_6phases)
 # summary(model_6phases)
 tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "6 phases", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
 
 
 ##### CPP ITT model - including baseline age
@@ -333,8 +380,8 @@ model_age <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=
                   age_baseline + (1 | house_id), r00_model_data)
 # summary(model_age)
 tidy_model_age <- tidy(model_age, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stove1', term)) %>% 
-    mutate(model = if_else(term == "assigned_stove1", "age", "na")) 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "age", "na")) 
 
 
 # Combine prepped data for plotting
@@ -344,7 +391,7 @@ cpp_results <- rbind(tidy_model_itt,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_age)
-kable(cpp_results)
+#kable(cpp_results)
 ```
 
 
@@ -379,11 +426,23 @@ plot_estimates
 \pagebreak  
 
 # Central Pulse Pressure primary model diagnostic plots
+# Log transformed CPP helps diagnostic plots, but makes no difference in results
+## Continuing to use untransformed CPP in primary analyses for ease of interpretation
 ```{r}
 plot(model_itt, main = "Central Pulse Pressure primary model", 
      xlab = "fitted values", ylab = "residuals")
 
 qqnorm(residuals(model_itt), main = "Central Pulse Pressure primary model QQ Plot")
+
+
+
+model_itt_log <- lmer(log(pulse_pressure_central) ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                  (1 | house_id), r00_model_data) 
+
+plot(model_itt_log, main = "Log Central Pulse Pressure primary model", 
+     xlab = "fitted values", ylab = "residuals")
+
+qqnorm(residuals(model_itt_log), main = "Log Central Pulse Pressure primary model QQ Plot")
 
 #cpp_influential <- influence(sphygmo_model_season, obs = TRUE)
 

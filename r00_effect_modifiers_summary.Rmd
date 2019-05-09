@@ -27,108 +27,70 @@ library(knitr)
 #r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
 
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+# USE THIS DATASET FOR ANALYSES!!!
+## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
-# Baseline frequencies of potential effect modifiers
 ```{r}
-# Sys BP
-r00_bp <- r00_full_long %>%
-  filter(!is.na(study_arm)) %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
-  mutate(sys_bp_periph = as.numeric((sys_bp_periph))) %>% 
-  mutate(dia_bp_periph = as.numeric((dia_bp_periph))) %>% 
-  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
-                          "bp norm", "bp high")) %>% 
-  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high")))
-
-bp_table <- table(r00_bp$bp_cat)
-kable(prop.table(bp_table))
-
-
-# BMI
-r00_bmi <- r00_full_long %>%
-  filter(!is.na(study_arm)) %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
-  mutate(bmi = as.numeric((bmi))) %>% 
-  #filter(!is.na(bmi)) %>% 
-  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) 
-
-bmi_table <- table(r00_bmi$bmi_cat)
-kable(prop.table(bmi_table))
-
-
-# Hba1c
-r00_hba1c <- r00_full_long %>%
-  filter(!is.na(study_arm)) %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
-  mutate(hba1c = as.numeric((hba1c))) %>% 
-  #filter(!is.na(hba1c)) %>% 
-  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >=5.7")) 
-
-hba1c_table <- table(r00_hba1c$hba1c_cat)
-kable(prop.table(hba1c_table))
-
-
-# Age
-r00_age <- r00_full_long %>%
-  filter(!is.na(study_arm)) %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
-  mutate(age_baseline = as.numeric((age_baseline))) %>% 
-  #filter(!is.na(age_baseline)) %>% 
-  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
-  mutate(age_cat_30 = if_else(age_baseline < 29.9, "age < 30", "age >= 30")) 
-
-age_table_40 <- table(r00_age$age_cat_40)
-kable(prop.table(age_table_40))
-
-age_table_30 <- table(r00_age$age_cat_30)
-kable(prop.table(age_table_30))
-
-
-# Waist Circ
-r00_waist <- r00_full_long %>%
-  filter(!is.na(study_arm)) %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
-  mutate(waist = as.numeric((waist))) %>% 
-  mutate(waist_cm = as.numeric(waist * 2.54)) %>% 
-  #filter(!is.na(waist)) %>% 
-  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>% 
-  mutate(waist_cat = factor(waist_cat, levels = c("waist < 80cm", "waist >= 80cm")))
-
-waist_table <- table(r00_waist$waist_cat)
-kable(prop.table(waist_table))
-
-
-# WHR
-r00_whr <- r00_full_long %>%
-  filter(!is.na(study_arm)) %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_periph, dia_bp_periph, waist, bmi, hba1c, age_baseline, whr_cat) %>% 
-  #filter(!is.na(whr_cat)) %>% 
-  mutate(whr_cat = as.character((whr_cat))) %>% 
-  mutate(whr_cat = factor(whr_cat, labels = c("whr not obese", "whr obese")))
-
-whr_table <- table(r00_whr$whr_cat)
-kable(prop.table(whr_table))
-
-
-# Metabolic Syndrome
-r00_metsyn <- r00_full_long %>%
-  filter(!is.na(study_arm)) %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_periph, dia_bp_periph, waist, hba1c, hdl, triglycerides) %>% 
-  mutate(sys_bp_periph = as.numeric(sys_bp_periph),
+## Data prep - primary model dataset
+r00_model_data <- r00_model_data_outliers_removed %>% 
+  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75,
+         pulse_pressure_periph, pulse_pressure_central, hr, bmi, waist,
+         whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
+         dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
+         a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
+         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides) %>% 
+  mutate(sys_bp_central = as.numeric(sys_bp_central),
+         dia_bp_central = as.numeric(dia_bp_central),
+         sys_bp_periph = as.numeric(sys_bp_periph),
          dia_bp_periph = as.numeric(dia_bp_periph),
+         aug_index = as.numeric(aug_index),
+         aug_index_75 = as.numeric(aug_index_75),
+         pulse_pressure_periph = as.numeric(pulse_pressure_periph),
+         pulse_pressure_central = as.numeric(pulse_pressure_central),
+         hr = as.numeric(hr),
+         bmi = as.numeric(bmi),
+         whr = as.numeric(whr),
          waist = as.numeric(waist),
+         waist_cm = as.numeric(waist * 2.54),
+         dds_total = as.numeric(dds_total),
+         phys_act = as.numeric(phys_act),
+         beds_new = as.numeric(beds_new),
+         ses_materials = as.numeric(ses_materials),
+         school_self = as.numeric(school_self),
+         age_baseline = as.numeric(age_baseline),
          hba1c = as.numeric(hba1c),
          hdl = as.numeric(hdl),
-         triglycerides = as.numeric(triglycerides)) %>% 
-  mutate(waist_cm = (waist * 2.54)) %>% 
+         triglycerides = as.numeric(triglycerides))%>% 
+  mutate(phase = as.factor(phase),
+         season = as.factor(season),
+         house_id = as.factor(house_id),
+         school_bi = as.factor(school_bi),
+         whr_cat = as.factor(whr_cat)) %>%
+  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
+                                 labels = c("Traditional", "Justa"))) %>% 
+  #split waist at 80cm
+  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>%
+  mutate(waist_cat = as.factor(waist_cat)) %>% 
+  #split age at 40
+  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
+  mutate(age_cat_40 = as.factor(age_cat_40)) %>% 
+  #split age at 30
+  mutate(age_cat_30 = if_else(age_baseline < 29.9, "age < 30", "age >= 30")) %>% 
+  mutate(age_cat_30 = as.factor(age_cat_30)) %>% 
+  #split bmi at 25
+  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) %>% 
+  mutate(bmi_cat = as.factor(bmi_cat)) %>%
+  #split a1c at 5.7
+  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >= 5.7")) %>% 
+  mutate(hba1c_cat = as.factor(hba1c_cat)) %>%
+  #bp normal/high
+  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
+                          "bp norm", "bp high")) %>% 
+  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high"))) %>% 
+  #new metsyn variable
   mutate(sys_bp_ms = if_else(sys_bp_periph >= 130, 1, 0),
          dia_bp_ms = if_else(dia_bp_periph >= 85, 1, 0),
          trigs_ms = if_else(triglycerides > 200, 1, 0),
@@ -136,38 +98,89 @@ r00_metsyn <- r00_full_long %>%
          a1c_ms = if_else(hba1c > 5.6, 1, 0),
          waist_ms = if_else(waist_cm > 80, 1, 0)) %>% 
   mutate(ms_sum = (sys_bp_ms + dia_bp_ms + trigs_ms + hdl_ms + a1c_ms)) %>% 
-  #filter(!is.na(ms_sum)) %>% 
   mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
-  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn")))
+  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn"))) %>% 
+  #log transforming and standardizing based on IQR
+  mutate(log_a_twa_iqr = as.numeric(log(a_twa)/1.78)) %>% 
+  mutate(log_p_twa_iqr = as.numeric(log(p_twa)/1.14)) %>% 
+  #standardizing based on IQR
+  mutate(a_twa_iqr = as.numeric(a_twa/200)) %>% 
+  mutate(p_twa_iqr = as.numeric(p_twa/75)) %>% 
+  #log transforming
+  mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
+  mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
+  filter(!is.na(assigned_stove)) 
+```
 
-metsyn_table <- table(r00_metsyn$met_syn)
+# Calculate n for potential effect modifiers
+```{r}
+em_summary <- r00_model_data %>%
+  filter(!is.na(a_twa)) %>% 
+  group_by(met_syn) %>% 
+  summarize(n())
+em_summary
+```
+
+# Correlation matrix for potential effect modifiers
+```{r}
+em_corr <- r00_model_data %>%
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(waist_cm, whr, bmi)
+cor(em_corr)
+```
+
+# Baseline frequencies of potential effect modifiers
+```{r}
+bp_table <- table(r00_model_data$bp_cat)
+kable(prop.table(bp_table))
+
+bmi_table <- table(r00_model_data$bmi_cat)
+kable(prop.table(bmi_table))
+
+hba1c_table <- table(r00_model_data$hba1c_cat)
+kable(prop.table(hba1c_table))
+
+age_table_40 <- table(r00_model_data$age_cat_40)
+kable(prop.table(age_table_40))
+
+age_table_30 <- table(r00_model_data$age_cat_30)
+kable(prop.table(age_table_30))
+
+waist_table <- table(r00_model_data$waist_cat)
+kable(prop.table(waist_table))
+
+whr_table <- table(r00_model_data$whr_cat)
+kable(prop.table(whr_table))
+
+metsyn_table <- table(r00_model_data$met_syn)
 kable(prop.table(metsyn_table))
 ```
 
 # 2x2 Tables
 ```{r}
-metsyn_whr <- table(r00_metsyn$met_syn, r00_whr$whr_cat)
+metsyn_whr <- table(r00_model_data$met_syn, r00_model_data$whr_cat)
 kable(prop.table(metsyn_whr))
 
-metsyn_waist <- table(r00_metsyn$met_syn, r00_waist$waist_cat)
+metsyn_waist <- table(r00_model_data$met_syn, r00_model_data$waist_cat)
 kable(prop.table(metsyn_waist))
 
-metsyn_bmi <- table(r00_metsyn$met_syn, r00_bmi$bmi_cat)
+metsyn_bmi <- table(r00_model_data$met_syn, r00_model_data$bmi_cat)
 kable(prop.table(metsyn_bmi))
 
-metsyn_bp <- table(r00_metsyn$met_syn, r00_bp$bp_cat)
+metsyn_bp <- table(r00_model_data$met_syn, r00_model_data$bp_cat)
 kable(prop.table(metsyn_bp))
 
-metsyn_hba1c <- table(r00_metsyn$met_syn, r00_hba1c$hba1c_cat)
+metsyn_hba1c <- table(r00_model_data$met_syn, r00_model_data$hba1c_cat)
 kable(prop.table(metsyn_hba1c))
 
-whr_waist <- table(r00_whr$whr_cat, r00_waist$waist_cat)
+whr_waist <- table(r00_model_data$whr_cat, r00_model_data$waist_cat)
 kable(prop.table(whr_waist))
 
-whr_bmi <- table(r00_whr$whr_cat, r00_bmi$bmi_cat)
+whr_bmi <- table(r00_model_data$whr_cat, r00_model_data$bmi_cat)
 kable(prop.table(whr_bmi))
 
-waist_bmi <- table(r00_waist$waist_cat, r00_bmi$bmi_cat)
+waist_bmi <- table(r00_model_data$waist_cat, r00_model_data$bmi_cat)
 kable(prop.table(waist_bmi))
 ```
 

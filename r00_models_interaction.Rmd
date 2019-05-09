@@ -1,7 +1,7 @@
 ---
 title: "R00 Interaction Analyses"
 author: "Ethan Walker"
-date: "April 30, 2019"
+date: "May 9, 2019"
 output: pdf_document
 ---
 
@@ -120,181 +120,74 @@ r00_model_data <- r00_model_data_outliers_removed %>%
   filter(!is.na(assigned_stove))
 ```
 
-### Age interaction analysis - PM
+### PM interaction analysis
 ```{r}
-# Using age split at 40
+# Age split at 40: age_cat_40
+# Waist split at 80: waist_cat
+# Blood pressure: bp_cat
+# Hba1c: hba1c_cat
+# Metabolic Syndrome: met_syn
+
 # AIx and area pm
-model_apm_age_int <- lmer(aug_index ~ log_a_twa*age_cat_40 + ns(date_sphygmo, df=6) +
-                          waist + school_self + (1 | house_id), r00_model_data)
-summary(model_apm_age_int)
+model_apm_int <- lmer(aug_index ~ log_a_twa*met_syn + ns(date_sphygmo, df=6) +
+                      waist_cm + school_bi + age_baseline + 
+                      (1 | house_id), r00_model_data)
+   #summary(model_apm_int)
+int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+summary(int_emtrends, conf.int = TRUE)
+emmip(model_apm_int, met_syn ~ log_a_twa, cov.reduce = range)
 
 # AIx and personal pm
-model_ppm_age_int <- lmer(aug_index ~ log_p_twa*age_cat_40 + ns(date_sphygmo, df=6) +
-                          waist + school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_age_int)
+model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
+                      waist_cm + school_bi + age_baseline + 
+                      (1 | house_id), r00_model_data)
+   #summary(model_ppm_age_int)
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
+summary(int_emtrends, conf.int = TRUE)
+emmip(model_ppm_int, met_syn ~ log_p_twa, cov.reduce = range)
 
 # CPP and area pm
-model_apm_age_int <- lmer(pulse_pressure_central ~ log_a_twa*age_cat_40 + 
-                          ns(date_sphygmo, df=6) +
-                          waist + school_self + (1 | house_id), r00_model_data)
-summary(model_apm_age_int)
+model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*met_syn + 
+                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
+                      school_bi + (1 | house_id), r00_model_data)
+   #summary(model_apm_int)
+int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+summary(int_emtrends, conf.int = TRUE)
+emmip(model_apm_int, met_syn ~ log_a_twa, cov.reduce = range)
 
 # CPP and personal pm
-model_ppm_age_int <- lmer(pulse_pressure_central ~ log_p_twa*age_cat_40 + 
-                          ns(date_sphygmo, df=6) +
-                          waist + school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_age_int)
-age_int_emtrends <- emtrends(model_ppm_age_int, pairwise ~ age_cat_40, var = "log_p_twa")
-summary(age_int_emtrends, conf.int = TRUE)
-emmip(model_ppm_age_int, age_cat_40 ~ log_p_twa, cov.reduce = range)
+model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*met_syn + 
+                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
+                      school_bi + (1 | house_id), r00_model_data)
+   #summary(model_ppm_int)
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
+summary(int_emtrends, conf.int = TRUE)
+emmip(model_ppm_int, met_syn ~ log_p_twa, cov.reduce = range)
 ```
 
-### Age interaction analysis - ITT
+### ITT interaction analysis
 ```{r}
-# Using age split at 40
-sphygmo_model_age_int <- lmer(aug_index ~ assigned_stove*age_cat_40 + 
-                              ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat_40)
-summary(sphygmo_model_age_int)
-summary(age_int_emmeans)
-confint(age_int_emmeans)
-emmip(sphygmo_model_age_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+# Age split at 40: age_cat_40
+# Waist split at 80: waist_cat
+# Blood pressure: bp_cat
+# Hba1c: hba1c_cat
+# Metabolic Syndrome: met_syn
 
+# AIx
+sphygmo_model_int <- lmer(aug_index ~ assigned_stove*met_syn + 
+                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
+summary(sphygmo_model_int)
+summary(int_emmeans)
+confint(int_emmeans)
+emmip(sphygmo_model_int, met_syn ~ assigned_stove, cov.reduce = range)
 
-sphygmo_model_age_int <- lmer(pulse_pressure_central ~ assigned_stove*age_cat_40 + 
-                              ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-summary(sphygmo_model_age_int)
-age_int_emmeans <- emmeans(sphygmo_model_age_int, pairwise ~ assigned_stove | age_cat_40)
-summary(age_int_emmeans, conf.int = TRUE)
-confint(age_int_emmeans)
-emmip(sphygmo_model_age_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
-```
-
-
-### Waist interaction analysis - PM
-```{r}
-# Using Waist split at 80cm
-# AIx and area pm
-model_apm_waist_int <- lmer(aug_index ~ log_a_twa*waist_cat + ns(date_sphygmo, df=6) +
-                            school_self + (1 | house_id), r00_model_data)
-summary(model_apm_waist_int)
-tidy(model_apm_waist_int, conf.int = TRUE)
-
-# AIx and personal pm
-model_ppm_waist_int <- lmer(aug_index ~ log_p_twa*waist_cat + ns(date_sphygmo, df=6) +
-                            school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_waist_int)
-
-# CPP and area pm
-model_apm_waist_int <- lmer(pulse_pressure_central ~ log_a_twa*waist_cat + 
-                            ns(date_sphygmo, df=6) +
-                            school_self + (1 | house_id), r00_model_data)
-summary(model_apm_waist_int)
-
-# CPP and personal pm
-model_ppm_waist_int <- lmer(pulse_pressure_central ~ log_p_twa*waist_cat + 
-                            ns(date_sphygmo, df=6) +
-                            school_self + (1 | house_id), r00_model_data)
-summary(model_ppm_waist_int)
-```
-
-### Waist interaction analysis - ITT
-```{r}
-# Using Waist split at 80cm
-sphygmo_model_waist_int <- lmer(aug_index ~ assigned_stove*waist_cat + 
-                                ns(date_sphygmo, df=6) + 
-                                (1 | house_id), r00_model_data)
-waist_int_emmeans <- emmeans(sphygmo_model_waist_int, pairwise ~ assigned_stove | waist_cat)
-summary(sphygmo_model_waist_int)
-summary(waist_int_emmeans, conf.int = TRUE)
-plot(waist_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-sphygmo_model_waist_int <- lmer(pulse_pressure_central ~ assigned_stove*waist_cat + 
-                                ns(date_sphygmo, df=6) + 
-                                (1 | house_id), r00_model_data)
-summary(sphygmo_model_waist_int)
-waist_int_emmeans <- emmeans(sphygmo_model_waist_int, pairwise ~ assigned_stove | waist_cat)
-summary(waist_int_emmeans, conf.int = TRUE)
-plot(waist_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-```
-
-### BMI interaction analysis - ITT
-```{r}
-# Analysis including bmi split at 25
-sphygmo_model_bmi_int <- lmer(aug_index ~ assigned_stove*bmi_cat + 
-                              ns(date_sphygmo, df=6) + 
-                              (1 | house_id), r00_model_data)
-bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
-summary(sphygmo_model_bmi_int)
-summary(bmi_int_emmeans, conf.int = TRUE)
-plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-sphygmo_model_bmi_int <- lmer(pulse_pressure_central ~ assigned_stove*bmi_cat + 
-                              ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-summary(sphygmo_model_bmi_int)
-bmi_int_emmeans <- emmeans(sphygmo_model_bmi_int, pairwise ~ assigned_stove | bmi_cat)
-summary(bmi_int_emmeans)
-plot(bmi_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-```
-
-### Met Syn interaction analysis - ITT
-```{r}
-# Analysis including met syn yes/no
-sphygmo_model_met_syn_int <- lmer(aug_index ~ assigned_stove*met_syn + 
-                              ns(date_sphygmo, df=6) + 
-                              (1 | house_id), r00_model_data)
-met_syn_int_emmeans <- emmeans(sphygmo_model_met_syn_int, pairwise ~ assigned_stove | met_syn)
-summary(sphygmo_model_met_syn_int)
-summary(met_syn_int_emmeans, conf.int = TRUE)
-plot(met_syn_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-sphygmo_model_met_syn_int <- lmer(pulse_pressure_central ~ assigned_stove*met_syn + 
-                              ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-summary(sphygmo_model_met_syn_int)
-met_syn_int_emmeans <- emmeans(sphygmo_model_met_syn_int, pairwise ~ assigned_stove | met_syn)
-summary(met_syn_int_emmeans)
-plot(met_syn_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-```
-
-### A1C interaction analysis - ITT
-```{r}
-# Analysis including a1c split at 5.7
-sphygmo_model_hba1c_int <- lmer(aug_index ~ assigned_stove*hba1c_cat + 
-                              ns(date_sphygmo, df=6) + 
-                              (1 | house_id), r00_model_data)
-hba1c_int_emmeans <- emmeans(sphygmo_model_hba1c_int, pairwise ~ assigned_stove | hba1c_cat)
-summary(sphygmo_model_hba1c_int)
-summary(hba1c_int_emmeans, conf.int = TRUE)
-plot(hba1c_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-sphygmo_model_hba1c_int <- lmer(pulse_pressure_central ~ assigned_stove*hba1c_cat + 
-                              ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-summary(sphygmo_model_hba1c_int)
-hba1c_int_emmeans <- emmeans(sphygmo_model_hba1c_int, pairwise ~ assigned_stove | hba1c_cat)
-summary(hba1c_int_emmeans)
-plot(hba1c_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-```
-
-### BP interaction analysis - ITT
-```{r}
-# Analysis including normal vs high bp
-sphygmo_model_bp_int <- lmer(aug_index ~ assigned_stove*bp_cat + 
-                              ns(date_sphygmo, df=6) + 
-                              (1 | house_id), r00_model_data)
-bp_int_emmeans <- emmeans(sphygmo_model_bp_int, pairwise ~ assigned_stove | bp_cat)
-summary(sphygmo_model_bp_int)
-summary(bp_int_emmeans, conf.int = TRUE)
-plot(bp_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
-
-
-sphygmo_model_bp_int <- lmer(pulse_pressure_central ~ assigned_stove*bp_cat + 
-                              ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-summary(sphygmo_model_bp_int)
-bp_int_emmeans <- emmeans(sphygmo_model_bp_int, pairwise ~ assigned_stove | bp_cat)
-summary(bp_int_emmeans)
-plot(bp_int_emmeans, comparisons = TRUE, xlab = "means", ylab = "assigned stove")
+# CPP
+sphygmo_model_int <- lmer(pulse_pressure_central ~ assigned_stove*met_syn + 
+                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+summary(sphygmo_model_int)
+int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
+summary(int_emmeans, conf.int = TRUE)
+confint(int_emmeans)
+emmip(sphygmo_model_int, met_syn ~ assigned_stove, cov.reduce = range)
 ```

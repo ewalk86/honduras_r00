@@ -1,0 +1,106 @@
+---
+title: "Bonnie's Boxplot"
+author: "Ethan Walker"
+date: "May 7, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+pm_co_data <- read_xlsx("input/bonnie_data_06may2019.xlsx")
+```
+
+```{r}
+boxplot_means <- pm_co_data %>% 
+  mutate(pm_48 = as.numeric(PMH48_ug),
+         co_48 = as.numeric(COH48),
+         co_48_per = as.numeric(COPERH48)) %>% 
+  summarize(mean_pm = mean(pm_48, na.rm = TRUE),
+            mean_co = mean(co_48, na.rm = TRUE),
+            mean_co_per = mean(co_48_per, na.rm = TRUE))
+boxplot_means
+```
+
+```{r, fig.height=5, fig.width=6}
+pm_boxplot <- pm_co_data %>% 
+  mutate(pm_48_ug = as.numeric(PMH48_ug)) %>% 
+  filter(!is.na(pm_48_ug)) %>% 
+  ggplot(aes(factor(0), pm_48_ug)) +
+  geom_boxplot(lwd = 1.2, colour = "black", 
+               fatten = 1, outlier.size = 1.5) +
+  stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="black") +
+  theme_bw() +  
+  labs(aes(x = "", y = paste("48-hour indoor PM "[2.5], " (", mu, g/m^3, ")"))) +
+  theme(title = element_text(size = 19), 
+        axis.text.y = element_text(size = 16, colour = "black"),
+        axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 16),
+        axis.line.x = element_line(colour = "black", size = 1.2), 
+        axis.line.y = element_line(colour = "black", size = 1.2), 
+        axis.ticks.y = element_line(colour = "black", size = 1.2), 
+        axis.ticks.x = element_blank(), 
+        panel.border = element_blank(), 
+        panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(0, 1000, 2000, 3000, 4000, 5000, 6000),
+                     labels = c(0, 1000, 2000, 3000, 4000, 5000, 6000))
+pm_boxplot
+```
+
+```{r, fig.height=5, fig.width=6}
+co_boxplot <- pm_co_data %>% 
+  mutate(co_48 = as.numeric(COH48)) %>% 
+  filter(!is.na(co_48)) %>% 
+  ggplot(aes(factor(0), co_48)) +
+  geom_boxplot(lwd = 1.2, colour = "black", 
+               fatten = 1, outlier.size = 1.5) +
+  stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="black") +
+  theme_bw() +  
+  labs(aes(x = "", y = "48-hour indoor CO (ppm)")) +
+  theme(title = element_text(size = 19), 
+        axis.text.y = element_text(size = 16, colour = "black"),
+        axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 16),
+        axis.line.x = element_line(colour = "black", size = 1.2), 
+        axis.line.y = element_line(colour = "black", size = 1.2), 
+        axis.ticks.y = element_line(colour = "black", size = 1.2), 
+        axis.ticks.x = element_blank(), 
+        panel.border = element_blank(), 
+        panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(0, 25, 50, 75, 100, 125),
+                     labels = c(0, 25, 50, 75, 100, 125))
+co_boxplot
+```
+
+```{r, fig.height=5, fig.width=6}
+co_per_boxplot <- pm_co_data %>% 
+  mutate(co_48_per = as.numeric(COPERH48)) %>% 
+  filter(!is.na(co_48_per)) %>% 
+  ggplot(aes(factor(0), co_48_per)) +
+  geom_boxplot(lwd = 1.2, colour = "black", 
+               fatten = 1, outlier.size = 1.5) +
+  stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="black") +
+  theme_bw() +  
+  labs(aes(x = "", y = "48-hour personal CO (ppm)")) +
+  theme(title = element_text(size = 19), 
+        axis.text.y = element_text(size = 16, colour = "black"),
+        axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 16),
+        axis.line.x = element_line(colour = "black", size = 1.2), 
+        axis.line.y = element_line(colour = "black", size = 1.2), 
+        axis.ticks.y = element_line(colour = "black", size = 1.2), 
+        axis.ticks.x = element_blank(), 
+        panel.border = element_blank(), 
+        panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(0, 2.5, 5.0, 7.5, 10.0, 12.5),
+                     labels = c(0, 2.5, 5.0, 7.5, 10.0, 12.5))
+co_per_boxplot
+```
+
