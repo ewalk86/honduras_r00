@@ -83,6 +83,17 @@ r00_model_data_outliers_cpp <- r00_full_joined_sphygmocor %>%
   group_by(phase, study_arm)
 ```
 
+# Grouped by assigned stove, all phases
+```{r}
+summary_stats_stove <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(aug_index)) %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  select(assigned_stove, aug_index, pulse_pressure_central) %>% 
+  group_by(assigned_stove) %>% 
+  summarize(n())
+summary_stats_stove
+```
+
 # Variables grouped by study arm
 ### Data from phase 1
 ```{r}

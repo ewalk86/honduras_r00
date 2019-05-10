@@ -76,7 +76,9 @@ summary_area_pm_study_arm <- r00_full_repeated_by_phase %>%
             "Mean" = mean(a_twa),
             "SD" = sd(a_twa), 
             "Min" = min(a_twa), 
+            "25th" = quantile(a_twa, c(.25)),
             "Median" = median(a_twa),
+            "75th" = quantile(a_twa, c(.75)),
             "Max" = max(a_twa),
             "IQR" = IQR(a_twa))
 kable(summary_area_pm_study_arm, digits = 0)
@@ -92,7 +94,9 @@ summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>%
             "Mean" = mean(p_twa),
             "SD" = sd(p_twa), 
             "Min" = min(p_twa), 
+            "25th" = quantile(p_twa, c(.25)),
             "Median" = median(p_twa),
+            "75th" = quantile(p_twa, c(.75)),
             "Max" = max(p_twa),
             "IQR" = IQR(p_twa))
 kable(summary_personal_pm_study_arm, digits = 0)
@@ -100,9 +104,10 @@ kable(summary_personal_pm_study_arm, digits = 0)
 
 \pagebreak  
 
-# Area PM grouped by study arm
+# Area PM grouped by study arm - phase 1
 ```{r}
 summary_area_pm_study_arm <- r00_full_repeated_by_phase %>% 
+  filter(phase == 1) %>% 
   select(study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
@@ -111,15 +116,18 @@ summary_area_pm_study_arm <- r00_full_repeated_by_phase %>%
             "Mean" = mean(a_twa),
             "SD" = sd(a_twa), 
             "Min" = min(a_twa), 
+            "25th" = quantile(a_twa, c(.25)),
             "Median" = median(a_twa),
+            "75th" = quantile(a_twa, c(.75)),
             "Max" = max(a_twa),
-            "IQR" = IQR(p_twa))
+            "IQR" = IQR(a_twa))
 kable(summary_area_pm_study_arm, digits = 0)
 ```
 
-# Personal PM grouped by study arm
+# Personal PM grouped by study arm - phase 1
 ```{r}
 summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>% 
+  filter(phase == 1) %>% 
   select(study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
@@ -128,7 +136,9 @@ summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>%
             "Mean" = mean(p_twa),
             "SD" = sd(p_twa), 
             "Min" = min(p_twa), 
+            "25th" = quantile(p_twa, c(.25)),
             "Median" = median(p_twa),
+            "75th" = quantile(p_twa, c(.75)),
             "Max" = max(p_twa),
             "IQR" = IQR(p_twa))
 kable(summary_personal_pm_study_arm, digits = 0)
@@ -147,7 +157,9 @@ summary_area_pm_phase <- r00_full_repeated_by_phase %>%
             "Mean" = mean(a_twa),
             "SD" = sd(a_twa), 
             "Min" = min(a_twa), 
+            "25th" = quantile(a_twa, c(.25)),
             "Median" = median(a_twa),
+            "75th" = quantile(a_twa, c(.75)),
             "Max" = max(a_twa),
             "IQR" = IQR(p_twa))
 kable(summary_area_pm_phase, digits = 0)
@@ -164,7 +176,9 @@ summary_personal_pm_phase <- r00_full_repeated_by_phase %>%
             "Mean" = mean(p_twa),
             "SD" = sd(p_twa), 
             "Min" = min(p_twa), 
+            "25th" = quantile(p_twa, c(.25)),
             "Median" = median(p_twa),
+            "75th" = quantile(p_twa, c(.75)),
             "Max" = max(p_twa),
             "IQR" = IQR(p_twa))
 kable(summary_personal_pm_phase, digits = 0)
@@ -183,7 +197,9 @@ summary_area_pm_stove <- r00_full_repeated_by_phase %>%
             "Mean" = mean(a_twa),
             "SD" = sd(a_twa), 
             "Min" = min(a_twa), 
+            "25th" = quantile(a_twa, c(.25)),
             "Median" = median(a_twa),
+            "75th" = quantile(a_twa, c(.75)),
             "Max" = max(a_twa),
             "IQR" = IQR(a_twa))
 kable(summary_area_pm_stove, digits = 0)
@@ -200,7 +216,9 @@ summary_personal_pm_stove <- r00_full_repeated_by_phase %>%
             "Mean" = mean(p_twa),
             "SD" = sd(p_twa), 
             "Min" = min(p_twa), 
+            "25th" = quantile(p_twa, c(.25)),
             "Median" = median(p_twa),
+            "75th" = quantile(p_twa, c(.75)),
             "Max" = max(p_twa),
             "IQR" = IQR(p_twa))
 kable(summary_personal_pm_stove, digits = 0)
