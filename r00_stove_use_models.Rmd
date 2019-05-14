@@ -36,6 +36,8 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 ```
 
 ```{r}
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
@@ -49,7 +51,10 @@ r00_model_data <- r00_model_data_outliers_removed %>%
          whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
          dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
          a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
-         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides) %>% 
+         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides, 
+         days_sec, hours_secondary, hours_ics, days_ics_month, sec_stove,
+         justa_primary, sec_stove_nonperm, sec_stove_sums, secondary, 
+         primary, justa_primary) %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central),
          dia_bp_central = as.numeric(dia_bp_central),
          sys_bp_periph = as.numeric(sys_bp_periph),
@@ -140,14 +145,71 @@ r00_model_data_p6 <- r00_model_data %>%
   filter(phase == 6)
 ```
 
+# Stove use tables
+```{r}
+stove_use_data <- r00_model_data %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  select(phase, sec_stove, hours_secondary, days_sec, sec_stove_sums, 
+         secondary, primary, justa_primary, assigned_stove,
+         date_sphygmo, age_baseline, waist_cm, school_bi, 
+         house_id, aug_index, pulse_pressure_central, sys_bp_periph) %>% 
+  mutate(sec_stove = as.numeric(sec_stove),
+         hours_secondary = as.numeric(hours_secondary),
+         days_sec = as.numeric(days_sec),
+         sec_stove_sums = as.numeric(sec_stove_sums),
+         secondary = as.numeric(secondary),
+         justa_primary = as.numeric(justa_primary)) %>% 
+  mutate(sec_use_days = if_else(days_sec == 0 | is.na(days_sec), 0, 1),
+         sec_use_hours = if_else(hours_secondary < 2 | is.na(hours_secondary),
+                                 0, 1)) %>% 
+  mutate(justa_stack = if_else(assigned_stove == "Justa" & sec_use_hours == 1, 1, 0),
+         trad_stack = if_else(assigned_stove == "Traditional" & sec_use_hours == 1, 1, 0),
+         stove_stack = if_else(assigned_stove == "Justa", 0, 1),
+         stove_stack = if_else(justa_stack == 1, 1, stove_stack),
+         stove_stack = if_else(assigned_stove == "Traditional", 2, stove_stack),
+         stove_stack = if_else(trad_stack == 1, 3, stove_stack)) %>% 
+  mutate(stove_stack = factor(stove_stack, levels = c(0,1,2,3),
+                              labels = c("justa", "justa stack", "trad", "trad stack")))
+  
+
+stove_use_counts <- stove_use_data %>% 
+  group_by(phase, secondary) %>% 
+  summarize(sum(sec_use_days, na.rm = TRUE), sum(sec_use_hours, na.rm = TRUE),
+            sum(sec_stove, na.rm = TRUE), sum(justa_primary, na.rm = TRUE))
+
+# Why does the "primary" variable indicate not all primary stoves are traditional?
+table(stove_use_data$primary)
+
+table(stove_use_data$secondary)
+
+table(stove_use_data$stove_stack)
+
+
+# 2x2 table of those reporting any secondary stove use in day/months and hours/day
+sechours_secdays <- table(stove_use_data$sec_use_days, stove_use_data$sec_use_hours)
+kable(prop.table(sechours_secdays))
+
+# 2x2 table of reporting any secondary stove use in day/months and hours/day
+sechours_secstove <- table(stove_use_data$sec_use_hours, stove_use_data$sec_stove)
+kable(prop.table(sechours_secstove))
+```
+
+
 # Stove use analyses with a priori confounders
 ## Try following variables as main IV in primary model:
 ### sums_stack, sec_stove, hours_primary, hours_secondary,
 ### prim_sum_temp_percent_50, sec_sum_temp_percent_50, sec_stove_sums
-
-
 ```{r}
 # AIx and Stove use variables
+
+##### AIx and stove_stack
+
+model_stove_stack <- lmer(aug_index ~ stove_stack + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), stove_use_data)
+summary(model_stove_stack)
+tidy_model_sums_1vs2plus <- tidy(model_sums_1vs2plus, conf.int = TRUE) %>% 
+    filter(grepl('sums_stack2', term)) %>% 
+    mutate(model = if_else(term == "sums_stack2", "stove stack", "na")) 
 
 ##### AIx and sums_stack (1 = 1 sum, 2 = 2+ sums)
 
@@ -259,6 +321,16 @@ plot_estimates
 
 ```{r}
 # CPP and Stove use variables
+
+##### CPP and stove_stack
+
+model_stove_stack <- lmer(pulse_pressure_central ~ stove_stack + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), stove_use_data)
+summary(model_stove_stack)
+tidy_model_sums_1vs2plus <- tidy(model_sums_1vs2plus, conf.int = TRUE) %>% 
+    filter(grepl('sums_stack2', term)) %>% 
+    mutate(model = if_else(term == "sums_stack2", "stove stack", "na")) 
 
 ##### CPP and sums_stack (1 = 1 sum, 2 = 2+ sums)
 
