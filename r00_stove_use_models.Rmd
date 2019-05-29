@@ -54,7 +54,7 @@ r00_model_data <- r00_model_data_outliers_removed %>%
          sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides, 
          days_sec, hours_secondary, hours_ics, days_ics_month, sec_stove,
          justa_primary, sec_stove_nonperm, sec_stove_sums, secondary, 
-         primary, justa_primary) %>% 
+         primary, justa_primary, changes_stove) %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central),
          dia_bp_central = as.numeric(dia_bp_central),
          sys_bp_periph = as.numeric(sys_bp_periph),
@@ -152,13 +152,15 @@ stove_use_data <- r00_model_data %>%
   select(phase, sec_stove, hours_secondary, days_sec, sec_stove_sums, 
          secondary, primary, justa_primary, assigned_stove,
          date_sphygmo, age_baseline, waist_cm, school_bi, 
-         house_id, aug_index, pulse_pressure_central, sys_bp_periph) %>% 
+         house_id, aug_index, pulse_pressure_central, sys_bp_periph,
+         changes_stove) %>% 
   mutate(sec_stove = as.numeric(sec_stove),
          hours_secondary = as.numeric(hours_secondary),
          days_sec = as.numeric(days_sec),
          sec_stove_sums = as.numeric(sec_stove_sums),
          secondary = as.numeric(secondary),
-         justa_primary = as.numeric(justa_primary)) %>% 
+         justa_primary = as.numeric(justa_primary),
+         changes_stove = as.numeric(changes_stove)) %>% 
   mutate(sec_use_days = if_else(days_sec == 0 | is.na(days_sec), 0, 1),
          sec_use_hours = if_else(hours_secondary < 2 | is.na(hours_secondary),
                                  0, 1)) %>% 
@@ -173,9 +175,10 @@ stove_use_data <- r00_model_data %>%
   
 
 stove_use_counts <- stove_use_data %>% 
-  group_by(phase, secondary) %>% 
+  group_by(phase) %>% 
   summarize(sum(sec_use_days, na.rm = TRUE), sum(sec_use_hours, na.rm = TRUE),
-            sum(sec_stove, na.rm = TRUE), sum(justa_primary, na.rm = TRUE))
+            sum(sec_stove, na.rm = TRUE), sum(justa_primary, na.rm = TRUE),
+            sum(changes_stove, na.rm = TRUE))
 
 # Why does the "primary" variable indicate not all primary stoves are traditional?
 table(stove_use_data$primary)
@@ -183,6 +186,10 @@ table(stove_use_data$primary)
 table(stove_use_data$secondary)
 
 table(stove_use_data$stove_stack)
+
+table(stove_use_data$changes_stove)
+
+table(stove_use_data$days_sec, stove_use_data$phase)
 
 
 # 2x2 table of those reporting any secondary stove use in day/months and hours/day

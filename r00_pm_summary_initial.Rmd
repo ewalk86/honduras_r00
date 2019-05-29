@@ -22,12 +22,9 @@ r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 # Correlation matrix - Spearman
 ```{r}
+# also try adding: mean_temp, prim_sum_temp_percent_50, 
 exposure_cor <- r00_full_repeated_by_phase %>% 
-  select(mean_temp, prim_sum_temp_percent_50, a_twa, p_twa) %>% 
-  mutate(mean_temp_kitchen = as.numeric(mean_temp)) %>% 
-  select(-mean_temp) %>% 
-  filter(!is.na(mean_temp_kitchen)) %>% 
-  filter(!is.na(prim_sum_temp_percent_50)) %>% 
+  select(a_twa, p_twa) %>% 
   filter(!is.na(a_twa)) %>% 
   filter(!is.na(p_twa))
 
