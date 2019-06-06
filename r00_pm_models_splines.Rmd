@@ -139,7 +139,11 @@ model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
                           data = r00_model_data,
                           random = ~(1 | house_id))
-plot(model_apm_spline$gam, seWithMean = TRUE)
+plot(model_apm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
+     main = "AIx and area PM using spline trend function",
+     xlab = expression(paste("Natural log transformed 24-hour area PM"[2.5], 
+                             " (", mu, g/m^3, ")")),
+     ylab = expression(paste("Natural cubic spline for area PM  "[2.5], ", df=5")))
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
 
@@ -160,7 +164,11 @@ model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
                           data = r00_model_data,
                           random = ~(1 | house_id))
-plot(model_ppm_spline$gam, seWithMean = TRUE)
+plot(model_ppm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
+     main = "AIx and personal PM using spline trend function",
+     xlab = expression(paste("Natural log transformed 24-hour personal PM"[2.5], 
+                             " (", mu, g/m^3, ")")),
+     ylab = expression(paste("Natural cubic spline for personal PM  "[2.5], ", df=5")))
 summary(model_ppm_spline$gam)
 summary(model_ppm_spline$mer)
 
@@ -181,7 +189,11 @@ model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
                           data = r00_model_data,
                           random = ~(1 | house_id))
-plot(model_apm_spline$gam, seWithMean = TRUE)
+plot(model_apm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
+     main = "CPP and area PM using spline trend function",
+     xlab = expression(paste("Natural log transformed 24-hour area PM"[2.5], 
+                             " (", mu, g/m^3, ")")),
+     ylab = expression(paste("Natural cubic spline for area PM  "[2.5], ", df=5")))
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
 
@@ -202,7 +214,11 @@ model_ppm_spline <- gamm4(pulse_pressure_central ~ s(log_p_twa, fx = TRUE, bs = 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
                           data = r00_model_data,
                           random = ~(1 | house_id))
-plot(model_ppm_spline$gam, seWithMean = TRUE)
+plot(model_ppm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
+     main = "CPP and personal PM using spline trend function",
+     xlab = expression(paste("Natural log transformed 24-hour personal PM"[2.5], 
+                             " (", mu, g/m^3, ")")),
+     ylab = expression(paste("Natural cubic spline for personal PM  "[2.5], ", df=5")))
 summary(model_ppm_spline$gam)
 summary(model_ppm_spline$mer)
 

@@ -341,9 +341,7 @@ tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>%
 
 aix_results <- rbind(tidy_model_apm,
                      tidy_model_apm_no_bp_meds,
-                     tidy_model_apm_di_conf,
                      tidy_model_apm_6phases,
-                     tidy_model_apm_reduced,
                      tidy_model_apm_phase,
                      tidy_model_apm_season,
                      tidy_model_apm_spline12,
@@ -352,8 +350,7 @@ aix_results <- rbind(tidy_model_apm,
                      tidy_model_apm_beds,
                      tidy_model_apm_ses,
                      tidy_model_apm_pa,
-                     tidy_model_apm_dds,
-                     tidy_model_apm_full)
+                     tidy_model_apm_dds)
 #kable(aix_results)
 ```
 
@@ -361,31 +358,33 @@ aix_results <- rbind(tidy_model_apm,
 ## Plot model estimates - AIx and Area PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds",
-                                          "di confdrs", "6 phases", "reduced",
+  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
                                           "spline 12 df", "phase", "season",
                                           "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act", "full"))) %>% 
+                                          "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx Models - Area PM") +
+  ggtitle(label = "AIx sensitivity analyses: area PM model") +
   labs(y = "Estimate (%)") +
   labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
+          panel.grid = element_blank(),
+          legend.position = "top") +
+  scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
+                     labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
 plot_estimates
 ```
 
@@ -545,9 +544,7 @@ tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>%
 
 aix_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_no_bp_meds,
-                     tidy_model_ppm_di_conf,
                      tidy_model_ppm_6phases,
-                     tidy_model_ppm_reduced,
                      tidy_model_ppm_phase,
                      tidy_model_ppm_season,
                      tidy_model_ppm_spline12,
@@ -556,39 +553,40 @@ aix_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_beds,
                      tidy_model_ppm_ses,
                      tidy_model_ppm_pa,
-                     tidy_model_ppm_dds,
-                     tidy_model_ppm_full)
+                     tidy_model_ppm_dds)
 #kable(aix_results)
 ```
 
 ## Plot model estimates - AIx and Personal PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds",
-                                          "di confdrs", "6 phases", "reduced",
+  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
                                           "spline 12 df", "phase", "season",
                                           "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act", "full"))) %>% 
+                                          "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx Models - Personal PM") +
+  ggtitle(label = "AIx sensitivity analyses: personal PM model") +
   labs(y = "Estimate (%)") +
   labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
+          panel.grid = element_blank(),
+          legend.position = "top") +
+  scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
+                     labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
 plot_estimates
 ```
 
@@ -757,9 +755,7 @@ tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>%
 
 cpp_results <- rbind(tidy_model_apm,
                      tidy_model_apm_no_bp_meds,
-                     tidy_model_apm_di_conf,
                      tidy_model_apm_6phases,
-                     tidy_model_apm_reduced,
                      tidy_model_apm_phase,
                      tidy_model_apm_season,
                      tidy_model_apm_spline12,
@@ -768,39 +764,40 @@ cpp_results <- rbind(tidy_model_apm,
                      tidy_model_apm_beds,
                      tidy_model_apm_ses,
                      tidy_model_apm_pa,
-                     tidy_model_apm_dds,
-                     tidy_model_apm_full)
+                     tidy_model_apm_dds)
 #kable(cpp_results)
 ```
 
 ## Plot model estimates - CPP and Area PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds",
-                                          "di confdrs", "6 phases", "reduced",
+  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
                                           "spline 12 df", "phase", "season",
                                           "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act", "full"))) %>% 
+                                          "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP Models - Area PM") +
+  ggtitle(label = "CPP sensitivity analyses: area PM model") +
   labs(y = "Estimate (mmHg)") +
   labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
+          panel.grid = element_blank(),
+          legend.position = "top") +
+  scale_y_continuous(breaks = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5), 
+                     labels = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5)) 
 plot_estimates
 ```
 
@@ -990,9 +987,7 @@ tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>%
 
 cpp_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_no_bp_meds,
-                     tidy_model_ppm_di_conf,
                      tidy_model_ppm_6phases,
-                     tidy_model_ppm_reduced,
                      tidy_model_ppm_phase,
                      tidy_model_ppm_season,
                      tidy_model_ppm_spline12,
@@ -1001,39 +996,40 @@ cpp_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_beds,
                      tidy_model_ppm_ses,
                      tidy_model_ppm_pa,
-                     tidy_model_ppm_dds,
-                     tidy_model_ppm_full)
+                     tidy_model_ppm_dds)
 #kable(cpp_results)
 ```
 
 ## Plot model estimates - CPP and Personal PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds",
-                                          "di confdrs", "6 phases", "reduced",
+  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
                                           "spline 12 df", "phase", "season",
                                           "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act", "full"))) %>% 
+                                          "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP Models - Personal PM") +
+  ggtitle(label = "CPP sensitivity analyses: personal PM model") +
   labs(y = "Estimate (mmHg)") +
   labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
+          panel.grid = element_blank(),
+          legend.position = "top") +
+  scale_y_continuous(breaks = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5), 
+                     labels = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5)) 
 plot_estimates
 ```
 

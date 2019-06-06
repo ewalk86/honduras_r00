@@ -28,6 +28,7 @@ library(lubridate)
 library(knitr)
 library(influence.ME)
 library(boxcoxmix)
+library(sjstats)
 jvPalette <- c("#330099","#CC0066","#FF6633", 
                  "#0099CC", "#FF9900","#CC6633",
                   "#FF3366", "#33CC99", "#33999")
@@ -202,6 +203,8 @@ tidy(aix_bmi)
 ##### AIx ITT primary model - spline with 6 df
 model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
                   (1 | house_id), r00_model_data)
+
+icc(model_itt)
 ```
 
 ```{r}
@@ -270,29 +273,33 @@ aix_results <- rbind(tidy_model_itt,
 ```{r}
 # AIx Model Summaries and Plots
 ## Analyses with 6 outliers removed: 2 below -25 and 4 above 75
+
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds",
                                           "6 phases", "phase", "season", "age"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx ITT Models - Justa vs Traditional") +
-  labs(y = "Estimate (%)") +
+  ggtitle(label = "AIx sensitivity analyses: intent-to-treat model") +
+  labs(y = "Justa vs traditional (%)") +
   labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
+          panel.grid = element_blank(),
+          legend.position = "top") +
+  scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3), 
+                     labels = c(-3, -2, -1, 0, 1, 2, 3)) 
 plot_estimates
 ```
 
@@ -330,6 +337,7 @@ tidy(cpp_bmi)
 ##### CPP ITT primary model - spline with 6 df
 model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
                   (1 | house_id), r00_model_data)
+icc(model_itt)
 ```
 
 ```{r}
@@ -401,25 +409,28 @@ plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds",
                                           "6 phases", "phase", "season", "age"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP ITT Models - Justa vs Traditional") +
-  labs(y = "Estimate (mmHg)") +
+  ggtitle(label = "CPP sensitivity analyses: intent-to-treat model") +
+  labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
+          panel.grid = element_blank(),
+          legend.position = "top") +
+  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), 
+                     labels = c(-2, -1, 0, 1, 2)) 
 plot_estimates
 ```
 
