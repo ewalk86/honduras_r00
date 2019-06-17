@@ -82,6 +82,9 @@ r00_model_data <- r00_model_data_outliers_removed %>%
   #split waist at 80cm
   mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>%
   mutate(waist_cat = as.factor(waist_cat)) %>% 
+  #split age at 50
+  mutate(age_cat_50 = if_else(age_baseline < 49.9, "age < 50", "age >= 50")) %>% 
+  mutate(age_cat_50 = as.factor(age_cat_50)) %>% 
   #split age at 40
   mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
   mutate(age_cat_40 = as.factor(age_cat_40)) %>% 
@@ -123,6 +126,7 @@ r00_model_data <- r00_model_data_outliers_removed %>%
 ### PM interaction analysis
 ```{r}
 # Age split at 40: age_cat_40
+# Age split at 50: age_cat_50
 # Waist split at 80: waist_cat
 # Blood pressure: bp_cat
 # Hba1c: hba1c_cat
@@ -141,7 +145,7 @@ emmip(model_apm_int, met_syn ~ log_a_twa, cov.reduce = range)
 model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
                       waist_cm + school_bi + age_baseline + 
                       (1 | house_id), r00_model_data)
-   #summary(model_ppm_age_int)
+   #summary(model_ppm_int)
 int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
 emmip(model_ppm_int, met_syn ~ log_p_twa, cov.reduce = range)
@@ -168,6 +172,7 @@ emmip(model_ppm_int, met_syn ~ log_p_twa, cov.reduce = range)
 ### ITT interaction analysis
 ```{r}
 # Age split at 40: age_cat_40
+# Age split at 50: age_cat_50
 # Waist split at 80: waist_cat
 # Blood pressure: bp_cat
 # Hba1c: hba1c_cat

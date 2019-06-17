@@ -359,21 +359,23 @@ aix_results <- rbind(tidy_model_apm,
 ```{r}
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
-                                          "spline 12 df", "phase", "season",
+                                          "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
   scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate (%)") +
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate per natural log increase
+       in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_blank(),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -382,7 +384,7 @@ plot_estimates <- aix_results %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
-          legend.position = "top") +
+          legend.position = "none") +
   scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
                      labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
 plot_estimates
@@ -561,21 +563,23 @@ aix_results <- rbind(tidy_model_ppm,
 ```{r}
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
-                                          "spline 12 df", "phase", "season",
+                                          "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
   scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx sensitivity analyses: personal PM model") +
-  labs(y = "Estimate (%)") +
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate per natural log increase
+       in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_blank(),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -584,7 +588,7 @@ plot_estimates <- aix_results %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
-          legend.position = "top") +
+          legend.position = "none") +
   scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
                      labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
 plot_estimates
@@ -772,21 +776,24 @@ cpp_results <- rbind(tidy_model_apm,
 ```{r}
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
-                                          "spline 12 df", "phase", "season",
+                                          "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
   scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP sensitivity analyses: area PM model") +
-  labs(y = "Estimate (mmHg)") +
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate per natural log increase
+       in fine particulate matter 
+       (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_blank(),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -795,7 +802,7 @@ plot_estimates <- cpp_results %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
-          legend.position = "top") +
+          legend.position = "none") +
   scale_y_continuous(breaks = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5), 
                      labels = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5)) 
 plot_estimates
@@ -1004,21 +1011,24 @@ cpp_results <- rbind(tidy_model_ppm,
 ```{r}
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
-                                          "spline 12 df", "phase", "season",
+                                          "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, color = model, shape = model), size = 4) +
+  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
   scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP sensitivity analyses: personal PM model") +
-  labs(y = "Estimate (mmHg)") +
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate per natural log increase
+       in fine particulate matter 
+       (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_blank(),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -1027,7 +1037,7 @@ plot_estimates <- cpp_results %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
-          legend.position = "top") +
+          legend.position = "none") +
   scale_y_continuous(breaks = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5), 
                      labels = c(-.5, -.4, -.3, -.2, -.1, 0, .1, .2, .3, .4, .5)) 
 plot_estimates
