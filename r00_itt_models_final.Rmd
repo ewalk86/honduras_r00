@@ -29,6 +29,7 @@ library(knitr)
 library(influence.ME)
 library(boxcoxmix)
 library(sjstats)
+library(rptR)
 jvPalette <- c("#330099","#CC0066","#FF6633", 
                  "#0099CC", "#FF9900","#CC6633",
                   "#FF3366", "#33CC99", "#33999")
@@ -52,7 +53,7 @@ r00_model_data <- r00_model_data_outliers_removed %>%
          whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
          dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
          a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
-         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides) %>% 
+         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides, study_arm) %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central),
          dia_bp_central = as.numeric(dia_bp_central),
          sys_bp_periph = as.numeric(sys_bp_periph),
@@ -120,7 +121,11 @@ r00_model_data <- r00_model_data_outliers_removed %>%
   #log transforming
   mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
   mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
-  filter(!is.na(assigned_stove))
+  filter(!is.na(assigned_stove)) 
+
+  # filter for certain phases/arms
+  filter(phase == 1 | phase == 2 | phase == 3 | phase ==4) %>% 
+  filter(study_arm == 2)
 
 # Filtering out medication users
 r00_model_data_meds <- r00_model_data %>% 
@@ -204,7 +209,11 @@ tidy(aix_bmi)
 model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
                   (1 | house_id), r00_model_data)
 
+# ICC using sjstats package
 icc(model_itt)
+# ICC using rptR package
+rptGaussian(aug_index ~ (1 | house_id), 
+            grname = "house_id", data = r00_model_data)
 ```
 
 ```{r}
