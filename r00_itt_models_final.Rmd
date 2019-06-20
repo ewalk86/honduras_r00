@@ -124,8 +124,8 @@ r00_model_data <- r00_model_data_outliers_removed %>%
   filter(!is.na(assigned_stove)) 
 
   # filter for certain phases/arms
-  filter(phase == 1 | phase == 2 | phase == 3 | phase ==4) %>% 
-  filter(study_arm == 2)
+  #filter(phase == 1 | phase == 2 | phase == 3 | phase ==4) %>% 
+  #filter(study_arm == 2)
 
 # Filtering out medication users
 r00_model_data_meds <- r00_model_data %>% 
@@ -210,10 +210,10 @@ model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
                   (1 | house_id), r00_model_data)
 
 # ICC using sjstats package
-icc(model_itt)
+#icc(model_itt)
 # ICC using rptR package
-rptGaussian(aug_index ~ (1 | house_id), 
-            grname = "house_id", data = r00_model_data)
+#rptGaussian(aug_index ~ (1 | house_id), 
+#            grname = "house_id", data = r00_model_data)
 ```
 
 ```{r}
@@ -296,8 +296,8 @@ plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds",
                                           "6 phases", "phase", "season", "spline 12 df"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
-  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
@@ -356,7 +356,7 @@ tidy(cpp_bmi)
 ##### CPP ITT primary model - spline with 6 df
 model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
                   (1 | house_id), r00_model_data)
-icc(model_itt)
+#icc(model_itt)
 ```
 
 ```{r}
@@ -437,8 +437,8 @@ plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("primary", "no bp meds",
                                           "6 phases", "phase", "season", "spline 12 df"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
-  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +

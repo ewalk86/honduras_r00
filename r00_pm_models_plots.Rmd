@@ -66,7 +66,8 @@ r00_model_data <- r00_model_data_outliers_removed %>%
          whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
          dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
          a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
-         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides) %>% 
+         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides,
+         salt, sugar, manteca) %>% 
   mutate(sys_bp_central = as.numeric(sys_bp_central),
          dia_bp_central = as.numeric(dia_bp_central),
          sys_bp_periph = as.numeric(sys_bp_periph),
@@ -94,6 +95,9 @@ r00_model_data <- r00_model_data_outliers_removed %>%
          house_id = as.factor(house_id),
          school_bi = as.factor(school_bi),
          whr_cat = as.factor(whr_cat)) %>%
+  mutate(salt_cat = if_else(salt >=8, "Salt 8+", "Salt < 8")) %>% 
+  mutate(sugar_cat = if_else(sugar >=4, "Sugar 4+", "Sugar < 4")) %>% 
+  mutate(manteca_cat = if_else(manteca >=7, "Manteca 7+", "Manteca < 7")) %>% 
   mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
                                  labels = c("Traditional", "Justa"))) %>% 
   #split waist at 80cm
@@ -363,8 +367,8 @@ plot_estimates <- aix_results %>%
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
-  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
@@ -567,8 +571,8 @@ plot_estimates <- aix_results %>%
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
-  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
@@ -780,8 +784,8 @@ plot_estimates <- cpp_results %>%
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
-  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
@@ -1015,8 +1019,8 @@ plot_estimates <- cpp_results %>%
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
-  geom_point(aes(x=model, y=estimate, shape = model), size = 4) +
-  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +

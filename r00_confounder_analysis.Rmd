@@ -141,8 +141,11 @@ aix_numeric_function <- function(df = r00_model_data, term_fun, label_fun){
   
   aix_numeric <- lm(aug_index ~ as.numeric(term_new), data = df)
   
-  tidy(aix_numeric) %>% 
+  results <- tidy(aix_numeric) %>% 
     mutate(model = if_else(term == "as.numeric(term_new)", label_fun, "na"))
+  print(results)
+  
+  plot(aix_numeric, sub = label_fun)
 }
 
 
@@ -168,7 +171,9 @@ aix_categorical_function <- function(df = r00_model_data, term_fun){
   
   aix_cat <- lm(aug_index ~ as.factor(term_new), data = df)
   
-  tidy(aix_cat)
+  print(tidy(aix_cat))
+  
+  plot(aix_cat)
 }
 
 
@@ -181,10 +186,14 @@ aix_categorical_function(df = r00_model_data, term_fun = bmi_cat)
 aix_categorical_function(df = r00_model_data, term_fun = whr_cat)
 aix_categorical_function(df = r00_model_data, term_fun = waist_cat)
 aix_categorical_function(df = r00_model_data, term_fun = phys_act_cat)
+aix_categorical_function(df = r00_model_data, term_fun = salt_cat)
+aix_categorical_function(df = r00_model_data, term_fun = sugar_cat)
+aix_categorical_function(df = r00_model_data, term_fun = manteca_cat)
 ```
 
 # Simple linear models between potential confounders and AIx
 ## Running models for Phases 1 
+## CPP has some QQ plots with a slight U shape - log and sqrt transformations didn't help much
 
 ```{r}
 cpp_numeric_function <- function(df = r00_model_data, term_fun, label_fun){
@@ -192,8 +201,11 @@ cpp_numeric_function <- function(df = r00_model_data, term_fun, label_fun){
   
   cpp_numeric <- lm(pulse_pressure_central ~ as.numeric(term_new), data = df)
   
-  tidy(cpp_numeric) %>% 
+  results <- tidy(cpp_numeric) %>% 
     mutate(model = if_else(term == "as.numeric(term_new)", label_fun, "na"))
+  print(results)
+  
+  plot(cpp_numeric, sub = label_fun)
 }
 
 
@@ -219,7 +231,9 @@ cpp_categorical_function <- function(df = r00_model_data, term_fun){
   
   cpp_cat <- lm(pulse_pressure_central ~ as.factor(term_new), data = df)
   
-  tidy(cpp_cat)
+  print(tidy(cpp_cat))
+  
+  plot(cpp_cat)
 }
 
 
@@ -232,4 +246,7 @@ cpp_categorical_function(df = r00_model_data, term_fun = bmi_cat)
 cpp_categorical_function(df = r00_model_data, term_fun = whr_cat)
 cpp_categorical_function(df = r00_model_data, term_fun = waist_cat)
 cpp_categorical_function(df = r00_model_data, term_fun = phys_act_cat)
+cpp_categorical_function(df = r00_model_data, term_fun = salt_cat)
+cpp_categorical_function(df = r00_model_data, term_fun = sugar_cat)
+cpp_categorical_function(df = r00_model_data, term_fun = manteca_cat)
 ```
