@@ -221,7 +221,47 @@ summary_personal_pm_stove <- r00_full_repeated_by_phase %>%
 kable(summary_personal_pm_stove, digits = 0)
 ```
 
-\pagebreak  
+\pagebreak 
+
+# Area PM grouped by stove use
+```{r}
+summary_area_pm_stove_use <- r00_full_repeated_by_phase %>% 
+  select(stove_use, study_arm, a_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  group_by(stove_use) %>% 
+  summarise("Mean" = mean(a_twa),
+            "SD" = sd(a_twa), 
+            "n" = n(),
+            "25th" = quantile(a_twa, c(.25)),
+            "75th" = quantile(a_twa, c(.75)),
+            "Median" = median(a_twa),
+            "Min" = min(a_twa), 
+            "Max" = max(a_twa),
+            "IQR" = IQR(a_twa))
+kable(summary_area_pm_stove_use, digits = 0)
+```
+
+# Personal PM grouped by stove use
+```{r}
+summary_personal_pm_stove_use <- r00_full_repeated_by_phase %>% 
+  select(stove_use, study_arm, p_twa) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>% 
+  group_by(stove_use) %>% 
+  summarise("Mean" = mean(p_twa),
+            "SD" = sd(p_twa), 
+            "n" = n(),
+            "25th" = quantile(p_twa, c(.25)),
+            "75th" = quantile(p_twa, c(.75)),
+            "Median" = median(p_twa),
+            "Min" = min(p_twa), 
+            "Max" = max(p_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_personal_pm_stove_use, digits = 0)
+```
+
+\pagebreak 
 
 # Area PM boxplots - all participants
 ```{r}

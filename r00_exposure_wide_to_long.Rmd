@@ -18,8 +18,6 @@ library(naniar)
 ```{r, message=FALSE}
 # Load data
 r00_exposure_wide <- read_xlsx("input/R00_exposure_wide_30July2018_by.xlsx")
-
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
 ##### Convert Dataset from Wide to Long #####
@@ -44,15 +42,11 @@ r00_exposure_repeated_by_phase <- r00_exposure_long %>%
 n_distinct(r00_exposure_repeated_by_phase$house_id)
 ```
 
-# Combine with cleaned health database
+
+# Save dataset
 ```{r}
-r00_joined <- r00_full_long %>% 
-  full_join(r00_exposure_repeated_by_phase, by = c("house_id", "phase")) 
+write_rds(r00_exposure_repeated_by_phase, 
+          "output/r00_exposure_repeated_by_phase.rds")
 ```
 
-
-# Save datasets
-```{r}
-write_rds(r00_joined, "output/r00_full_repeated_by_phase.rds")
-write_csv(r00_joined, "output/r00_full_repeated_by_phase.csv", na = " ")
-```
+##### Combine with full dataset in r00_initial_data_cleaning.rmd

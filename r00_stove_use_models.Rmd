@@ -36,7 +36,8 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 ```
 
 ```{r}
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+# load full dataset
+# r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
@@ -54,75 +55,10 @@ r00_model_data <- r00_model_data_outliers_removed %>%
          sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides, 
          days_sec, hours_secondary, hours_ics, days_ics_month, sec_stove,
          justa_primary, sec_stove_nonperm, sec_stove_sums, secondary, 
-         primary, justa_primary, changes_stove) %>% 
-  mutate(sys_bp_central = as.numeric(sys_bp_central),
-         dia_bp_central = as.numeric(dia_bp_central),
-         sys_bp_periph = as.numeric(sys_bp_periph),
-         dia_bp_periph = as.numeric(dia_bp_periph),
-         aug_index = as.numeric(aug_index),
-         aug_index_75 = as.numeric(aug_index_75),
-         pulse_pressure_periph = as.numeric(pulse_pressure_periph),
-         pulse_pressure_central = as.numeric(pulse_pressure_central),
-         hr = as.numeric(hr),
-         bmi = as.numeric(bmi),
-         whr = as.numeric(whr),
-         waist = as.numeric(waist),
-         waist_cm = as.numeric(waist * 2.54),
-         dds_total = as.numeric(dds_total),
-         phys_act = as.numeric(phys_act),
-         beds_new = as.numeric(beds_new),
-         ses_materials = as.numeric(ses_materials),
-         school_self = as.numeric(school_self),
-         age_baseline = as.numeric(age_baseline),
-         hba1c = as.numeric(hba1c),
-         hdl = as.numeric(hdl),
-         triglycerides = as.numeric(triglycerides))%>% 
-  mutate(phase = as.factor(phase),
-         season = as.factor(season),
-         house_id = as.factor(house_id),
-         school_bi = as.factor(school_bi),
-         whr_cat = as.factor(whr_cat)) %>%
-  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
-                                 labels = c("Traditional", "Justa"))) %>% 
-  #split waist at 80cm
-  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>%
-  mutate(waist_cat = as.factor(waist_cat)) %>% 
-  #split age at 40
-  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
-  mutate(age_cat_40 = as.factor(age_cat_40)) %>% 
-  #split age at 30
-  mutate(age_cat_30 = if_else(age_baseline < 29.9, "age < 30", "age >= 30")) %>% 
-  mutate(age_cat_30 = as.factor(age_cat_30)) %>% 
-  #split bmi at 25
-  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) %>% 
-  mutate(bmi_cat = as.factor(bmi_cat)) %>%
-  #split a1c at 5.7
-  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >=5.7")) %>% 
-  mutate(hba1c_cat = as.factor(hba1c_cat)) %>%
-  #bp normal/high
-  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
-                          "bp norm", "bp high")) %>% 
-  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high"))) %>% 
-  #new metsyn variable
-  mutate(sys_bp_ms = if_else(sys_bp_periph >= 130, 1, 0),
-         dia_bp_ms = if_else(dia_bp_periph >= 85, 1, 0),
-         trigs_ms = if_else(triglycerides > 200, 1, 0),
-         hdl_ms = if_else(hdl < 50, 1, 0),
-         a1c_ms = if_else(hba1c > 5.6, 1, 0),
-         waist_ms = if_else(waist_cm > 80, 1, 0)) %>% 
-  mutate(ms_sum = (sys_bp_ms + dia_bp_ms + trigs_ms + hdl_ms + a1c_ms)) %>% 
-  mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
-  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn"))) %>% 
-  #log transforming and standardizing based on IQR
-  mutate(log_a_twa_iqr = as.numeric(log(a_twa)/1.78)) %>% 
-  mutate(log_p_twa_iqr = as.numeric(log(p_twa)/1.14)) %>% 
-  #standardizing based on IQR
-  mutate(a_twa_iqr = as.numeric(a_twa/200)) %>% 
-  mutate(p_twa_iqr = as.numeric(p_twa/75)) %>% 
-  #log transforming
-  mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
-  mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
-  filter(!is.na(assigned_stove))
+         primary, justa_primary, changes_stove, stove_use, waist_cm) %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  mutate(stove_use = factor(stove_use, 
+                              levels = c("trad", "justa+trad", "justa+imp", "justa")))
 
 # Filtering out medication users
 r00_model_data_meds <- r00_model_data %>% 
@@ -208,6 +144,16 @@ kable(prop.table(sechours_secstove))
 ### prim_sum_temp_percent_50, sec_sum_temp_percent_50, sec_stove_sums
 ```{r}
 # AIx and Stove use variables
+
+##### AIx and stove_use
+
+model_stove_use <- lmer(aug_index ~ stove_use + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data)
+summary(model_stove_use)
+tidy_model_stove_use <- tidy(model_stove_use, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "stove use") 
 
 ##### AIx and stove_stack
 
@@ -328,6 +274,16 @@ plot_estimates
 
 ```{r}
 # CPP and Stove use variables
+
+##### CPP and stove_use
+
+model_stove_use <- lmer(pulse_pressure_central ~ stove_use + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data)
+summary(model_stove_use)
+tidy_model_stove_use <- tidy(model_stove_use, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "stove use") 
 
 ##### CPP and stove_stack
 

@@ -13,13 +13,14 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
 library(naniar)
+library(lubridate)
 ```
 
 ```{r, message=FALSE}
 # Load data
-#r00_full_wide <- read_xlsx("input/R00_health_wide_15Jan2019_by.xlsx")
+r00_full_wide <- read_xlsx("input/R00_health_wide_24June2019_by.xlsx")
 
-r00_full_wide <- readRDS("output/r00_full_wide.rds")
+#r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
 
 ##### Convert Dataset from Wide to Long #####
@@ -107,6 +108,7 @@ r00_full_repeated_by_phase <- r00_full_long %>%
                             "group_r00_p1", variable)) %>%
   #separate variable to create new phase column
   separate(variable, c("variable", "phase"), sep = "_r00_p") %>%
+  #replace "." with "99999" and then change to "na"
   mutate(value = if_else(value == ".", "99999", value)) %>% 
   replace_with_na(replace = list(value = 99999)) %>% 
   #separate phase and "new", then attach "new" to variable
@@ -117,19 +119,18 @@ r00_full_repeated_by_phase <- r00_full_long %>%
   select(-"trash") %>% 
   #spread out into columns, grouped by house_id and phase
   spread(key = "variable", value = "value") %>% 
-  arrange(house_id) 
+  arrange(house_id)
 
 # Check number of house_id
 n_distinct(r00_full_repeated_by_phase$house_id)
 ```
 
-# Combine with cleaned Sphygmocor and SUMs datasets
+# Combine with cleaned Sphygmocor dataset (from r00_initial_sphygmocor_cleaning.rmd)
 ```{r}
-r00_sums_full_dataset <- readRDS("output/r00_sums_full_dataset.rds")
 r00_pwa <- readRDS("output/r00_sphygmocor_pwa.rds")
 
   
-r00_joined <- r00_full_repeated_by_phase %>% 
+r00_joined_1 <- r00_full_repeated_by_phase %>% 
   #create new date var (tidy format) to merge with sphygmocor dataset
   mutate(date_new = date) %>% 
   separate(date_new, c("day_week", "month", "day", "time", "utc", "year"), sep = " ") %>% 
@@ -155,24 +156,119 @@ r00_joined <- r00_full_repeated_by_phase %>%
                                date_sphygmo + days(1), date_sphygmo)) %>% 
   select(-"day_week", -"time", -"utc", -"date_new") %>% 
   #join with cleaned pwa dataset
-  left_join(r00_pwa, by = c("house_id", "date_sphygmo")) %>% 
+  left_join(r00_pwa, by = c("house_id", "date_sphygmo")) 
+```
+
+# Combine with cleaned SUMS dataset (from r00_sums_data_cleaning.rmd)
+```{r}
+r00_sums_full_dataset <- readRDS("output/r00_sums_full_dataset.rds")
+
+r00_joined_2 <- r00_joined_1 %>% 
+  left_join(r00_sums_full_dataset, by = c("house_id", "phase"))
+```
+
+# Combine with old exposure dataset (from r00_exposure_wide_to_long.rmd)
+```{r}
+r00_exposure_repeated_by_phase <- read_rds("output/r00_exposure_repeated_by_phase.rds")
+
+r00_joined_3 <- r00_joined_2 %>% 
+  full_join(r00_exposure_repeated_by_phase, by = c("house_id", "phase")) 
+```
+
+# Combine with Megan's new PM2.5 dataset (from r00_pm_database_final.rmd)
+```{r}
+r00_pm_final <- read_rds("output/r00_pm_final.rds")
+
+r00_joined_4 <- r00_joined_3 %>% 
+  full_join(r00_pm_final, by = c("house_id", "phase")) 
+```
+
+# Create new variables to use in analyses
+```{r}
+r00_final_long <- r00_joined_4 %>% 
   ##### Fix incorrect height/bmi in database #####
-  ##### need to fix this in the main database #####
   mutate(height = as.numeric(height)) %>% 
   mutate(weight = as.numeric(weight)) %>% 
   mutate(height = if_else(phase == 6 & house_id == "CER009", 57.0, height)) %>% 
   mutate(bmi = (weight*0.453592)/((height*0.0254)^2)) %>% 
-  #join with cleaned sums dataset
-  left_join(r00_sums_full_dataset, by = c("house_id", "phase"))
+  mutate(sys_bp_central = as.numeric(sys_bp_central),
+         dia_bp_central = as.numeric(dia_bp_central),
+         sys_bp_periph = as.numeric(sys_bp_periph),
+         dia_bp_periph = as.numeric(dia_bp_periph),
+         aug_index = as.numeric(aug_index),
+         aug_index_75 = as.numeric(aug_index_75),
+         pulse_pressure_periph = as.numeric(pulse_pressure_periph),
+         pulse_pressure_central = as.numeric(pulse_pressure_central),
+         hr = as.numeric(hr),
+         bmi = as.numeric(bmi),
+         whr = as.numeric(whr),
+         waist = as.numeric(waist),
+         waist_cm = as.numeric(waist * 2.54),
+         dds_total = as.numeric(dds_total),
+         phys_act = as.numeric(phys_act),
+         beds_new = as.numeric(beds_new),
+         ses_materials = as.numeric(ses_materials),
+         school_self = as.numeric(school_self),
+         age_baseline = as.numeric(age_baseline),
+         hba1c = as.numeric(hba1c),
+         hdl = as.numeric(hdl),
+         triglycerides = as.numeric(triglycerides))%>% 
+  mutate(phase = as.factor(phase),
+         season = as.factor(season),
+         house_id = as.factor(house_id),
+         school_bi = as.factor(school_bi),
+         whr_cat = as.factor(whr_cat)) %>%
+  mutate(salt_cat = if_else(salt >=8, "Salt 8+", "Salt < 8")) %>% 
+  mutate(sugar_cat = if_else(sugar >=4, "Sugar 4+", "Sugar < 4")) %>% 
+  mutate(manteca_cat = if_else(manteca >=7, "Manteca 7+", "Manteca < 7")) %>% 
+  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
+                                 labels = c("Traditional", "Justa"))) %>% 
+  #split waist at 80cm
+  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>%
+  mutate(waist_cat = as.factor(waist_cat)) %>% 
+  #split age at 40
+  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
+  mutate(age_cat_40 = as.factor(age_cat_40)) %>% 
+  #split bmi at 25
+  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) %>% 
+  mutate(bmi_cat = as.factor(bmi_cat)) %>%
+  #split a1c at 5.7
+  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >=5.7")) %>% 
+  mutate(hba1c_cat = as.factor(hba1c_cat)) %>%
+  #bp normal/high
+  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
+                          "bp norm", "bp high")) %>% 
+  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high"))) %>% 
+  mutate(ses_cat_2 = if_else(ses_materials > 2, "SES 3+", "SES < 3")) %>% 
+  mutate(bpp_cat = if_else(beds_new >=0.5, "BPP 0.5+", "BPP < 0.5")) %>% 
+  mutate(dds_cat = if_else(dds_total >=6, "DDS 6+", "DDS < 6")) %>% 
+  mutate(phys_act_cat = if_else(phys_act >=300, "METS 300+", "METS < 300")) %>% 
+  #new metsyn variable
+  mutate(sys_bp_ms = if_else(sys_bp_periph >= 130, 1, 0),
+         dia_bp_ms = if_else(dia_bp_periph >= 85, 1, 0),
+         trigs_ms = if_else(triglycerides > 200, 1, 0),
+         hdl_ms = if_else(hdl < 50, 1, 0),
+         a1c_ms = if_else(hba1c > 5.6, 1, 0),
+         waist_ms = if_else(waist_cm > 80, 1, 0)) %>% 
+  mutate(ms_sum = (sys_bp_ms + dia_bp_ms + trigs_ms + hdl_ms + a1c_ms)) %>% 
+  mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
+  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn"))) %>% 
+  #log transforming personal and area pm2.5
+  mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
+  mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
+  # Add dichotomous variable for secondary stove use (50C)
+  mutate(sec_stove_sums = if_else(sec_sum_event_count_50 > 0, 1, 0)) %>% 
+  #create new stove use variable based on actual_stove_use
+  mutate(stove_use = as.numeric(actual_stove_use)) %>% 
+  mutate(stove_use = if_else(phase == 1 | phase == 2, 3, stove_use)) %>% 
+  mutate(stove_use = factor(stove_use, levels = c(0,1,2,3),
+                            labels = c("justa", "justa+imp", "justa+trad", "trad")))
 ```
 
 
 # Save datasets
 ```{r}
-write_rds(r00_full_wide, "output/r00_full_wide.rds")
-write_rds(r00_full_long, "output/r00_full_long.rds")
-write_rds(r00_joined, "output/r00_full_repeated_by_phase.rds")
-write_csv(r00_full_wide, "output/r00_full_wide.csv")
-write_csv(r00_full_long, "output/r00_full_long.csv")
-write_csv(r00_joined, "output/r00_full_repeated_by_phase.csv", na = " ")
+write_rds(r00_final_long, "output/r00_full_repeated_by_phase.rds")
+
+write_csv(r00_final_long, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```

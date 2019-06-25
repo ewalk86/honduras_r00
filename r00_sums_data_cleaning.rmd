@@ -688,14 +688,3 @@ r00_full_repeated_by_phase <- r00_full_repeated_by_phase %>%
 write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
 write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```
-
-# Add dichotomous variable for secondary stove use (50C)
-```{r}
-r00_new <- r00_full_repeated_by_phase %>% 
-  mutate(sec_stove_sums = if_else(sec_sum_event_count_50 > 0, 1, 0)) 
-  
-
-write_rds(r00_new, "output/r00_full_repeated_by_phase.rds")
-write_csv(r00_new, "output/r00_full_repeated_by_phase.csv", na = " ")
-```
-

@@ -86,8 +86,8 @@ r00_model_data_outliers_cpp <- r00_full_joined_sphygmocor %>%
 # Grouped by assigned stove, all phases
 ```{r}
 summary_stats_stove <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(aug_index)) %>% 
   filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
   select(assigned_stove, aug_index, pulse_pressure_central) %>% 
   group_by(assigned_stove) %>% 
   summarize(n())
@@ -149,6 +149,46 @@ summary_stats_all <- r00_model_data_outliers_removed %>%
   select(var, phase, n, mean, sd, min, median, max) %>% 
   rename("Variable" = var, "Phase" = phase) 
 kable(summary_stats_all, digits = 2)
+```
+
+\pagebreak 
+
+# AIx grouped by stove use
+```{r}
+summary_aix_stove_use <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use, assigned_stove, aug_index) %>% 
+  group_by(stove_use) %>% 
+  summarise("Mean" = mean(aug_index),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+kable(summary_aix_stove_use, digits = 0)
+```
+
+# CPP grouped by stove use
+```{r}
+summary_cpp_stove_use <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  select(stove_use, assigned_stove, pulse_pressure_central) %>% 
+  group_by(stove_use) %>% 
+  summarise("Mean" = mean(pulse_pressure_central),
+            "SD" = sd(pulse_pressure_central), 
+            "n" = n(),
+            "25th" = quantile(pulse_pressure_central, c(.25)),
+            "75th" = quantile(pulse_pressure_central, c(.75)),
+            "Median" = median(pulse_pressure_central),
+            "Min" = min(pulse_pressure_central), 
+            "Max" = max(pulse_pressure_central),
+            "IQR" = IQR(pulse_pressure_central))
+kable(summary_cpp_stove_use, digits = 0)
 ```
 
 \pagebreak  
