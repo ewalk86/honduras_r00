@@ -23,9 +23,7 @@ library(knitr)
 ---
 
 ```{r}
-#load full datasets
-r00_full_joined_sphygmocor <- read_rds("output/r00_full_joined_sphygmocor.RDS")
-
+#load full dataset
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 

@@ -239,7 +239,7 @@ phase_6_data_full <- exposure_times_clean %>%
   mutate(temp_50 = if_else(temp >= 50, TRUE, FALSE))
 ```
 
-#Save data
+#Save data by individual phase
 ```{r}
 write_rds(phase_1_data_full, "output/r00_phase_1_sums_data.rds")
 write_csv(phase_1_data_full, "output/r00_phase_1_sums_data.csv")
@@ -672,19 +672,9 @@ r00_sums_full_dataset[is.na(r00_sums_full_dataset)] <- 0
 ```
 
 # Save final SUMs dataset
+###### Join with full dataset and save using "r00_initial_data_cleaning.rmd"
 ```{r}
 write_rds(r00_sums_full_dataset, "output/r00_sums_full_dataset.rds")
 write_csv(r00_sums_full_dataset, "output/r00_sums_full_dataset.csv")
 ```
 
-# Join with full dataset and save
-```{r}
-r00_full_repeated_by_phase <- r00_full_repeated_by_phase %>% 
-  select(-prim_sum_temp_percent_38:-sec_sum_mean_event_time_50) %>% 
-  mutate(phase = as.factor(phase)) %>% 
-  full_join(r00_sums_full_dataset, by = c("house_id", "phase"))
-  
-
-write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
-write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv", na = " ")
-```

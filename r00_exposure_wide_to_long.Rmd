@@ -44,9 +44,9 @@ n_distinct(r00_exposure_repeated_by_phase$house_id)
 
 
 # Save dataset
+##### Combine with full dataset in "r00_initial_data_cleaning.rmd"
 ```{r}
 write_rds(r00_exposure_repeated_by_phase, 
           "output/r00_exposure_repeated_by_phase.rds")
 ```
 
-##### Combine with full dataset in r00_initial_data_cleaning.rmd

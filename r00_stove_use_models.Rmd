@@ -1,7 +1,7 @@
 ---
 title: "R00 Stove Use Models"
 author: "Ethan Walker"
-date: "April 30, 2019"
+date: "June 26, 2019"
 output: pdf_document
 ---
 
@@ -42,367 +42,471 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
-```
 
-```{r}
-## Data prep - primary model dataset
-r00_model_data <- r00_model_data_outliers_removed %>% 
-  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75,
-         pulse_pressure_periph, pulse_pressure_central, hr, bmi, waist,
-         whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
-         dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
-         a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
-         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides, 
-         days_sec, hours_secondary, hours_ics, days_ics_month, sec_stove,
-         justa_primary, sec_stove_nonperm, sec_stove_sums, secondary, 
-         primary, justa_primary, changes_stove, stove_use, waist_cm) %>% 
-  filter(!is.na(assigned_stove)) %>% 
-  mutate(stove_use = factor(stove_use, 
-                              levels = c("trad", "justa+trad", "justa+imp", "justa")))
+stove_use_data <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove))
 
 # Filtering out medication users
-r00_model_data_meds <- r00_model_data %>% 
+r00_model_data_meds <- stove_use_data %>% 
   #filtering out bp med users
   filter(is.na(med_bp))
 
-
-# Datasets for each Phase
-r00_model_data_baseline <- r00_model_data %>% 
-  filter(phase == 1)
-r00_model_data_p2 <- r00_model_data %>% 
-  filter(phase == 2)
-r00_model_data_p3 <- r00_model_data %>% 
-  filter(phase == 3)
-r00_model_data_p4 <- r00_model_data %>% 
-  filter(phase == 4)
-r00_model_data_p5 <- r00_model_data %>% 
-  filter(phase == 5)
-r00_model_data_p6 <- r00_model_data %>% 
-  filter(phase == 6)
+# Dataset for participants who have AIx data for all 6 Phases
+r00_model_data_6phases <- stove_use_data %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6)
 ```
 
-# Stove use tables
+# Analysis plan
 ```{r}
-stove_use_data <- r00_model_data %>% 
+test_data <- r00_model_data_outliers_removed %>% 
   filter(!is.na(assigned_stove)) %>% 
-  select(phase, sec_stove, hours_secondary, days_sec, sec_stove_sums, 
-         secondary, primary, justa_primary, assigned_stove,
-         date_sphygmo, age_baseline, waist_cm, school_bi, 
-         house_id, aug_index, pulse_pressure_central, sys_bp_periph,
-         changes_stove) %>% 
-  mutate(sec_stove = as.numeric(sec_stove),
-         hours_secondary = as.numeric(hours_secondary),
-         days_sec = as.numeric(days_sec),
-         sec_stove_sums = as.numeric(sec_stove_sums),
-         secondary = as.numeric(secondary),
-         justa_primary = as.numeric(justa_primary),
-         changes_stove = as.numeric(changes_stove)) %>% 
-  mutate(sec_use_days = if_else(days_sec == 0 | is.na(days_sec), 0, 1),
-         sec_use_hours = if_else(hours_secondary < 2 | is.na(hours_secondary),
-                                 0, 1)) %>% 
-  mutate(justa_stack = if_else(assigned_stove == "Justa" & sec_use_hours == 1, 1, 0),
-         trad_stack = if_else(assigned_stove == "Traditional" & sec_use_hours == 1, 1, 0),
-         stove_stack = if_else(assigned_stove == "Justa", 0, 1),
-         stove_stack = if_else(justa_stack == 1, 1, stove_stack),
-         stove_stack = if_else(assigned_stove == "Traditional", 2, stove_stack),
-         stove_stack = if_else(trad_stack == 1, 3, stove_stack)) %>% 
-  mutate(stove_stack = factor(stove_stack, levels = c(0,1,2,3),
-                              labels = c("justa", "justa stack", "trad", "trad stack")))
-  
+  # mutating so NAs are reported as 0
+  # days_sec is self-reported use of secondary stove in days/month
+  mutate(days_sec = as.numeric(days_sec),
+         days_sec = if_else(days_sec == 0 | is.na(days_sec), 0, days_sec)) %>% 
+  # days_sec is self-reported use of secondary stove in days/month
+  mutate(hours_primary = as.numeric(hours_primary),
+         hours_primary = if_else(hours_primary == 0 | is.na(hours_primary), 
+                                 0, hours_primary))
 
-stove_use_counts <- stove_use_data %>% 
-  group_by(phase) %>% 
-  summarize(sum(sec_use_days, na.rm = TRUE), sum(sec_use_hours, na.rm = TRUE),
-            sum(sec_stove, na.rm = TRUE), sum(justa_primary, na.rm = TRUE),
-            sum(changes_stove, na.rm = TRUE))
+median(test_data$days_sec) # 1 day
+hist(test_data$days_sec, breaks = 30)
+median(test_data$hours_primary) # 3 hours
+hist(test_data$hours_primary)
+# Could dichotomize days_sec at 0 days or 1+ days
+table(test_data$days_sec)
+# However, the group of interest (justa+trad) only reported 0 days/month 14 times
+# Consider dichotomizing days_sec at < 4 or 4+ days per month
+table(test_data$days_sec, test_data$stove_use_3)
+# Could dichotomize hours_primary at median of 3 (<3.5, 3.5+)
+table(test_data$hours_primary)
+table(test_data$hours_primary, test_data$stove_use_3)
 
-# Why does the "primary" variable indicate not all primary stoves are traditional?
-table(stove_use_data$primary)
+# dataset with new variables for analysis
+stove_use_data <- test_data %>% 
+  # splitting days_sec at <4 and 4+
+  mutate(days_sec_4 = if_else(days_sec < 4, 0, 1)) %>%
+  mutate(days_sec_4 = factor(days_sec_4, levels = c(0,1), labels = c("<4", "4+"))) %>%
+  # splitting hours_primary at <3.5 and 3.5+
+  mutate(hours_primary_3.5 = if_else(hours_primary < 3.5, 0, 1)) %>%
+  mutate(hours_primary_3.5 = factor(hours_primary_3.5, 
+                                    levels = c(0,1), labels = c("<3.5", "3.5+"))) %>%
+  # mutating stove_use_3 to character for use in if_else statement
+  mutate(stove_use_3 = as.character(stove_use_3)) %>% 
+  # new variable incorporating days/month of secondary stove use (<4 vs 4+) 
+  # only doing this for justa+trad levels
+  ## because only 24 people reported 4+ days improved secondary stove use with Justa
+  ## and this data wasn't available in phase 1
+  mutate(stove_use_days_stack = 
+         if_else(stove_use_3 == "justa+trad" & days_sec_4 == "4+",
+                 "justa+trad, 4+", stove_use_3)) %>% 
+  mutate(stove_use_days_stack = 
+           factor(stove_use_days_stack,
+                  levels = c("justa/imprvd", "justa+trad", 
+                             "justa+trad, 4+", "trad"),
+                  labels = c("justa/imprvd", "justa+trad, <4", 
+                             "justa+trad, 4+", "trad"))) %>%
+  # reorder new var so traditional is reference
+  mutate(stove_use_days_stack = 
+           factor(stove_use_days_stack,
+                  levels = c("trad", "justa+trad, 4+", 
+                             "justa+trad, <4", "justa/imprvd"))) %>%
+  # new variable incorporating hours/day of primary stove use (<3.5 vs 3.5+) 
+  mutate(stove_use_hours = 
+         if_else(stove_use_3 == "justa+trad" & hours_primary_3.5 == "3.5+",
+                 "justa+trad, 3.5+", stove_use_3)) %>% 
+  mutate(stove_use_hours = 
+         if_else(stove_use_hours == "trad" & hours_primary_3.5 == "3.5+",
+                 "trad, 3.5+", stove_use_hours)) %>% 
+  mutate(stove_use_hours = 
+         if_else(stove_use_hours == "justa/imprvd" & hours_primary_3.5 == "3.5+",
+                 "justa/imprvd, 3.5+", stove_use_hours)) %>% 
+  mutate(stove_use_hours = 
+           factor(stove_use_hours,
+                  levels = c("justa/imprvd", "justa/imprvd, 3.5+", "justa+trad", 
+                             "justa+trad, 3.5+", "trad", "trad, 3.5+"),
+                  labels = c("justa/imprvd, <3.5", "justa/imprvd, 3.5+", "justa+trad, <3.5", 
+                             "justa+trad, 3.5+", "trad, <3.5", "trad, 3.5+"))) %>%
+  # reorder new var so traditional 3.5+ hours is reference
+  mutate(stove_use_hours = 
+           factor(stove_use_hours,
+                  levels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+", 
+                             "justa+trad, <3.5", "justa/imprvd, 3.5+", 
+                             "justa/imprvd, <3.5"))) %>%
+  mutate(stove_use_3 = factor(stove_use_3, 
+                            levels = c("trad", "justa+trad", "justa/imprvd")))
 
-table(stove_use_data$secondary)
-
-table(stove_use_data$stove_stack)
-
-table(stove_use_data$changes_stove)
-
-table(stove_use_data$days_sec, stove_use_data$phase)
-
-
-# 2x2 table of those reporting any secondary stove use in day/months and hours/day
-sechours_secdays <- table(stove_use_data$sec_use_days, stove_use_data$sec_use_hours)
-kable(prop.table(sechours_secdays))
-
-# 2x2 table of reporting any secondary stove use in day/months and hours/day
-sechours_secstove <- table(stove_use_data$sec_use_hours, stove_use_data$sec_stove)
-kable(prop.table(sechours_secstove))
+table(stove_use_data$days_sec_4, stove_use_data$stove_use_3)
+table(stove_use_data$days_sec_4, stove_use_data$stove_use_days_stack)
+table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_3)
+table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
 ```
 
 
 # Stove use analyses with a priori confounders
 ## Try following variables as main IV in primary model:
-### sums_stack, sec_stove, hours_primary, hours_secondary,
-### prim_sum_temp_percent_50, sec_sum_temp_percent_50, sec_stove_sums
+### stove_use_3, stove_use_days_stack, stove_use_hours
 ```{r}
 # AIx and Stove use variables
 
-##### AIx and stove_use
+##### AIx and stove_use_3
 
-model_stove_use <- lmer(aug_index ~ stove_use + 
+model_stove_use_3 <- lmer(aug_index ~ stove_use_3 + 
                         ns(date_sphygmo, df=6) + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), r00_model_data)
-summary(model_stove_use)
-tidy_model_stove_use <- tidy(model_stove_use, conf.int = TRUE) %>% 
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_stove_use_3)
+tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "stove_use_3") 
+
+
+##### AIx and stove_use_3 - bp meds removed (57 obs)
+model_no_bp_meds <- lmer(aug_index ~ stove_use_3 + 
+                             ns(date_sphygmo, df=6) + age_baseline +
+                             waist_cm + school_bi + (1 | house_id), 
+                             r00_model_data_meds)
+#summary(model_no_bp_meds)
+tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "bp meds removed")
+
+##### AIx and stove_use_3 - dichotomous confounders
+model_di_conf <- lmer(aug_index ~ stove_use_3 + 
+                          ns(date_sphygmo, df=6) + age_cat_40 +
+                          waist_cat + school_bi + (1 | house_id), 
+                          stove_use_data)
+#summary(model_di_conf)
+tidy_model_di_conf <- tidy(model_di_conf, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "dichotomous confounders")
+
+##### AIx and stove_use_3 - date spline with 12 df
+model_spline12 <- lmer(aug_index ~ stove_use_3 + 
+                           ns(date_sphygmo, df=12) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           stove_use_data)
+#summary(model_spline12)
+tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "spline with 12 df")
+
+##### AIx and stove_use_3 6 phases model 
+model_6phases <- lmer(aug_index ~ stove_use_3 + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_model_data_6phases)
+#summary(model_6phases)
+tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "6 phases")
+
+##### AIx and stove_use_3 reduced model 
+model_reduced <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) +
+                         (1 | house_id), stove_use_data)
+#summary(model_reduced)
+tidy_model_reduced <- tidy(model_reduced, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "reduced")
+
+##### AIx and stove_use_3 - phase instead of spline
+model_phase <- lmer(aug_index ~ stove_use_3 + phase + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_phase)
+tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "phase")
+
+##### AIx and stove_use_3 - season instead of spline
+model_season <- lmer(aug_index ~ stove_use_3 + season + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_season)
+tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "season")
+
+##### AIx and stove_use_3 - bmi instead of waist_cm
+model_bmi <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      bmi + school_bi + (1 | house_id), stove_use_data)
+#summary(model_bmi)
+tidy_model_bmi <- tidy(model_bmi, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "bmi")
+
+##### AIx and stove_use_3 - whr instead of waist_cm
+model_whr <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      whr + school_bi + (1 | house_id), stove_use_data)
+#summary(model_whr)
+tidy_model_whr <- tidy(model_whr, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "whr")
+
+##### AIx and stove_use_3 - adding beds_new
+model_beds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + beds_new + (1 | house_id), stove_use_data)
+#summary(model_beds)
+tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "beds_new")
+
+##### AIx and stove_use_3 - adding ses_materials
+model_ses <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + ses_materials + (1 | house_id), stove_use_data)
+#summary(model_ses)
+tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "ses_materials")
+
+##### AIx and stove_use_3 - adding phys_act
+model_pa <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                     waist_cm + school_bi + phys_act + (1 | house_id), stove_use_data)
+#summary(model_pa)
+tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "phys_act")
+
+##### AIx and stove_use_3 - adding dds_total
+model_dds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + dds_total + (1 | house_id), stove_use_data)
+#summary(model_dds)
+tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "dds_total")
+
+##### AIx and stove_use_3 - full model with all potential confounders
+model_full <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + dds_total + phys_act +
+                       ses_materials + beds_new + 
+                       (1 | house_id), stove_use_data)
+#summary(model_full)
+tidy_model_full <- tidy(model_full, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "full")
+
+
+
+##### AIx and stove_use_days_stack
+
+model_stove_use_days <- lmer(aug_index ~ stove_use_days_stack + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_stove_use_days)
+tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
-    mutate(model = "stove use") 
+    mutate(model = "stove use days") 
 
-##### AIx and stove_stack
 
-model_stove_stack <- lmer(aug_index ~ stove_stack + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_bi + (1 | house_id), stove_use_data)
-summary(model_stove_stack)
-tidy_model_sums_1vs2plus <- tidy(model_sums_1vs2plus, conf.int = TRUE) %>% 
-    filter(grepl('sums_stack2', term)) %>% 
-    mutate(model = if_else(term == "sums_stack2", "stove stack", "na")) 
+##### AIx and stove_use_hours
 
-##### AIx and sums_stack (1 = 1 sum, 2 = 2+ sums)
+model_stove_use_hours <- lmer(aug_index ~ stove_use_hours + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_stove_use_hours)
+tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "stove use hours") 
 
-model_sums_1vs2plus <- lmer(aug_index ~ sums_stack + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sums_1vs2plus)
-tidy_model_sums_1vs2plus <- tidy(model_sums_1vs2plus, conf.int = TRUE) %>% 
-    filter(grepl('sums_stack2', term)) %>% 
-    mutate(model = if_else(term == "sums_stack2", "2+ sums", "na")) 
-
-##### AIx and sec_stove (1 = yes, 0 = no)
-
-model_sec_stove <- lmer(aug_index ~ sec_stove + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sec_stove)
-tidy_model_sec_stove <- tidy(model_sec_stove, conf.int = TRUE) %>% 
-    filter(grepl('sec_stove1', term)) %>% 
-    mutate(model = if_else(term == "sec_stove1", "sec stove", "na")) 
-
-##### AIx and hours_primary
-
-model_hours_primary <- lmer(aug_index ~ hours_primary + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_hours_primary)
-tidy_model_hours_primary <- tidy(model_hours_primary, conf.int = TRUE) %>% 
-    filter(grepl('hours_primary', term)) %>% 
-    mutate(model = if_else(term == "hours_primary", "hours prim use (sr)", "na"))
-
-##### AIx and hours_secondary
-
-model_hours_secondary <- lmer(aug_index ~ hours_secondary + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_hours_secondary)
-tidy_model_hours_secondary <- tidy(model_hours_secondary, conf.int = TRUE) %>% 
-    filter(grepl('hours_secondary', term)) %>% 
-    mutate(model = if_else(term == "hours_secondary", "hours sec use (sr)", "na"))
-
-##### AIx and sec_stove_sums (1 = sec stove sum event over 50C, 0 = no event over 50C)
-
-model_sec_stove_sums <- lmer(aug_index ~ sec_stove_sums + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sec_stove_sums)
-tidy_model_sec_stove_sums <- tidy(model_sec_stove_sums, conf.int = TRUE) %>% 
-    filter(grepl('sec_stove_sums1', term)) %>% 
-    mutate(model = if_else(term == "sec_stove_sums1", "sec event 50C (sums)", "na"))
-
-##### AIx and prim_sum_temp_percent_50
-
-model_prim_sum_perc <- lmer(aug_index ~ prim_sum_temp_percent_50 + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_prim_sum_perc)
-tidy_model_prim_sum_perc <- tidy(model_prim_sum_perc, conf.int = TRUE) %>% 
-    filter(grepl('prim_sum_temp_percent_50', term)) %>% 
-    mutate(model = if_else(term == "prim_sum_temp_percent_50", "prim sum 50C (%)", "na"))
-
-##### AIx and sec_sum_temp_percent_50
-
-model_sec_sum_perc <- lmer(aug_index ~ sec_sum_temp_percent_50 + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sec_sum_perc)
-tidy_model_sec_sum_perc <- tidy(model_sec_sum_perc, conf.int = TRUE) %>% 
-    filter(grepl('sec_sum_temp_percent_50', term)) %>% 
-    mutate(model = if_else(term == "sec_sum_temp_percent_50", "sec sum 50C (%)", "na"))
-
-aix_results <- rbind(tidy_model_sums_1vs2plus, 
-                     tidy_model_sec_stove, 
-                     tidy_model_hours_primary,
-                     tidy_model_hours_secondary,
-                     tidy_model_sec_stove_sums,
-                     tidy_model_prim_sum_perc, 
-                     tidy_model_sec_sum_perc)
+aix_results <- rbind(tidy_model_stove_use_3,
+                     tidy_model_no_bp_meds,
+                     tidy_model_6phases,
+                     tidy_model_phase,
+                     tidy_model_season,
+                     tidy_model_spline12,
+                     tidy_model_bmi,
+                     tidy_model_whr,
+                     tidy_model_beds,
+                     tidy_model_ses,
+                     tidy_model_pa,
+                     tidy_model_dds,
+                     tidy_model_full,
+                     tidy_model_reduced,
+                     tidy_model_stove_use_days,
+                     tidy_model_stove_use_hours)
 #kable(aix_results)
 ```
 
 
-```{r}
-## Plot model estimates - AIx and Stove use vars
-plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("2+ sums", "sec event 50C (sums)",
-                                          "prim sum 50C (%)", "sec sum 50C (%)", 
-                                          "hours prim use (sr)", "hours sec use (sr)",
-                                          "sec stove"))) %>% 
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "AIx Models - Stove Use") +
-  labs(y = "Estimate (%)") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```
-
+# Stove use analyses with a priori confounders
+## Try following variables as main IV in primary model:
+### stove_use_3, stove_use_days_stack, stove_use_hours
 ```{r}
 # CPP and Stove use variables
 
-##### CPP and stove_use
+##### CPP and stove_use_3
 
-model_stove_use <- lmer(pulse_pressure_central ~ stove_use + 
+model_stove_use_3 <- lmer(pulse_pressure_central ~ stove_use_3 + 
                         ns(date_sphygmo, df=6) + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), r00_model_data)
-summary(model_stove_use)
-tidy_model_stove_use <- tidy(model_stove_use, conf.int = TRUE) %>% 
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_stove_use_3)
+tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use") 
 
-##### CPP and stove_stack
 
-model_stove_stack <- lmer(pulse_pressure_central ~ stove_stack + 
+##### CPP and stove_use_3 - bp meds removed (57 obs)
+model_no_bp_meds <- lmer(pulse_pressure_central ~ stove_use_3 + 
+                             ns(date_sphygmo, df=6) + age_baseline +
+                             waist_cm + school_bi + (1 | house_id), 
+                             r00_model_data_meds)
+#summary(model_no_bp_meds)
+tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "bp meds removed")
+
+##### CPP and stove_use_3 - dichotomous confounders
+model_di_conf <- lmer(pulse_pressure_central ~ stove_use_3 + 
+                          ns(date_sphygmo, df=6) + age_cat_40 +
+                          waist_cat + school_bi + (1 | house_id), 
+                          stove_use_data)
+#summary(model_di_conf)
+tidy_model_di_conf <- tidy(model_di_conf, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "dichotomous confounders")
+
+##### CPP and stove_use_3 - date spline with 12 df
+model_spline12 <- lmer(pulse_pressure_central ~ stove_use_3 + 
+                           ns(date_sphygmo, df=12) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           stove_use_data)
+#summary(model_spline12)
+tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "spline with 12 df")
+
+##### CPP and stove_use_3 6 phases model 
+model_6phases <- lmer(pulse_pressure_central ~ stove_use_3 + 
                           ns(date_sphygmo, df=6) + age_baseline +
-                          waist_cm + school_bi + (1 | house_id), stove_use_data)
-summary(model_stove_stack)
-tidy_model_sums_1vs2plus <- tidy(model_sums_1vs2plus, conf.int = TRUE) %>% 
-    filter(grepl('sums_stack2', term)) %>% 
-    mutate(model = if_else(term == "sums_stack2", "stove stack", "na")) 
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_model_data_6phases)
+#summary(model_6phases)
+tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "6 phases")
 
-##### CPP and sums_stack (1 = 1 sum, 2 = 2+ sums)
+##### CPP and stove_use_3 reduced model 
+model_reduced <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) +
+                         (1 | house_id), stove_use_data)
+#summary(model_reduced)
+tidy_model_reduced <- tidy(model_reduced, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "reduced")
 
-model_sums_1vs2plus <- lmer(pulse_pressure_central ~ sums_stack + 
-                              ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sums_1vs2plus)
-tidy_model_sums_1vs2plus <- tidy(model_sums_1vs2plus, conf.int = TRUE) %>% 
-    filter(grepl('sums_stack2', term)) %>% 
-    mutate(model = if_else(term == "sums_stack2", "2+ sums", "na")) 
+##### CPP and stove_use_3 - phase instead of spline
+model_phase <- lmer(pulse_pressure_central ~ stove_use_3 + phase + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_phase)
+tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "phase")
 
-##### CPP and sec_stove (1 = yes, 0 = no)
+##### CPP and stove_use_3 - season instead of spline
+model_season <- lmer(pulse_pressure_central ~ stove_use_3 + season + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_season)
+tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "season")
 
-model_sec_stove <- lmer(pulse_pressure_central ~ sec_stove + 
-                          ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sec_stove)
-tidy_model_sec_stove <- tidy(model_sec_stove, conf.int = TRUE) %>% 
-    filter(grepl('sec_stove1', term)) %>% 
-    mutate(model = if_else(term == "sec_stove1", "sec stove", "na")) 
+##### CPP and stove_use_3 - bmi instead of waist_cm
+model_bmi <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      bmi + school_bi + (1 | house_id), stove_use_data)
+#summary(model_bmi)
+tidy_model_bmi <- tidy(model_bmi, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "bmi")
 
-##### CPP and hours_primary
+##### CPP and stove_use_3 - whr instead of waist_cm
+model_whr <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      whr + school_bi + (1 | house_id), stove_use_data)
+#summary(model_whr)
+tidy_model_whr <- tidy(model_whr, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "whr")
 
-model_hours_primary <- lmer(pulse_pressure_central ~ hours_primary + 
-                              ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_hours_primary)
-tidy_model_hours_primary <- tidy(model_hours_primary, conf.int = TRUE) %>% 
-    filter(grepl('hours_primary', term)) %>% 
-    mutate(model = if_else(term == "hours_primary", "hours prim use (sr)", "na"))
+##### CPP and stove_use_3 - adding beds_new
+model_beds <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + beds_new + (1 | house_id), stove_use_data)
+#summary(model_beds)
+tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "beds_new")
 
-##### CPP and hours_secondary
+##### CPP and stove_use_3 - adding ses_materials
+model_ses <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + ses_materials + (1 | house_id), stove_use_data)
+#summary(model_ses)
+tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "ses_materials")
 
-model_hours_secondary <- lmer(pulse_pressure_central ~ hours_secondary + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_hours_secondary)
-tidy_model_hours_secondary <- tidy(model_hours_secondary, conf.int = TRUE) %>% 
-    filter(grepl('hours_secondary', term)) %>% 
-    mutate(model = if_else(term == "hours_secondary", "hours sec use (sr)", "na"))
+##### CPP and stove_use_3 - adding phys_act
+model_pa <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                     waist_cm + school_bi + phys_act + (1 | house_id), stove_use_data)
+#summary(model_pa)
+tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "phys_act")
 
-##### CPP and sec_stove_sums (1 = sec stove sum event over 50C, 0 = no event over 50C)
+##### CPP and stove_use_3 - adding dds_total
+model_dds <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + dds_total + (1 | house_id), stove_use_data)
+#summary(model_dds)
+tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "dds_total")
 
-model_sec_stove_sums <- lmer(pulse_pressure_central ~ sec_stove_sums + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sec_stove_sums)
-tidy_model_sec_stove_sums <- tidy(model_sec_stove_sums, conf.int = TRUE) %>% 
-    filter(grepl('sec_stove_sums1', term)) %>% 
-    mutate(model = if_else(term == "sec_stove_sums1", "sec event 50C (sums)", "na"))
+##### CPP and stove_use_3 - full model with all potential confounders
+model_full <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + dds_total + phys_act +
+                       ses_materials + beds_new + 
+                       (1 | house_id), stove_use_data)
+#summary(model_full)
+tidy_model_full <- tidy(model_full, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "full")
 
-##### CPP and prim_sum_temp_percent_50
 
-model_prim_sum_perc <- lmer(pulse_pressure_central ~ prim_sum_temp_percent_50 + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_prim_sum_perc)
-tidy_model_prim_sum_perc <- tidy(model_prim_sum_perc, conf.int = TRUE) %>% 
-    filter(grepl('prim_sum_temp_percent_50', term)) %>% 
-    mutate(model = if_else(term == "prim_sum_temp_percent_50", "prim sum 50C (%)", "na"))
 
-##### CPP and sec_sum_temp_percent_50
+##### CPP and stove_use_days_stack
 
-model_sec_sum_perc <- lmer(pulse_pressure_central ~ sec_sum_temp_percent_50 + 
-                                ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-#summary(model_sec_sum_perc)
-tidy_model_sec_sum_perc <- tidy(model_sec_sum_perc, conf.int = TRUE) %>% 
-    filter(grepl('sec_sum_temp_percent_50', term)) %>% 
-    mutate(model = if_else(term == "sec_sum_temp_percent_50", "sec sum 50C (%)", "na"))
+model_stove_use_days <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_stove_use_days)
+tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "stove use days") 
 
-cpp_results <- rbind(tidy_model_sums_1vs2plus, 
-                     tidy_model_sec_stove, 
-                     tidy_model_hours_primary,
-                     tidy_model_hours_secondary,
-                     tidy_model_sec_stove_sums,
-                     tidy_model_prim_sum_perc, 
-                     tidy_model_sec_sum_perc)
+
+##### CPP and stove_use_hours
+
+model_stove_use_hours <- lmer(pulse_pressure_central ~ stove_use_hours + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), stove_use_data)
+#summary(model_stove_use_hours)
+tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "stove use hours") 
+
+cpp_results <- rbind(tidy_model_stove_use_3,
+                     tidy_model_no_bp_meds,
+                     tidy_model_6phases,
+                     tidy_model_phase,
+                     tidy_model_season,
+                     tidy_model_spline12,
+                     tidy_model_bmi,
+                     tidy_model_whr,
+                     tidy_model_beds,
+                     tidy_model_ses,
+                     tidy_model_pa,
+                     tidy_model_dds,
+                     tidy_model_full,
+                     tidy_model_reduced,
+                     tidy_model_stove_use_days,
+                     tidy_model_stove_use_hours)
 #kable(cpp_results)
 ```
 
 
-```{r}
-## Plot model estimates - CPP and Stove use vars
-
-plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("2+ sums", "sec event 50C (sums)",
-                                          "prim sum 50C (%)", "sec sum 50C (%)", 
-                                          "hours prim use (sr)", "hours sec use (sr)",
-                                          "sec stove"))) %>% 
-  ggplot() +
-  geom_point(aes(x=model, y=estimate), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-                size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  ggtitle(label = "CPP Models - Stove Use") +
-  labs(y = "Estimate (mmHg)") +
-  labs(x = "") +
-  theme(title = element_text(size = 19), 
-          axis.text.x = element_text(angle = 25, hjust = 1, 
-                                     size = 18, colour = "black"),
-          axis.text.y = element_text(size = 18, colour = "black"),
-          axis.title.y = element_text(size = 18),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_colour_manual(values=jvPalette) 
-plot_estimates
-```

@@ -261,12 +261,75 @@ r00_final_long <- r00_joined_4 %>%
   #create new stove use variable based on actual_stove_use
   mutate(stove_use = as.numeric(actual_stove_use)) %>% 
   mutate(stove_use = if_else(phase == 1 | phase == 2, 3, stove_use)) %>% 
-  mutate(stove_use = factor(stove_use, levels = c(0,1,2,3),
-                            labels = c("justa", "justa+imp", "justa+trad", "trad")))
+  mutate(stove_use_4 = factor(stove_use, levels = c(0,1,2,3),
+                              labels = c("justa", "justa+imp", "justa+trad", "trad"))) %>% 
+  mutate(stove_use_4 = factor(stove_use_4, 
+                              levels = c("trad", "justa+trad", "justa+imp", "justa"))) %>% 
+  mutate(stove_use_3 = if_else(stove_use == 0, 1, stove_use)) %>% 
+  mutate(stove_use_3 = factor(stove_use_3, levels = c(1,2,3),
+                            labels = c("justa/imprvd", "justa+trad", "trad"))) %>% 
+  mutate(stove_use_3 = factor(stove_use_3, 
+                            levels = c("trad", "justa+trad", "justa/imprvd"))) %>% 
+  mutate(stove_use = factor(stove_use, 
+                            levels = c(0,1,2,3),
+                            labels = c(3,2,1,0))) %>% 
+  mutate(stove_use = factor(stove_use, 
+                            levels = c(0,1,2,3))) %>% 
+  # splitting days_sec at <4 and 4+
+  mutate(days_sec_4 = if_else(days_sec < 4, 0, 1)) %>%
+  mutate(days_sec_4 = factor(days_sec_4, levels = c(0,1), labels = c("<4", "4+"))) %>%
+  # splitting hours_primary at <3.5 and 3.5+
+  mutate(hours_primary_3.5 = if_else(hours_primary < 3.5, 0, 1)) %>%
+  mutate(hours_primary_3.5 = factor(hours_primary_3.5, 
+                                    levels = c(0,1), labels = c("<3.5", "3.5+"))) %>%
+  # mutating stove_use_3 to character for use in if_else statement
+  mutate(stove_use_3 = as.character(stove_use_3)) %>% 
+  # new variable incorporating days/month of secondary stove use (<4 vs 4+) 
+  # only doing this for justa+trad levels
+  ## because only 24 people reported 4+ days improved secondary stove use with Justa
+  ## and this data wasn't available in phase 1
+  mutate(stove_use_days_stack = 
+         if_else(stove_use_3 == "justa+trad" & days_sec_4 == "4+",
+                 "justa+trad, 4+", stove_use_3)) %>% 
+  mutate(stove_use_days_stack = 
+           factor(stove_use_days_stack,
+                  levels = c("justa/imprvd", "justa+trad", 
+                             "justa+trad, 4+", "trad"),
+                  labels = c("justa/imprvd", "justa+trad, <4", 
+                             "justa+trad, 4+", "trad"))) %>%
+  # reorder new var so traditional is reference
+  mutate(stove_use_days_stack = 
+           factor(stove_use_days_stack,
+                  levels = c("trad", "justa+trad, 4+", 
+                             "justa+trad, <4", "justa/imprvd"))) %>%
+  # new variable incorporating hours/day of primary stove use (<3.5 vs 3.5+) 
+  mutate(stove_use_hours = 
+         if_else(stove_use_3 == "justa+trad" & hours_primary_3.5 == "3.5+",
+                 "justa+trad, 3.5+", stove_use_3)) %>% 
+  mutate(stove_use_hours = 
+         if_else(stove_use_hours == "trad" & hours_primary_3.5 == "3.5+",
+                 "trad, 3.5+", stove_use_hours)) %>% 
+  mutate(stove_use_hours = 
+         if_else(stove_use_hours == "justa/imprvd" & hours_primary_3.5 == "3.5+",
+                 "justa/imprvd, 3.5+", stove_use_hours)) %>% 
+  mutate(stove_use_hours = 
+           factor(stove_use_hours,
+                  levels = c("justa/imprvd", "justa/imprvd, 3.5+", "justa+trad", 
+                             "justa+trad, 3.5+", "trad", "trad, 3.5+"),
+                  labels = c("justa/imprvd, <3.5", "justa/imprvd, 3.5+", "justa+trad, <3.5", 
+                             "justa+trad, 3.5+", "trad, <3.5", "trad, 3.5+"))) %>%
+  # reorder new var so traditional 3.5+ hours is reference
+  mutate(stove_use_hours = 
+           factor(stove_use_hours,
+                  levels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+", 
+                             "justa+trad, <3.5", "justa/imprvd, 3.5+", 
+                             "justa/imprvd, <3.5"))) %>%
+  mutate(stove_use_3 = factor(stove_use_3, 
+                            levels = c("trad", "justa+trad", "justa/imprvd")))
 ```
 
 
-# Save datasets
+# Save final, combined dataset
 ```{r}
 write_rds(r00_final_long, "output/r00_full_repeated_by_phase.rds")
 
