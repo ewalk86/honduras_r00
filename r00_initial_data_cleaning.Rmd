@@ -1,7 +1,7 @@
 ---
-title: "Initial Data Cleaning"
+title: "Data Cleaning"
 author: "Ethan Walker"
-date: "6 August 2018"
+date: "26 June 2018"
 output: pdf_document
 ---
 

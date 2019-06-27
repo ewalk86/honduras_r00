@@ -48,7 +48,8 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 ```{r}
 ## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(assigned_stove)) 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(phase != 2)
 
   # filter for certain phases/arms
   #filter(phase == 1 | phase == 2 | phase == 3 | phase ==4) %>% 
@@ -66,7 +67,7 @@ r00_model_data_6phases <- r00_model_data %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6)
+  filter(sum(phase_complete) ==5)
 
 
 # Filtering data for each specific phase

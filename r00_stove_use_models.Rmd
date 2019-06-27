@@ -44,23 +44,38 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 stove_use_data <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(assigned_stove))
+  filter(!is.na(assigned_stove)) 
 
 # Filtering out medication users
 r00_model_data_meds <- stove_use_data %>% 
   #filtering out bp med users
   filter(is.na(med_bp))
 
-# Dataset for participants who have AIx data for all 6 Phases
+# Dataset for participants who have AIx data for all 6 Phases (107 participants)
 r00_model_data_6phases <- stove_use_data %>% 
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6)
+  filter(sum(phase_complete) == 6) %>% 
+  # filter out participant with 1 repeat AIx measurement who didn't complete 6 phases
+  filter(house_id != "MOM001") %>% 
+  ungroup()
+
+# Dataset for participants who have AIx data for all <6 Phases
+r00_model_data_5phases <- stove_use_data %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  ungroup()
 ```
 
 # Analysis plan
+## New variables here are already incorporated into the full database
 ```{r}
+# stratify assigned stove and stove-use variables
+table(stove_use_data$assigned_stove, stove_use_data$stove_use_3)
+
 test_data <- r00_model_data_outliers_removed %>% 
   filter(!is.na(assigned_stove)) %>% 
   # mutating so NAs are reported as 0
@@ -160,7 +175,7 @@ model_stove_use_3 <- lmer(aug_index ~ stove_use_3 +
 #summary(model_stove_use_3)
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "stove_use_3") 
+    mutate(model = "stove use") 
 
 
 ##### AIx and stove_use_3 - bp meds removed (57 obs)
@@ -171,7 +186,7 @@ model_no_bp_meds <- lmer(aug_index ~ stove_use_3 +
 #summary(model_no_bp_meds)
 tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "bp meds removed")
+    mutate(model = "no bp meds")
 
 ##### AIx and stove_use_3 - dichotomous confounders
 model_di_conf <- lmer(aug_index ~ stove_use_3 + 
@@ -191,7 +206,7 @@ model_spline12 <- lmer(aug_index ~ stove_use_3 +
 #summary(model_spline12)
 tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "spline with 12 df")
+    mutate(model = "spline 12 df")
 
 ##### AIx and stove_use_3 6 phases model 
 model_6phases <- lmer(aug_index ~ stove_use_3 + 
@@ -202,6 +217,16 @@ model_6phases <- lmer(aug_index ~ stove_use_3 +
 tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "6 phases")
+
+##### AIx and stove_use_3 5 phases model 
+model_5phases <- lmer(aug_index ~ stove_use_3 + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_model_data_5phases)
+#summary(model_5phases)
+tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "<6 phases")
 
 ##### AIx and stove_use_3 reduced model 
 model_reduced <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) +
@@ -249,7 +274,7 @@ model_beds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseli
 #summary(model_beds)
 tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "beds_new")
+    mutate(model = "beds")
 
 ##### AIx and stove_use_3 - adding ses_materials
 model_ses <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -257,7 +282,7 @@ model_ses <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baselin
 #summary(model_ses)
 tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "ses_materials")
+    mutate(model = "ses assets")
 
 ##### AIx and stove_use_3 - adding phys_act
 model_pa <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -265,7 +290,7 @@ model_pa <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline
 #summary(model_pa)
 tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "phys_act")
+    mutate(model = "phys act")
 
 ##### AIx and stove_use_3 - adding dds_total
 model_dds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -273,7 +298,7 @@ model_dds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baselin
 #summary(model_dds)
 tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "dds_total")
+    mutate(model = "dds")
 
 ##### AIx and stove_use_3 - full model with all potential confounders
 model_full <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -297,6 +322,26 @@ tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>%
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use days") 
 
+##### AIx and stove_use_days_stack
+
+model_stove_use_days6 <- lmer(aug_index ~ stove_use_days_stack + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_6phases)
+#summary(model_stove_use_days6)
+tidy_model_stove_use_days6 <- tidy(model_stove_use_days6, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "6 phases") 
+
+##### AIx and stove_use_days_stack
+
+model_stove_use_days5 <- lmer(aug_index ~ stove_use_days_stack + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_5phases)
+#summary(model_stove_use_days5)
+tidy_model_stove_use_days5 <- tidy(model_stove_use_days5, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "<6 phases") 
+
 
 ##### AIx and stove_use_hours
 
@@ -308,9 +353,31 @@ tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>%
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use hours") 
 
+##### AIx and stove_use_hours
+
+model_stove_use_hours6 <- lmer(aug_index ~ stove_use_hours + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_6phases)
+#summary(model_stove_use_hours6)
+tidy_model_stove_use_hours6 <- tidy(model_stove_use_hours6, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "6 phases") 
+
+##### AIx and stove_use_hours
+
+model_stove_use_hours5 <- lmer(aug_index ~ stove_use_hours + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_5phases)
+#summary(model_stove_use_hours5)
+tidy_model_stove_use_hours5 <- tidy(model_stove_use_hours5, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "<6 phases") 
+
+
 aix_results <- rbind(tidy_model_stove_use_3,
                      tidy_model_no_bp_meds,
                      tidy_model_6phases,
+                     tidy_model_5phases,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_spline12,
@@ -319,13 +386,154 @@ aix_results <- rbind(tidy_model_stove_use_3,
                      tidy_model_beds,
                      tidy_model_ses,
                      tidy_model_pa,
-                     tidy_model_dds,
-                     tidy_model_full,
-                     tidy_model_reduced,
-                     tidy_model_stove_use_days,
-                     tidy_model_stove_use_hours)
+                     tidy_model_dds)
+
+aix_results_days <- rbind(tidy_model_stove_use_days,
+                     tidy_model_stove_use_days5,
+                     tidy_model_stove_use_days6)
+
+aix_results_hours <- rbind(tidy_model_stove_use_hours,
+                     tidy_model_stove_use_hours5,
+                     tidy_model_stove_use_hours6)
 #kable(aix_results)
 ```
+
+## Plot model estimates - AIx and Stove Use
+```{r}
+# primary stove-use model with sensitivity analyses
+plot_estimates <- aix_results %>%
+  mutate(model = factor(model, levels = c("stove use", 
+                                          "no bp meds", "6 phases", "<6 phases",
+                                          "phase", "season", "spline 12 df", 
+                                          "bmi", "whr", "beds", "ses assets", "dds",
+                                          "phys act"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
+                        labels = c("justa+trad", "justa/imprvd"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate compared to traditional stove
+       with or without secondary stove (%)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "top",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8)) 
+plot_estimates
+
+
+# stove use days/month model
+plot_estimates <- aix_results_days %>%
+  mutate(model = factor(model, levels = c("stove use days", "<6 phases", "6 phases"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_days_stackjusta+trad, 4+",
+                                   "stove_use_days_stackjusta+trad, <4",
+                                   "stove_use_days_stackjusta/imprvd"),
+                        labels = c("justa+trad 4+ days/month", "justa+trad <4 days/month",
+                                   "justa/imprvd"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate compared to traditional stove \n with or without secondary stove (%)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)) 
+plot_estimates
+
+
+# stove use hours/day model
+plot_estimates <- aix_results_hours %>%
+  mutate(model = factor(model, levels = c("stove use hours", "<6 phases", "6 phases"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_hourstrad, <3.5",
+                                   "stove_use_hoursjusta+trad, 3.5+",
+                                   "stove_use_hoursjusta+trad, <3.5",
+                                   "stove_use_hoursjusta/imprvd, 3.5+",
+                                   "stove_use_hoursjusta/imprvd, <3.5"),
+                        labels = c("trad <3.5 hours", "justa+trad 3.5+ hours",
+                                   "justa+trad <3.5 hours", "justa/imprvd 3.5+ hours",
+                                   "justa/imprvd <3.5 hours"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate compared to traditional \n stove use 3.5+ hours/day (%)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 
+                     labels = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)) 
+plot_estimates
+```
+
+# AIx primary model diagnostic plots - stove use
+```{r}
+plot(model_stove_use_3, main = "AIx and stove-use model", 
+     xlab = "fitted values", ylab = "residuals")
+
+qqnorm(residuals(model_stove_use_3), main = "AIx and stove-use model")
+
+
+#aix_influential <- influence(model_apm, obs = TRUE)
+
+#aix_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
+
+#plot.estex(aix_influential, which = "cook")
+```
+
 
 
 # Stove use analyses with a priori confounders
@@ -353,7 +561,7 @@ model_no_bp_meds <- lmer(pulse_pressure_central ~ stove_use_3 +
 #summary(model_no_bp_meds)
 tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "bp meds removed")
+    mutate(model = "no bp meds")
 
 ##### CPP and stove_use_3 - dichotomous confounders
 model_di_conf <- lmer(pulse_pressure_central ~ stove_use_3 + 
@@ -373,7 +581,7 @@ model_spline12 <- lmer(pulse_pressure_central ~ stove_use_3 +
 #summary(model_spline12)
 tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "spline with 12 df")
+    mutate(model = "spline 12 df")
 
 ##### CPP and stove_use_3 6 phases model 
 model_6phases <- lmer(pulse_pressure_central ~ stove_use_3 + 
@@ -384,6 +592,16 @@ model_6phases <- lmer(pulse_pressure_central ~ stove_use_3 +
 tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "6 phases")
+
+##### CPP and stove_use_3 5 phases model 
+model_5phases <- lmer(pulse_pressure_central ~ stove_use_3 + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_model_data_5phases)
+#summary(model_5phases)
+tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "<6 phases")
 
 ##### CPP and stove_use_3 reduced model 
 model_reduced <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) +
@@ -431,7 +649,7 @@ model_beds <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6)
 #summary(model_beds)
 tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "beds_new")
+    mutate(model = "beds")
 
 ##### CPP and stove_use_3 - adding ses_materials
 model_ses <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -439,7 +657,7 @@ model_ses <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) 
 #summary(model_ses)
 tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "ses_materials")
+    mutate(model = "ses assets")
 
 ##### CPP and stove_use_3 - adding phys_act
 model_pa <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -447,7 +665,7 @@ model_pa <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) +
 #summary(model_pa)
 tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "phys_act")
+    mutate(model = "phys act")
 
 ##### CPP and stove_use_3 - adding dds_total
 model_dds <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -455,7 +673,7 @@ model_dds <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) 
 #summary(model_dds)
 tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "dds_total")
+    mutate(model = "dds")
 
 ##### CPP and stove_use_3 - full model with all potential confounders
 model_full <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
@@ -479,6 +697,26 @@ tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>%
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use days") 
 
+##### CPP and stove_use_days_stack
+
+model_stove_use_days6 <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_6phases)
+#summary(model_stove_use_days6)
+tidy_model_stove_use_days6 <- tidy(model_stove_use_days6, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "6 phases") 
+
+##### CPP and stove_use_days_stack
+
+model_stove_use_days5 <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_5phases)
+#summary(model_stove_use_days5)
+tidy_model_stove_use_days5 <- tidy(model_stove_use_days5, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "<6 phases") 
+
 
 ##### CPP and stove_use_hours
 
@@ -490,9 +728,31 @@ tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>%
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use hours") 
 
+##### CPP and stove_use_hours
+
+model_stove_use_hours6 <- lmer(pulse_pressure_central ~ stove_use_hours + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_6phases)
+#summary(model_stove_use_hours6)
+tidy_model_stove_use_hours6 <- tidy(model_stove_use_hours6, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "6 phases") 
+
+##### CPP and stove_use_hours
+
+model_stove_use_hours5 <- lmer(pulse_pressure_central ~ stove_use_hours + 
+                        ns(date_sphygmo, df=6) + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_5phases)
+#summary(model_stove_use_hours5)
+tidy_model_stove_use_hours5 <- tidy(model_stove_use_hours5, conf.int = TRUE) %>% 
+    filter(grepl('stove_use', term)) %>% 
+    mutate(model = "<6 phases") 
+
+
 cpp_results <- rbind(tidy_model_stove_use_3,
                      tidy_model_no_bp_meds,
                      tidy_model_6phases,
+                     tidy_model_5phases,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_spline12,
@@ -501,12 +761,149 @@ cpp_results <- rbind(tidy_model_stove_use_3,
                      tidy_model_beds,
                      tidy_model_ses,
                      tidy_model_pa,
-                     tidy_model_dds,
-                     tidy_model_full,
-                     tidy_model_reduced,
-                     tidy_model_stove_use_days,
-                     tidy_model_stove_use_hours)
+                     tidy_model_dds)
+
+cpp_results_days <- rbind(tidy_model_stove_use_days,
+                     tidy_model_stove_use_days5,
+                     tidy_model_stove_use_days6)
+
+cpp_results_hours <- rbind(tidy_model_stove_use_hours,
+                     tidy_model_stove_use_hours5,
+                     tidy_model_stove_use_hours6)
 #kable(cpp_results)
 ```
 
+## Plot model estimates - CPP and Stove Use
+```{r}
+plot_estimates <- cpp_results %>%
+  mutate(model = factor(model, levels = c("stove use", 
+                                          "no bp meds", "6 phases", "<6 phases",
+                                          "phase", "season", "spline 12 df", 
+                                          "bmi", "whr", "beds", "ses assets", "dds",
+                                          "phys act"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
+                        labels = c("justa+trad", "justa/imprvd"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate compared to traditional stove
+       with or without secondary stove (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "top",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2), 
+                     labels = c(-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2)) 
+plot_estimates
 
+
+# stove use days/month model
+plot_estimates <- cpp_results_days %>%
+  mutate(model = factor(model, levels = c("stove use days", "<6 phases", "6 phases"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_days_stackjusta+trad, 4+",
+                                   "stove_use_days_stackjusta+trad, <4",
+                                   "stove_use_days_stackjusta/imprvd"),
+                        labels = c("justa+trad 4+ days/month", "justa+trad <4 days/month",
+                                   "justa/imprvd"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate compared to traditional stove \n with or without secondary stove (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6)) 
+plot_estimates
+
+
+# stove use hours/day model
+plot_estimates <- cpp_results_hours %>%
+  mutate(model = factor(model, levels = c("stove use hours", "<6 phases", "6 phases"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_hourstrad, <3.5",
+                                   "stove_use_hoursjusta+trad, 3.5+",
+                                   "stove_use_hoursjusta+trad, <3.5",
+                                   "stove_use_hoursjusta/imprvd, 3.5+",
+                                   "stove_use_hoursjusta/imprvd, <3.5"),
+                        labels = c("trad <3.5 hours", "justa+trad 3.5+ hours",
+                                   "justa+trad <3.5 hours", "justa/imprvd 3.5+ hours",
+                                   "justa/imprvd <3.5 hours"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate compared to traditional \n stove use 3.5+ hours/day (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6)) 
+plot_estimates
+```
+
+# CPP primary model diagnostic plots - stove use
+```{r}
+plot(model_stove_use_3, main = "CPP and stove-use model", 
+     xlab = "fitted values", ylab = "residuals")
+
+qqnorm(residuals(model_stove_use_3), main = "CPP and stove-use model")
+
+
+#aix_influential <- influence(model_apm, obs = TRUE)
+
+#aix_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
+
+#plot.estex(aix_influential, which = "cook")
+```

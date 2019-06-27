@@ -18,6 +18,17 @@ library(knitr)
 ```{r, message=FALSE}
 # load full database
 r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+# Dataset for participants who have AIx data for all 6 Phases (113 participants)
+r00_data_6phases <- r00_full_repeated_by_phase %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  # filter out participant with 1 repeat AIx measurement who didn't complete 6 phases
+  filter(house_id != "MOM001") %>% 
+  ungroup()
 ```
 
 # Correlation matrix - Spearman
@@ -65,7 +76,7 @@ kable(personal_pm_summary, digits = 1)
 
 # Area PM - total
 ```{r}
-summary_area_pm_study_arm <- r00_full_repeated_by_phase %>% 
+summary_area_pm_study_arm <- r00_data_6phases %>% 
   select(study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>%
@@ -83,7 +94,7 @@ kable(summary_area_pm_study_arm, digits = 0)
 
 # Personal PM - total
 ```{r}
-summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>% 
+summary_personal_pm_study_arm <- r00_data_6phases %>% 
   select(study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>%
@@ -103,7 +114,7 @@ kable(summary_personal_pm_study_arm, digits = 0)
 
 # Area PM grouped by study arm - phase 1
 ```{r}
-summary_area_pm_study_arm <- r00_full_repeated_by_phase %>% 
+summary_area_pm_study_arm <- r00_data_6phases %>% 
   filter(phase == 1) %>% 
   select(study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
@@ -123,7 +134,7 @@ kable(summary_area_pm_study_arm, digits = 0)
 
 # Personal PM grouped by study arm - phase 1
 ```{r}
-summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>% 
+summary_personal_pm_study_arm <- r00_data_6phases %>% 
   filter(phase == 1) %>% 
   select(study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
@@ -185,7 +196,7 @@ kable(summary_personal_pm_phase, digits = 0)
 
 # Area PM grouped by assigned stove type
 ```{r}
-summary_area_pm_stove <- r00_full_repeated_by_phase %>% 
+summary_area_pm_stove <- r00_data_6phases %>% 
   select(assigned_stove, study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
@@ -204,7 +215,7 @@ kable(summary_area_pm_stove, digits = 0)
 
 # Personal PM grouped by assigned stove type
 ```{r}
-summary_personal_pm_stove <- r00_full_repeated_by_phase %>% 
+summary_personal_pm_stove <- r00_data_6phases %>% 
   select(assigned_stove, study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
@@ -225,7 +236,7 @@ kable(summary_personal_pm_stove, digits = 0)
 
 # Area PM grouped by stove use
 ```{r}
-summary_area_pm_stove_use <- stove_use_data %>% 
+summary_area_pm_stove_use <- r00_data_6phases %>% 
   select(stove_use_3, study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
@@ -241,7 +252,7 @@ summary_area_pm_stove_use <- stove_use_data %>%
             "IQR" = IQR(a_twa))
 kable(summary_area_pm_stove_use, digits = 0)
 
-summary_area_pm_stove_use <- stove_use_data %>% 
+summary_area_pm_stove_use <- r00_data_6phases %>% 
   select(stove_use_days_stack, study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
@@ -260,7 +271,7 @@ kable(summary_area_pm_stove_use, digits = 0)
 
 # Personal PM grouped by stove use
 ```{r}
-summary_personal_pm_stove_use <- stove_use_data %>% 
+summary_personal_pm_stove_use <- r00_data_6phases %>% 
   select(stove_use_3, study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
@@ -276,7 +287,7 @@ summary_personal_pm_stove_use <- stove_use_data %>%
             "IQR" = IQR(p_twa))
 kable(summary_personal_pm_stove_use, digits = 0)
 
-summary_personal_pm_stove_use <- stove_use_data %>% 
+summary_personal_pm_stove_use <- r00_data_6phases %>% 
   select(stove_use_days_stack, study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
