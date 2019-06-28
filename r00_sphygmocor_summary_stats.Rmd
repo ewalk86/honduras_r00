@@ -44,7 +44,8 @@ r00_data_5phases <- r00_model_data_outliers_removed %>%
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
   filter(sum(phase_complete) < 6) %>%
-  ungroup()
+  ungroup() %>% 
+  select(house_id, phase, aug_index, stove_use_3, stove_use_4, assigned_stove, date_sphygmo)
 ```
 
 # Overall and within subject standard deviations for outcomes
@@ -66,9 +67,27 @@ aix_anova_data <- r00_model_data_outliers_removed %>%
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(aug_index)) 
 
+aix_anova_data5 <- r00_data_5phases %>% 
+  select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(aug_index)) 
+
+aix_anova_data6 <- r00_data_6phases %>% 
+  select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(aug_index)) 
+
 aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data)
 summary(aix_anova)
 sqrt(85.9) #9.27
+
+aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data5)
+summary(aix_anova)
+sqrt(88.3) #9.40
+
+aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data6)
+summary(aix_anova)
+sqrt(83.7) #9.15
 
 cpp_anova <- aov(pulse_pressure_central ~ house_id, data = aix_anova_data)
 summary(cpp_anova)
@@ -108,7 +127,26 @@ summary_stats_stove <- r00_model_data_outliers_removed %>%
   filter(!is.na(aug_index)) %>% 
   select(assigned_stove, aug_index, pulse_pressure_central) %>% 
   group_by(assigned_stove) %>% 
-  summarize(n())
+  summarize(n(), mean(aug_index), sd(aug_index), mean(pulse_pressure_central),
+            sd(pulse_pressure_central))
+summary_stats_stove
+
+summary_stats_stove <- r00_data_5phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(assigned_stove, aug_index, pulse_pressure_central) %>% 
+  group_by(assigned_stove) %>% 
+  summarize(n(), mean(aug_index), sd(aug_index), mean(pulse_pressure_central),
+            sd(pulse_pressure_central))
+summary_stats_stove
+
+summary_stats_stove <- r00_data_6phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(assigned_stove, aug_index, pulse_pressure_central) %>% 
+  group_by(assigned_stove) %>% 
+  summarize(n(), mean(aug_index), sd(aug_index), mean(pulse_pressure_central),
+            sd(pulse_pressure_central))
 summary_stats_stove
 ```
 
@@ -169,11 +207,11 @@ kable(summary_stats_all, digits = 2)
 
 # AIx grouped by stove use
 ```{r}
-summary_aix_stove_use <- r00_model_data_outliers_removed %>% 
+summary_aix_stove_use <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index)) %>% 
-  select(stove_use, assigned_stove, aug_index) %>% 
-  group_by(stove_use) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase) %>% 
+  group_by(stove_use_3, phase) %>% 
   summarise("Mean" = mean(aug_index),
             "SD" = sd(aug_index), 
             "n" = n(),
@@ -183,7 +221,23 @@ summary_aix_stove_use <- r00_model_data_outliers_removed %>%
             "Min" = min(aug_index), 
             "Max" = max(aug_index),
             "IQR" = IQR(aug_index))
-kable(summary_aix_stove_use, digits = 0)
+kable(summary_aix_stove_use, digits = 1)
+
+summary_aix_stove_use <- r00_data_5phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase) %>% 
+  group_by(stove_use_3, phase) %>% 
+  summarise("Mean" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+kable(summary_aix_stove_use, digits = 1)
 ```
 
 # CPP grouped by stove use
@@ -191,8 +245,8 @@ kable(summary_aix_stove_use, digits = 0)
 summary_cpp_stove_use <- r00_model_data_outliers_removed %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use, assigned_stove, pulse_pressure_central) %>% 
-  group_by(stove_use) %>% 
+  select(stove_use_3, assigned_stove, pulse_pressure_central) %>% 
+  group_by(stove_use_3) %>% 
   summarise("Mean" = mean(pulse_pressure_central),
             "SD" = sd(pulse_pressure_central), 
             "n" = n(),
@@ -341,69 +395,107 @@ kable(summary_stats_bmi_cat, digits = 2)
 
 \pagebreak  
 
+# Line plots across phases
+```{r}
+line_plot_data <- r00_model_data_outliers_removed %>% 
+  arrange(house_id, date_sphygmo) %>% 
+  group_by(house_id) %>% 
+  mutate(increase = if_else(aug_index < lead(aug_index), "TRUE", "FALSE")) 
+
+aix_line_plot <- ggplot(line_plot_data) +
+  geom_line(aes(phase, aug_index, color = increase, group = house_id)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+aix_line_plot
+
+line_plot_data <- r00_data_5phases %>% 
+  arrange(house_id, date_sphygmo) %>% 
+  group_by(house_id) %>% 
+  mutate(increase = if_else(aug_index < lead(aug_index), "TRUE", "FALSE")) 
+
+aix_line_plot <- ggplot(line_plot_data, aes(group = house_id)) +
+  geom_line(aes(phase, aug_index, color = increase)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+aix_line_plot
+
+line_plot_data <- r00_data_6phases %>% 
+  arrange(house_id, date_sphygmo) %>% 
+  group_by(house_id) %>% 
+  mutate(increase = if_else(aug_index < lead(aug_index), "TRUE", "FALSE")) 
+
+aix_line_plot <- ggplot(line_plot_data) +
+  geom_line(aes(phase, aug_index, color = increase, group = house_id)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+aix_line_plot
+```
+
+\pagebreak  
+
 # Variables grouped by phase
 ```{r}
 summary_stats_phase <- r00_model_data_outliers_removed %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index)) %>%
-  select(phase, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+  select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
          "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  group_by(phase) %>% 
+  group_by(phase, study_arm) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
-  gather(var, value, -phase) %>% 
+  gather(var, value, -phase, -study_arm) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
-  arrange(var, phase) %>% 
-  select(var, phase, n, mean, sd, median, max, min) %>% 
-  rename("Variable" = var, "Phase" = phase) 
+  arrange(var, phase, study_arm) %>% 
+  select(var, phase, study_arm, n, mean, sd, median, max, min) %>% 
+  rename("Variable" = var, "Phase" = phase, "Arm" = study_arm) 
 kable(summary_stats_phase, digits = 2)
 
-summary_stats_phase6 <- r00_model_data_6phases %>% 
+summary_stats_phase6 <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index)) %>%
-  select(phase, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+  select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
          "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  group_by(phase) %>% 
+  group_by(phase, study_arm) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
-  gather(var, value, -phase) %>% 
+  gather(var, value, -phase, -study_arm) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
-  arrange(var, phase) %>% 
-  select(var, phase, n, mean, sd, median, max, min) %>% 
-  rename("Variable" = var, "Phase" = phase) 
+  arrange(var, phase, study_arm) %>% 
+  select(var, phase, study_arm, n, mean, sd, median, max, min) %>% 
+  rename("Variable" = var, "Phase" = phase, "Arm" = study_arm) 
 kable(summary_stats_phase6, digits = 2)
 
-summary_stats_phase5 <- r00_model_data_5phases %>% 
+summary_stats_phase5 <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index)) %>%
-  select(phase, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+  select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
          "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
          "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  group_by(phase) %>% 
+  group_by(phase, study_arm) %>% 
   summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
                      "_min" = min, "_max" = max, "_n" = n())) %>% 
-  gather(var, value, -phase) %>% 
+  gather(var, value, -phase, -study_arm) %>% 
   separate(var, into = c("var", "stat"), sep = "__") %>% 
   spread(stat, value) %>% 
-  arrange(var, phase) %>% 
-  select(var, phase, n, mean, sd, median, max, min) %>% 
-  rename("Variable" = var, "Phase" = phase) 
+  arrange(var, phase, study_arm) %>% 
+  select(var, phase, study_arm, n, mean, sd, median, max, min) %>% 
+  rename("Variable" = var, "Phase" = phase, "Arm" = study_arm) 
 kable(summary_stats_phase5, digits = 2)
 ```
 

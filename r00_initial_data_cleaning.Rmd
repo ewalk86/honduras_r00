@@ -18,7 +18,7 @@ library(lubridate)
 
 ```{r, message=FALSE}
 # Load data
-r00_full_wide <- read_xlsx("input/R00_health_wide_24June2019_by.xlsx")
+r00_full_wide <- read_xlsx("input/R00_health_wide_28June2019_v2_by.xlsx")
 
 #r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
@@ -157,6 +157,7 @@ r00_joined_1 <- r00_full_repeated_by_phase %>%
   select(-"day_week", -"time", -"utc", -"date_new") %>% 
   #join with cleaned pwa dataset
   left_join(r00_pwa, by = c("house_id", "date_sphygmo")) 
+
 ```
 
 # Combine with cleaned SUMS dataset (from r00_sums_data_cleaning.rmd)
@@ -165,6 +166,7 @@ r00_sums_full_dataset <- readRDS("output/r00_sums_full_dataset.rds")
 
 r00_joined_2 <- r00_joined_1 %>% 
   left_join(r00_sums_full_dataset, by = c("house_id", "phase"))
+
 ```
 
 # Combine with old exposure dataset (from r00_exposure_wide_to_long.rmd)
@@ -173,14 +175,16 @@ r00_exposure_repeated_by_phase <- read_rds("output/r00_exposure_repeated_by_phas
 
 r00_joined_3 <- r00_joined_2 %>% 
   full_join(r00_exposure_repeated_by_phase, by = c("house_id", "phase")) 
+
 ```
 
 # Combine with Megan's new PM2.5 dataset (from r00_pm_database_final.rmd)
 ```{r}
-r00_pm_final <- read_rds("output/r00_pm_final.rds")
+r00_pm_final <- read_rds("output/r00_pm_final.rds") 
 
 r00_joined_4 <- r00_joined_3 %>% 
   full_join(r00_pm_final, by = c("house_id", "phase")) 
+
 ```
 
 # Create new variables to use in analyses
@@ -325,7 +329,47 @@ r00_final_long <- r00_joined_4 %>%
                              "justa+trad, <3.5", "justa/imprvd, 3.5+", 
                              "justa/imprvd, <3.5"))) %>%
   mutate(stove_use_3 = factor(stove_use_3, 
-                            levels = c("trad", "justa+trad", "justa/imprvd")))
+                            levels = c("trad", "justa+trad", "justa/imprvd"))) %>% 
+  mutate(pregnant_new = if_else(house_id == "ANT011" & phase == 2, 1, 0),
+         pregnant_new = if_else(house_id == "CAC034" & phase == 5, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CAC060" & phase == 2, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CAC062" & phase == 4, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CAC062" & phase == 5, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CER010" & phase == 3, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CER023" & phase == 4, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CER023" & phase == 5, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CER042" & phase == 2, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "CER042" & phase == 5, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "HOR071" & phase == 4, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "MOM026" & phase == 2, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "MOM062" & phase == 3, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "MOM062" & phase == 4, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "OLO102" & phase == 2, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "PER067" & phase == 5, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "PER067" & phase == 6, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "QDL018" & phase == 2, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "QDL027" & phase == 3, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "ZAC095" & phase == 3, 1, pregnant_new)) %>% 
+  # format data
+  separate(child_born, c("day_week", "month", "day", "time", "utc", "year"), sep = " ") %>% 
+  unite(date_new, c("year", "month", "day"), sep = "") %>% 
+  mutate(child_born_date = ymd(date_new)) %>% 
+  select(-"day_week", -"time", -"utc", -"date_new") %>% 
+  # difference between date of health assessment and last child born
+  mutate(date_diff = date_sphygmo - child_born_date) %>% 
+  # if dates are less than 6 mo apart, they were pregnant for previous session
+  mutate(pregnant2 = if_else(date_diff < 182, 1, 0)) %>% 
+  group_by(house_id) %>% 
+  mutate(pregnant3 = lead(pregnant2)) %>% 
+  # check to see if this method of assessing pregnancy matches with our records
+  ## 2 additional instances of pregnancy found by this method
+  ## adding to pregnancy_new, below
+  mutate(pregnant_test = if_else(pregnant_new == pregnant3, 1, 0)) %>%
+  mutate(pregnant_new = if_else(house_id == "OLO093" & phase == 4, 1, pregnant_new),
+         pregnant_new = if_else(house_id == "ZAC098" & phase == 3, 1, pregnant_new)) %>% 
+  mutate(pregnant_previous = lag(pregnant_new)) %>%
+  select(-pregnant2, -pregnant3, -pregnant_test, -child_born_date, -date_diff) %>% 
+  ungroup()
 ```
 
 
@@ -334,4 +378,80 @@ r00_final_long <- r00_joined_4 %>%
 write_rds(r00_final_long, "output/r00_full_repeated_by_phase.rds")
 
 write_csv(r00_final_long, "output/r00_full_repeated_by_phase.csv", na = " ")
+```
+
+
+
+# Convert subsets of dataset back to wide
+```{r}
+spread_p <- r00_final_long %>% 
+  select(house_id, phase, p_twa) %>% 
+  spread(phase, p_twa) %>% 
+  rename(p_twa_p1 = "1",
+         p_twa_p2 = "2",
+         p_twa_p3 = "3",
+         p_twa_p4 = "4",
+         p_twa_p5 = "5",
+         p_twa_p6 = "6")
+
+spread_a <- r00_final_long %>% 
+  select(house_id, phase, a_twa) %>% 
+  spread(phase, a_twa) %>% 
+  rename(a_twa_p1 = "1",
+         a_twa_p2 = "2",
+         a_twa_p3 = "3",
+         a_twa_p4 = "4",
+         a_twa_p5 = "5",
+         a_twa_p6 = "6")
+
+bonnie_exposure <- full_join(spread_a, spread_p, by = "house_id")
+
+write_csv(bonnie_exposure, "output/bonnie_exposure.csv", na = " ")
+```
+
+
+
+##### Convert Tim's Dataset from Wide to Long #####
+
+```{r, message=FALSE}
+# Load data
+r00_full_wide <- read_xlsx("input/tim_28June2019.xlsx")
+```
+
+
+```{r}
+tim_full_long <- r00_full_wide %>% 
+  rename(beds_new_r00_p1 = beds_new) %>% 
+  mutate(beds_new_r00_p2 = beds_new_r00_p1, 
+         beds_new_r00_p3 = beds_new_r00_p1, 
+         beds_new_r00_p4 = beds_new_r00_p1, 
+         beds_new_r00_p5 = beds_new_r00_p1, 
+         beds_new_r00_p6 = beds_new_r00_p1) %>%
+  #transform data to long format with only 3 columns
+  gather(key = "variable", value = "value", -house_id) %>% 
+  #arrange data by house_id, descending
+  arrange(house_id)
+
+tim_full_repeated_by_phase <- tim_full_long %>%
+  #separate variable to create new phase column
+  separate(variable, c("variable", "phase"), sep = "_r00_p") %>%
+  #replace "." with "99999" and then change to "na"
+  mutate(value = if_else(value == ".", "99999", value)) %>% 
+  replace_with_na(replace = list(value = 99999)) %>% 
+  #separate phase and "new", then attach "new" to variable
+  separate(phase, c("phase", "new"), sep = "_") %>% 
+  unite("variable", c("variable", "new")) %>% 
+  #remove NA from end of variables that was added above
+  separate(variable, c("variable", "trash"), sep = "_NA") %>% 
+  select(-"trash") %>% 
+  #spread out into columns, grouped by house_id and phase
+  spread(key = "variable", value = "value") %>% 
+  arrange(house_id)
+
+r00_sums_full_dataset <- readRDS("output/r00_sums_full_dataset.rds")
+
+tim_joined <- tim_full_repeated_by_phase %>% 
+  left_join(r00_sums_full_dataset, by = c("house_id", "phase"))
+
+write_csv(tim_joined, "output/tim_data_28june2019.csv", na = " ")
 ```

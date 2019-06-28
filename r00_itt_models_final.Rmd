@@ -48,8 +48,7 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 ```{r}
 ## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(assigned_stove)) %>% 
-  filter(phase != 2)
+  filter(!is.na(assigned_stove)) 
 
   # filter for certain phases/arms
   #filter(phase == 1 | phase == 2 | phase == 3 | phase ==4) %>% 
@@ -67,7 +66,37 @@ r00_model_data_6phases <- r00_model_data %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) ==5)
+  filter(sum(phase_complete) == 6) %>% 
+  # filter out participant with 1 repeat AIx measurement who didn't complete 6 phases
+  filter(house_id != "MOM001") %>% 
+  ungroup()
+
+
+r00_model_data_nophase2 <- r00_model_data %>% 
+  filter(phase != 2)
+
+
+# Dataset where Phase 1 AIx observations are added as a new variable/column
+r00_model_data_aix_baseline <- r00_model_data %>% 
+  filter(!is.na(aug_index)) %>% 
+  group_by(house_id) %>% 
+  mutate(baseline_aix = if_else(phase == 1, aug_index, 9999)) %>% 
+  mutate(baseline_aix_2 = lag(baseline_aix)) %>% 
+  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
+  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
+                                  baseline_aix_3, baseline_aix_2)) %>% 
+  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
+  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
+                                  baseline_aix_3, baseline_aix_2)) %>% 
+  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
+  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
+                                  baseline_aix_3, baseline_aix_2)) %>% 
+  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
+  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
+                                  baseline_aix_3, baseline_aix_2)) %>% 
+  filter(phase != 1) %>% 
+  mutate(baseline_aix = baseline_aix_2) %>% 
+  select(-baseline_aix_2, -baseline_aix_3) 
 
 
 # Filtering data for each specific phase
@@ -165,6 +194,16 @@ tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "no bp meds", "na")) 
 
 
+##### AIx ITT model - adjust for baseline (phase 1)
+model_baseline <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                         baseline_aix +
+                         (1 | house_id), r00_model_data_aix_baseline)
+#summary(model_baseline)
+tidy_model_baseline <- tidy(model_baseline, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "baseline", "na")) 
+
+
 ##### AIx ITT model - phase instead of spline
 model_phase <- lmer(aug_index ~ assigned_stove + phase + 
                     (1 | house_id), r00_model_data)
@@ -192,6 +231,24 @@ tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
 
 
+##### AIx ITT model - no phase 2 sphygmocor data
+model_phase2 <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_model_data_nophase2)
+# summary(model_phase2)
+tidy_model_phase2 <- tidy(model_phase2, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no phase 2", "na")) 
+
+
+##### AIx ITT model - including term for pregnant previous phase
+model_pregnant <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
+                  pregnant_previous + (1 | house_id), r00_model_data)
+# summary(model_pregnant)
+tidy_model_pregnant <- tidy(model_pregnant, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "pregnant prev", "na")) 
+
+
 ##### AIx ITT model - including baseline age
 model_age <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
                   age_baseline + (1 | house_id), r00_model_data)
@@ -203,8 +260,11 @@ tidy_model_age <- tidy(model_age, conf.int = TRUE) %>%
 
 # Combine prepped data for plotting
 aix_results <- rbind(tidy_model_itt,
+                     tidy_model_baseline,
+                     tidy_model_pregnant,
                      tidy_model_no_bp_meds,
                      tidy_model_6phases,
+                     tidy_model_phase2,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_12df)
@@ -217,7 +277,8 @@ aix_results <- rbind(tidy_model_itt,
 ## Analyses with 6 outliers removed: 2 below -25 and 4 above 75
 
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds",
+  mutate(model = factor(model, levels = c("primary", "no bp meds", "pregnant prev",
+                                          "no phase 2", "baseline",
                                           "6 phases", "phase", "season", "spline 12 df"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -335,6 +396,15 @@ tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "6 phases", "na")) 
 
 
+##### CPP ITT model - no phase 2 sphygmocor data
+model_phase2 <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_model_data_nophase2)
+# summary(model_phase2)
+tidy_model_phase2 <- tidy(model_phase2, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no phase 2", "na")) 
+
+
 ##### CPP ITT model - including baseline age
 model_age <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
                   age_baseline + (1 | house_id), r00_model_data)
@@ -348,6 +418,7 @@ tidy_model_age <- tidy(model_age, conf.int = TRUE) %>%
 cpp_results <- rbind(tidy_model_itt,
                      tidy_model_no_bp_meds,
                      tidy_model_6phases,
+                     tidy_model_phase2,
                      tidy_model_phase,
                      tidy_model_season,
                      tidy_model_12df)
@@ -358,7 +429,7 @@ cpp_results <- rbind(tidy_model_itt,
 ```{r}
 # CPP Model Plots
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds",
+  mutate(model = factor(model, levels = c("primary", "no bp meds", "no phase 2",
                                           "6 phases", "phase", "season", "spline 12 df"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
