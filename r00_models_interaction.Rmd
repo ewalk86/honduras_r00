@@ -39,140 +39,69 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
-```
 
-```{r}
 ## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75,
-         pulse_pressure_periph, pulse_pressure_central, hr, bmi, waist,
-         whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
-         dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
-         a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
-         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides) %>% 
-  mutate(sys_bp_central = as.numeric(sys_bp_central),
-         dia_bp_central = as.numeric(dia_bp_central),
-         sys_bp_periph = as.numeric(sys_bp_periph),
-         dia_bp_periph = as.numeric(dia_bp_periph),
-         aug_index = as.numeric(aug_index),
-         aug_index_75 = as.numeric(aug_index_75),
-         pulse_pressure_periph = as.numeric(pulse_pressure_periph),
-         pulse_pressure_central = as.numeric(pulse_pressure_central),
-         hr = as.numeric(hr),
-         bmi = as.numeric(bmi),
-         whr = as.numeric(whr),
-         waist = as.numeric(waist),
-         waist_cm = as.numeric(waist * 2.54),
-         dds_total = as.numeric(dds_total),
-         phys_act = as.numeric(phys_act),
-         beds_new = as.numeric(beds_new),
-         ses_materials = as.numeric(ses_materials),
-         school_self = as.numeric(school_self),
-         age_baseline = as.numeric(age_baseline),
-         hba1c = as.numeric(hba1c),
-         hdl = as.numeric(hdl),
-         triglycerides = as.numeric(triglycerides))%>% 
-  mutate(phase = as.factor(phase),
-         season = as.factor(season),
-         house_id = as.factor(house_id),
-         school_bi = as.factor(school_bi),
-         whr_cat = as.factor(whr_cat)) %>%
-  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
-                                 labels = c("Traditional", "Justa"))) %>% 
-  #split waist at 80cm
-  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>%
-  mutate(waist_cat = as.factor(waist_cat)) %>% 
-  #split age at 50
-  mutate(age_cat_50 = if_else(age_baseline < 49.9, "age < 50", "age >= 50")) %>% 
-  mutate(age_cat_50 = as.factor(age_cat_50)) %>% 
-  #split age at 40
-  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
-  mutate(age_cat_40 = as.factor(age_cat_40)) %>% 
-  #split age at 30
-  mutate(age_cat_30 = if_else(age_baseline < 29.9, "age < 30", "age >= 30")) %>% 
-  mutate(age_cat_30 = as.factor(age_cat_30)) %>% 
-  #split bmi at 25
-  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) %>% 
-  mutate(bmi_cat = as.factor(bmi_cat)) %>%
-  #split a1c at 5.7
-  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >=5.7")) %>% 
-  mutate(hba1c_cat = as.factor(hba1c_cat)) %>%
-  #bp normal/high
-  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
-                          "bp norm", "bp high")) %>% 
-  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high"))) %>% 
-  #new metsyn variable
-  mutate(sys_bp_ms = if_else(sys_bp_periph >= 130, 1, 0),
-         dia_bp_ms = if_else(dia_bp_periph >= 85, 1, 0),
-         trigs_ms = if_else(triglycerides > 200, 1, 0),
-         hdl_ms = if_else(hdl < 50, 1, 0),
-         a1c_ms = if_else(hba1c > 5.6, 1, 0),
-         waist_ms = if_else(waist_cm > 80, 1, 0)) %>% 
-  mutate(ms_sum = (sys_bp_ms + dia_bp_ms + trigs_ms + hdl_ms + a1c_ms)) %>% 
-  mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
-  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn"))) %>% 
-  #log transforming and standardizing based on IQR
-  mutate(log_a_twa_iqr = as.numeric(log(a_twa)/1.78)) %>% 
-  mutate(log_p_twa_iqr = as.numeric(log(p_twa)/1.14)) %>% 
-  #standardizing based on IQR
-  mutate(a_twa_iqr = as.numeric(a_twa/200)) %>% 
-  mutate(p_twa_iqr = as.numeric(p_twa/75)) %>% 
-  #log transforming
-  mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
-  mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
-  filter(!is.na(assigned_stove))
+  filter(!is.na(assigned_stove)) %>% 
+  filter(pregnant_new == 0) 
+
+# Dataset for participants who did not miss phase 2
+r00_model_data_phase2 <- r00_model_data %>% 
+  mutate(phase2 = 1) %>% 
+  mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
+  group_by(house_id) %>% 
+  filter(sum(phase2) == 6) %>% 
+  ungroup() 
 ```
 
 ### PM interaction analysis
 ```{r}
 # Age split at 40: age_cat_40
-# Age split at 50: age_cat_50
 # Waist split at 80: waist_cat
 # Blood pressure: bp_cat
 # Hba1c: hba1c_cat
 # Metabolic Syndrome: met_syn
 
 # AIx and area pm
-model_apm_int <- lmer(aug_index ~ log_a_twa*met_syn + ns(date_sphygmo, df=6) +
+model_apm_int <- lmer(aug_index ~ log_a_twa*waist_cat + ns(date_sphygmo, df=6) +
                       waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data)
+                      (1 | house_id), r00_model_data_phase2)
    #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+int_emtrends <- emtrends(model_apm_int, pairwise ~ waist_cat, var = "log_a_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_apm_int, met_syn ~ log_a_twa, cov.reduce = range)
+emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
 
 # AIx and personal pm
-model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
+model_ppm_int <- lmer(aug_index ~ log_p_twa*waist_cat + ns(date_sphygmo, df=6) +
                       waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data)
+                      (1 | house_id), r00_model_data_phase2)
    #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ waist_cat, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_ppm_int, met_syn ~ log_p_twa, cov.reduce = range)
+emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
 
 # CPP and area pm
-model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*met_syn + 
+model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*waist_cat + 
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data)
+                      school_bi + (1 | house_id), r00_model_data_phase2)
    #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+int_emtrends <- emtrends(model_apm_int, pairwise ~ waist_cat, var = "log_a_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_apm_int, met_syn ~ log_a_twa, cov.reduce = range)
+emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
 
 # CPP and personal pm
-model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*met_syn + 
+model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*waist_cat + 
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data)
+                      school_bi + (1 | house_id), r00_model_data_phase2)
    #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ waist_cat, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_ppm_int, met_syn ~ log_p_twa, cov.reduce = range)
+emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
 ```
 
 ### ITT interaction analysis
 ```{r}
 # Age split at 40: age_cat_40
-# Age split at 50: age_cat_50
 # Waist split at 80: waist_cat
 # Blood pressure: bp_cat
 # Hba1c: hba1c_cat
@@ -180,7 +109,7 @@ emmip(model_ppm_int, met_syn ~ log_p_twa, cov.reduce = range)
 
 # AIx
 sphygmo_model_int <- lmer(aug_index ~ assigned_stove*met_syn + 
-                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data_phase2)
 int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
 summary(sphygmo_model_int)
 summary(int_emmeans)
@@ -189,7 +118,7 @@ emmip(sphygmo_model_int, met_syn ~ assigned_stove, cov.reduce = range)
 
 # CPP
 sphygmo_model_int <- lmer(pulse_pressure_central ~ assigned_stove*met_syn + 
-                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data_phase2)
 summary(sphygmo_model_int)
 int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
 summary(int_emmeans, conf.int = TRUE)

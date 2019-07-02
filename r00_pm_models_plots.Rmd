@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 PM Models and Plots"
 author: "Ethan Walker"
-date: "9 May 2019"
+date: "2 July 2019"
 output: pdf_document
 ---
 
@@ -61,57 +61,36 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 ```{r}
 ## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(assigned_stove))
+  filter(!is.na(assigned_stove)) %>% 
+  filter(pregnant_new == 0) 
+
+  # filter for certain phases/arms
+  #filter(phase == 1 | phase == 2 | phase == 3 | phase ==4) %>% 
+  #filter(study_arm == 2)
+
+
+# Dataset for participants who did not miss phase 2
+r00_model_data_phase2 <- r00_model_data %>% 
+  mutate(phase2 = 1) %>% 
+  mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
+  group_by(house_id) %>% 
+  filter(sum(phase2) == 6) %>% 
+  ungroup() 
+
 
 # Filtering out medication users
-r00_model_data_meds <- r00_model_data %>% 
+r00_model_data_meds <- r00_model_data_phase2 %>% 
   #filtering out bp med users
   filter(is.na(med_bp))
 
-# Dataset for participants who have AIx data for all 6 Phases
+
+# Filtering for participants who completed all 6 phases
 r00_model_data_6phases <- r00_model_data %>% 
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6)
-
-
-# Dataset where Phase 1 AIx observations are added as a new variable/column
-r00_model_data_aix_baseline <- r00_model_data %>% 
-  filter(!is.na(aug_index)) %>% 
-  group_by(house_id) %>% 
-  mutate(baseline_aix = if_else(phase == 1, aug_index, 9999)) %>% 
-  mutate(baseline_aix_2 = lag(baseline_aix)) %>% 
-  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
-  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
-                                  baseline_aix_3, baseline_aix_2)) %>% 
-  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
-  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
-                                  baseline_aix_3, baseline_aix_2)) %>% 
-  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
-  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
-                                  baseline_aix_3, baseline_aix_2)) %>% 
-  mutate(baseline_aix_3 = lag(baseline_aix_2)) %>% 
-  mutate(baseline_aix_2 = if_else(baseline_aix_3 < 9999 & !is.na(baseline_aix_3), 
-                                  baseline_aix_3, baseline_aix_2)) %>% 
-  filter(phase != 1) %>% 
-  mutate(baseline_aix = baseline_aix_2) %>% 
-  select(-baseline_aix_2, -baseline_aix_3)
-
-
-# Datasets for each Phase
-r00_model_data_baseline <- r00_model_data %>% 
-  filter(phase == 1)
-r00_model_data_p2 <- r00_model_data %>% 
-  filter(phase == 2)
-r00_model_data_p3 <- r00_model_data %>% 
-  filter(phase == 3)
-r00_model_data_p4 <- r00_model_data %>% 
-  filter(phase == 4)
-r00_model_data_p5 <- r00_model_data %>% 
-  filter(phase == 5)
-r00_model_data_p6 <- r00_model_data %>% 
-  filter(phase == 6)
+  filter(sum(phase_complete) == 6) %>% 
+  ungroup()
 ```
 
 # Analyses with a priori confounders
@@ -130,17 +109,23 @@ r00_model_data_p6 <- r00_model_data %>%
 
 # AIx and area PM
 ```{r, echo=TRUE}
-##### AIx and area PM primary model
-
-model_apm <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_bi + (1 | house_id), r00_model_data)
-```
-
-```{r}
-#summary(model_apm)
-tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+##### AIx and area PM 
+model_apm_phase2 <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
+summary(model_apm_phase2)
+tidy_model_apm_phase2 <- tidy(model_apm_phase2, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
     mutate(model = if_else(term == "log_a_twa", "primary", "na")) 
+
+
+##### AIx and area PM all data
+model_apm <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+summary(model_apm)
+tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "all data", "na")) 
+
 
 ##### AIx and area PM initial model - bp meds removed (57 obs)
 model_apm_no_bp_meds <- lmer(aug_index ~ log_a_twa + 
@@ -152,11 +137,12 @@ tidy_model_apm_no_bp_meds <- tidy(model_apm_no_bp_meds, conf.int = TRUE) %>%
     filter(grepl('log_a_twa', term)) %>% 
     mutate(model = if_else(term == "log_a_twa", "no bp meds", "na")) 
 
+
 ##### AIx and area PM initial model - dichotomous confounders
 model_apm_di_conf <- lmer(aug_index ~ log_a_twa + 
                           ns(date_sphygmo, df=6) + age_cat_40 +
                           waist_cat + school_bi + (1 | house_id), 
-                          r00_model_data)
+                          r00_model_data_phase2)
 #summary(model_apm_di_conf)
 tidy_model_apm_di_conf <- tidy(model_apm_di_conf, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -166,7 +152,7 @@ tidy_model_apm_di_conf <- tidy(model_apm_di_conf, conf.int = TRUE) %>%
 model_apm_spline12 <- lmer(aug_index ~ log_a_twa + 
                            ns(date_sphygmo, df=12) + age_baseline +
                            waist_cm + school_bi + (1 | house_id), 
-                           r00_model_data)
+                           r00_model_data_phase2)
 #summary(model_apm_spline12)
 tidy_model_apm_spline12 <- tidy(model_apm_spline12, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -184,7 +170,7 @@ tidy_model_apm_6phases <- tidy(model_apm_6phases, conf.int = TRUE) %>%
 
 ##### AIx and area PM reduced model 
 model_apm_reduced <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) +
-                         (1 | house_id), r00_model_data)
+                         (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_reduced)
 tidy_model_apm_reduced <- tidy(model_apm_reduced, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -192,7 +178,7 @@ tidy_model_apm_reduced <- tidy(model_apm_reduced, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - phase instead of spline
 model_apm_phase <- lmer(aug_index ~ log_a_twa + phase + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), r00_model_data)
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_phase)
 tidy_model_apm_phase <- tidy(model_apm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -200,7 +186,7 @@ tidy_model_apm_phase <- tidy(model_apm_phase, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - season instead of spline
 model_apm_season <- lmer(aug_index ~ log_a_twa + season + age_baseline +
-                         waist_cm + school_bi + (1 | house_id), r00_model_data)
+                         waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_season)
 tidy_model_apm_season <- tidy(model_apm_season, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -208,7 +194,7 @@ tidy_model_apm_season <- tidy(model_apm_season, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - bmi instead of waist_cm
 model_apm_bmi <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      bmi + school_bi + (1 | house_id), r00_model_data)
+                      bmi + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_bmi)
 tidy_model_apm_bmi <- tidy(model_apm_bmi, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -216,7 +202,7 @@ tidy_model_apm_bmi <- tidy(model_apm_bmi, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - whr instead of waist_cm
 model_apm_whr <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      whr + school_bi + (1 | house_id), r00_model_data)
+                      whr + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_whr)
 tidy_model_apm_whr <- tidy(model_apm_whr, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -224,7 +210,8 @@ tidy_model_apm_whr <- tidy(model_apm_whr, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - adding beds_new
 model_apm_beds <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + beds_new + (1 | house_id), r00_model_data)
+                       waist_cm + school_bi + beds_new + (1 | house_id), 
+                       r00_model_data_phase2)
 #summary(model_apm_beds)
 tidy_model_apm_beds <- tidy(model_apm_beds, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -232,7 +219,8 @@ tidy_model_apm_beds <- tidy(model_apm_beds, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - adding ses_materials
 model_apm_ses <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_bi + ses_materials + (1 | house_id), r00_model_data)
+                      waist_cm + school_bi + ses_materials + (1 | house_id),
+                      r00_model_data_phase2)
 #summary(model_apm_ses)
 tidy_model_apm_ses <- tidy(model_apm_ses, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -240,7 +228,8 @@ tidy_model_apm_ses <- tidy(model_apm_ses, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - adding phys_act
 model_apm_pa <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                     waist_cm + school_bi + phys_act + (1 | house_id), r00_model_data)
+                     waist_cm + school_bi + phys_act + (1 | house_id), 
+                     r00_model_data_phase2)
 #summary(model_apm_pa)
 tidy_model_apm_pa <- tidy(model_apm_pa, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -248,7 +237,8 @@ tidy_model_apm_pa <- tidy(model_apm_pa, conf.int = TRUE) %>%
 
 ##### AIx and area PM initial model - adding dds_total
 model_apm_dds <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_bi + dds_total + (1 | house_id), r00_model_data)
+                      waist_cm + school_bi + dds_total + (1 | house_id), 
+                      r00_model_data_phase2)
 #summary(model_apm_dds)
 tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -258,7 +248,7 @@ tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>%
 model_apm_full <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + dds_total + phys_act +
                        ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_full)
 tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -266,7 +256,8 @@ tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>%
 
 
 
-aix_results <- rbind(tidy_model_apm,
+aix_results <- rbind(tidy_model_apm_phase2,
+                     tidy_model_apm,
                      tidy_model_apm_no_bp_meds,
                      tidy_model_apm_6phases,
                      tidy_model_apm_phase,
@@ -285,7 +276,7 @@ aix_results <- rbind(tidy_model_apm,
 ## Plot model estimates - AIx and Area PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
+  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", "6 phases",
                                           "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
@@ -297,12 +288,11 @@ plot_estimates <- aix_results %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate per natural log increase
-       in fine particulate matter (%)") +
+  labs(y = "Estimate per natural log increase \n in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
           axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = .8, vjust = .8),
+                                     hjust = 1, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -336,17 +326,22 @@ qqnorm(residuals(model_apm), main = "AIx and area PM primary model")
 
 # AIx and personal PM
 ```{r, echo=TRUE}
-##### AIx and personal PM primary model 
-
-model_ppm <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                  waist_cm + school_bi + (1 | house_id), r00_model_data)
-```
-
-```{r}
-#summary(model_ppm)
-tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+##### AIx and personal PM primary 
+model_ppm_phase2 <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                  waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
+summary(model_ppm_phase2)
+tidy_model_ppm_phase2 <- tidy(model_ppm_phase2, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
     mutate(model = if_else(term == "log_p_twa", "primary", "na")) 
+
+
+##### AIx and personal PM all data 
+model_ppm <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                  waist_cm + school_bi + (1 | house_id), r00_model_data)
+summary(model_ppm)
+tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "all data", "na")) 
 
 ##### AIx and personal PM initial model - bp meds removed (57 obs)
 model_ppm_no_bp_meds <- lmer(aug_index ~ log_p_twa + 
@@ -360,7 +355,7 @@ tidy_model_ppm_no_bp_meds <- tidy(model_ppm_no_bp_meds, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - dichotomous confounders
 model_ppm_di_conf <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_cat_40 +
-                          waist_cat + school_bi + (1 | house_id), r00_model_data)
+                          waist_cat + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_di_conf)
 tidy_model_ppm_di_conf <- tidy(model_ppm_di_conf, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -370,7 +365,7 @@ tidy_model_ppm_di_conf <- tidy(model_ppm_di_conf, conf.int = TRUE) %>%
 model_ppm_spline12 <- lmer(aug_index ~ log_p_twa + 
                            ns(date_sphygmo, df=12) + age_baseline +
                            waist_cm + school_bi + (1 | house_id), 
-                           r00_model_data)
+                           r00_model_data_phase2)
 #summary(model_ppm_spline12)
 tidy_model_ppm_spline12 <- tidy(model_ppm_spline12, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -388,7 +383,7 @@ tidy_model_ppm_6phases <- tidy(model_ppm_6phases, conf.int = TRUE) %>%
 
 ##### AIx and personal PM reduced model 
 model_ppm_reduced <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) +
-                         (1 | house_id), r00_model_data)
+                         (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_reduced)
 tidy_model_ppm_reduced <- tidy(model_ppm_reduced, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -396,7 +391,8 @@ tidy_model_ppm_reduced <- tidy(model_ppm_reduced, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - phase instead of spline
 model_ppm_phase <- lmer(aug_index ~ log_p_twa + phase + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), r00_model_data)
+                        waist_cm + school_bi + (1 | house_id), 
+                        r00_model_data_phase2)
 #summary(model_ppm_phase)
 tidy_model_ppm_phase <- tidy(model_ppm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -404,7 +400,8 @@ tidy_model_ppm_phase <- tidy(model_ppm_phase, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - season instead of spline
 model_ppm_season <- lmer(aug_index ~ log_p_twa + season + age_baseline +
-                         waist_cm + school_bi + (1 | house_id), r00_model_data)
+                         waist_cm + school_bi + (1 | house_id), 
+                         r00_model_data_phase2)
 #summary(model_ppm_season)
 tidy_model_ppm_season <- tidy(model_ppm_season, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -412,7 +409,7 @@ tidy_model_ppm_season <- tidy(model_ppm_season, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - bmi instead of waist_cm
 model_ppm_bmi <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      bmi + school_bi + (1 | house_id), r00_model_data)
+                      bmi + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_bmi)
 tidy_model_ppm_bmi <- tidy(model_ppm_bmi, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -420,7 +417,7 @@ tidy_model_ppm_bmi <- tidy(model_ppm_bmi, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - whr instead of waist_cm
 model_ppm_whr <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      whr + school_bi + (1 | house_id), r00_model_data)
+                      whr + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_whr)
 tidy_model_ppm_whr <- tidy(model_ppm_whr, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -428,7 +425,8 @@ tidy_model_ppm_whr <- tidy(model_ppm_whr, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - adding beds_new
 model_ppm_beds <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + beds_new + (1 | house_id), r00_model_data)
+                       waist_cm + school_bi + beds_new + (1 | house_id), 
+                       r00_model_data_phase2)
 #summary(model_ppm_beds)
 tidy_model_ppm_beds <- tidy(model_ppm_beds, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -436,7 +434,8 @@ tidy_model_ppm_beds <- tidy(model_ppm_beds, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - adding ses_materials
 model_ppm_ses <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_bi + ses_materials + (1 | house_id), r00_model_data)
+                      waist_cm + school_bi + ses_materials + (1 | house_id), 
+                      r00_model_data_phase2)
 #summary(model_ppm_ses)
 tidy_model_ppm_ses <- tidy(model_ppm_ses, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -444,7 +443,8 @@ tidy_model_ppm_ses <- tidy(model_ppm_ses, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - adding phys_act
 model_ppm_pa <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                     waist_cm + school_bi + phys_act + (1 | house_id), r00_model_data)
+                     waist_cm + school_bi + phys_act + (1 | house_id), 
+                     r00_model_data_phase2)
 #summary(model_ppm_pa)
 tidy_model_ppm_pa <- tidy(model_ppm_pa, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -452,7 +452,8 @@ tidy_model_ppm_pa <- tidy(model_ppm_pa, conf.int = TRUE) %>%
 
 ##### AIx and personal PM initial model - adding dds_total
 model_ppm_dds <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_bi + dds_total + (1 | house_id), r00_model_data)
+                      waist_cm + school_bi + dds_total + (1 | house_id), 
+                      r00_model_data_phase2)
 #summary(model_ppm_dds)
 tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -463,7 +464,7 @@ tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>%
 model_ppm_full <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + dds_total + phys_act +
                        ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_full)
 tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -471,7 +472,8 @@ tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>%
 
 
 
-aix_results <- rbind(tidy_model_ppm,
+aix_results <- rbind(tidy_model_ppm_phase2,
+                     tidy_model_ppm,
                      tidy_model_ppm_no_bp_meds,
                      tidy_model_ppm_6phases,
                      tidy_model_ppm_phase,
@@ -489,7 +491,7 @@ aix_results <- rbind(tidy_model_ppm,
 ## Plot model estimates - AIx and Personal PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
+  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", "6 phases",
                                           "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
@@ -501,12 +503,11 @@ plot_estimates <- aix_results %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate per natural log increase
-       in fine particulate matter (%)") +
+  labs(y = "Estimate per natural log increase \n in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
           axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = .8, vjust = .8),
+                                     hjust = 1, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -541,16 +542,22 @@ qqnorm(residuals(model_ppm), main = "AIx and personal PM primary model")
 # CPP and area PM
 ```{r, echo=TRUE}
 ##### CPP and area PM primary model 
+model_apm_phase2 <- lmer(pulse_pressure_central ~ log_a_twa + 
+                  ns(date_sphygmo, df=6) + age_baseline +
+                  waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
+summary(model_apm_phase2)
+tidy_model_apm_phase2 <- tidy(model_apm_phase2, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "primary", "na")) 
+
+##### CPP and area PM all data 
 model_apm <- lmer(pulse_pressure_central ~ log_a_twa + 
                   ns(date_sphygmo, df=6) + age_baseline +
                   waist_cm + school_bi + (1 | house_id), r00_model_data)
-```
-
-```{r}
-#summary(model_apm)
+summary(model_apm)
 tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "primary", "na")) 
+    mutate(model = if_else(term == "log_a_twa", "all data", "na")) 
 
 ##### CPP and area PM initial model - bp meds removed (57 obs)
 model_apm_no_bp_meds <- lmer(pulse_pressure_central ~ log_a_twa + 
@@ -565,7 +572,8 @@ tidy_model_apm_no_bp_meds <- tidy(model_apm_no_bp_meds, conf.int = TRUE) %>%
 ##### CPP and area PM initial model - dichotomous confounders
 model_apm_di_conf <- lmer(pulse_pressure_central ~ log_a_twa + 
                           ns(date_sphygmo, df=6) + age_cat_40 +
-                          waist_cat + school_bi + (1 | house_id), r00_model_data)
+                          waist_cat + school_bi + (1 | house_id), 
+                          r00_model_data_phase2)
 #summary(model_apm_di_conf)
 tidy_model_apm_di_conf <- tidy(model_apm_di_conf, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -574,7 +582,8 @@ tidy_model_apm_di_conf <- tidy(model_apm_di_conf, conf.int = TRUE) %>%
 ##### CPP and area PM model - spline with 12 df 
 model_apm_spline12 <- lmer(pulse_pressure_central ~ log_a_twa + 
                            ns(date_sphygmo, df=12) + age_baseline +
-                           waist_cm + school_bi + (1 | house_id), r00_model_data)
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data_phase2)
 #summary(model_apm_spline12)
 tidy_model_apm_spline12 <- tidy(model_apm_spline12, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -583,7 +592,8 @@ tidy_model_apm_spline12 <- tidy(model_apm_spline12, conf.int = TRUE) %>%
 ##### CPP and area PM 6 phases model 
 model_apm_6phases <- lmer(pulse_pressure_central ~ log_a_twa + 
                           ns(date_sphygmo, df=6) + age_baseline +
-                          waist_cm + school_bi + (1 | house_id), r00_model_data_6phases)
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_model_data_6phases)
 #summary(model_apm_6phases)
 tidy_model_apm_6phases <- tidy(model_apm_6phases, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -591,7 +601,8 @@ tidy_model_apm_6phases <- tidy(model_apm_6phases, conf.int = TRUE) %>%
 
 ##### CPP and area PM reduced model 
 model_apm_reduced <- lmer(pulse_pressure_central ~ log_a_twa + 
-                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+                          ns(date_sphygmo, df=6) + (1 | house_id), 
+                          r00_model_data_phase2)
 #summary(model_apm_reduced)
 tidy_model_apm_reduced <- tidy(model_apm_reduced, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -599,7 +610,7 @@ tidy_model_apm_reduced <- tidy(model_apm_reduced, conf.int = TRUE) %>%
 
 ##### CPP and area PM initial model - phase instead of spline
 model_apm_phase <- lmer(pulse_pressure_central ~ log_a_twa + phase + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), r00_model_data)
+                        waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_phase)
 tidy_model_apm_phase <- tidy(model_apm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -607,7 +618,7 @@ tidy_model_apm_phase <- tidy(model_apm_phase, conf.int = TRUE) %>%
 
 ##### CPP and area PM initial model - season instead of spline
 model_apm_season <- lmer(pulse_pressure_central ~ log_a_twa + season + age_baseline +
-                         waist_cm + school_bi + (1 | house_id), r00_model_data)
+                         waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_season)
 tidy_model_apm_season <- tidy(model_apm_season, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -616,7 +627,7 @@ tidy_model_apm_season <- tidy(model_apm_season, conf.int = TRUE) %>%
 ##### CPP and area PM initial model - bmi instead of waist_cm
 model_apm_bmi <- lmer(pulse_pressure_central ~ log_a_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
-                      bmi + school_bi + (1 | house_id), r00_model_data)
+                      bmi + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_bmi)
 tidy_model_apm_bmi <- tidy(model_apm_bmi, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -625,7 +636,7 @@ tidy_model_apm_bmi <- tidy(model_apm_bmi, conf.int = TRUE) %>%
 ##### CPP and area PM initial model - whr instead of waist_cm
 model_apm_whr <- lmer(pulse_pressure_central ~ log_a_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
-                      whr + school_bi + (1 | house_id), r00_model_data)
+                      whr + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_whr)
 tidy_model_apm_whr <- tidy(model_apm_whr, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -635,7 +646,7 @@ tidy_model_apm_whr <- tidy(model_apm_whr, conf.int = TRUE) %>%
 model_apm_beds <- lmer(pulse_pressure_central ~ log_a_twa + 
                        ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + beds_new + 
-                       (1 | house_id), r00_model_data)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_beds)
 tidy_model_apm_beds <- tidy(model_apm_beds, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -645,7 +656,7 @@ tidy_model_apm_beds <- tidy(model_apm_beds, conf.int = TRUE) %>%
 model_apm_ses <- lmer(pulse_pressure_central ~ log_a_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + ses_materials + 
-                      (1 | house_id), r00_model_data)
+                      (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_ses)
 tidy_model_apm_ses <- tidy(model_apm_ses, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -655,7 +666,7 @@ tidy_model_apm_ses <- tidy(model_apm_ses, conf.int = TRUE) %>%
 model_apm_pa <- lmer(pulse_pressure_central ~ log_a_twa + 
                      ns(date_sphygmo, df=6) + age_baseline +
                      waist_cm + school_bi + phys_act + 
-                     (1 | house_id), r00_model_data)
+                     (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_pa)
 tidy_model_apm_pa <- tidy(model_apm_pa, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -665,7 +676,7 @@ tidy_model_apm_pa <- tidy(model_apm_pa, conf.int = TRUE) %>%
 model_apm_dds <- lmer(pulse_pressure_central ~ log_a_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + dds_total + 
-                      (1 | house_id), r00_model_data)
+                      (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_dds)
 tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -676,7 +687,7 @@ model_apm_full <- lmer(pulse_pressure_central ~ log_a_twa +
                        ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + dds_total + phys_act +
                        ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_apm_full)
 tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
@@ -684,7 +695,8 @@ tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>%
 
 
 
-cpp_results <- rbind(tidy_model_apm,
+cpp_results <- rbind(tidy_model_apm_phase2,
+                     tidy_model_apm,
                      tidy_model_apm_no_bp_meds,
                      tidy_model_apm_6phases,
                      tidy_model_apm_phase,
@@ -702,7 +714,7 @@ cpp_results <- rbind(tidy_model_apm,
 ## Plot model estimates - CPP and Area PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
+  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", "6 phases",
                                           "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
@@ -714,13 +726,11 @@ plot_estimates <- cpp_results %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate per natural log increase
-       in fine particulate matter 
-       (mmHg)") +
+  labs(y = "Estimate per natural log increase in \n fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
           axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = .8, vjust = .8),
+                                     hjust = 1, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -771,16 +781,22 @@ qqnorm(residuals(model_apm_logcpp), main = "Log CPP and area PM")
 # CPP and personal PM
 ```{r, echo=TRUE}
 ##### CPP and personal PM primary model 
+model_ppm_phase2 <- lmer(pulse_pressure_central ~ log_p_twa + 
+                  ns(date_sphygmo, df=6) + age_baseline +
+                  waist_cm + school_bi + (1 | house_id), r00_model_data_phase2)
+summary(model_ppm_phase2)
+tidy_model_ppm_phase2 <- tidy(model_ppm_phase2, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "primary", "na")) 
+
+##### CPP and personal PM all data
 model_ppm <- lmer(pulse_pressure_central ~ log_p_twa + 
                   ns(date_sphygmo, df=6) + age_baseline +
                   waist_cm + school_bi + (1 | house_id), r00_model_data)
-```
-
-```{r}
-#summary(model_ppm)
+summary(model_ppm)
 tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "primary", "na")) 
+    mutate(model = if_else(term == "log_p_twa", "all data", "na")) 
 
 ##### CPP and personal PM initial model - bp meds removed (57 obs)
 model_ppm_no_bp_meds <- lmer(pulse_pressure_central ~ log_p_twa + 
@@ -796,7 +812,7 @@ tidy_model_ppm_no_bp_meds <- tidy(model_ppm_no_bp_meds, conf.int = TRUE) %>%
 model_ppm_di_conf <- lmer(pulse_pressure_central ~ log_p_twa + 
                           ns(date_sphygmo, df=6) + age_cat_40 +
                           waist_cat + school_bi + (1 | house_id), 
-                          r00_model_data)
+                          r00_model_data_phase2)
 #summary(model_ppm_di_conf)
 tidy_model_ppm_di_conf <- tidy(model_ppm_di_conf, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -806,7 +822,7 @@ tidy_model_ppm_di_conf <- tidy(model_ppm_di_conf, conf.int = TRUE) %>%
 model_ppm_spline12 <- lmer(pulse_pressure_central ~ log_p_twa + 
                            ns(date_sphygmo, df=12) + age_baseline +
                            waist_cm + school_bi + (1 | house_id), 
-                           r00_model_data)
+                           r00_model_data_phase2)
 #summary(model_ppm_spline12)
 tidy_model_ppm_spline12 <- tidy(model_ppm_spline12, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -825,7 +841,7 @@ tidy_model_ppm_6phases <- tidy(model_ppm_6phases, conf.int = TRUE) %>%
 ##### CPP and personal PM reduced model 
 model_ppm_reduced <- lmer(pulse_pressure_central ~ log_p_twa + 
                           ns(date_sphygmo, df=6) +
-                          (1 | house_id), r00_model_data)
+                          (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_reduced)
 tidy_model_ppm_reduced <- tidy(model_ppm_reduced, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -833,7 +849,8 @@ tidy_model_ppm_reduced <- tidy(model_ppm_reduced, conf.int = TRUE) %>%
 
 ##### CPP and personal PM initial model - phase instead of spline
 model_ppm_phase <- lmer(pulse_pressure_central ~ log_p_twa + phase + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), r00_model_data)
+                        waist_cm + school_bi + (1 | house_id), 
+                        r00_model_data_phase2)
 #summary(model_ppm_phase)
 tidy_model_ppm_phase <- tidy(model_ppm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -841,7 +858,8 @@ tidy_model_ppm_phase <- tidy(model_ppm_phase, conf.int = TRUE) %>%
 
 ##### CPP and personal PM initial model - season instead of spline
 model_ppm_season <- lmer(pulse_pressure_central ~ log_p_twa + season + age_baseline +
-                         waist_cm + school_bi + (1 | house_id), r00_model_data)
+                         waist_cm + school_bi + (1 | house_id), 
+                         r00_model_data_phase2)
 #summary(model_ppm_season)
 tidy_model_ppm_season <- tidy(model_ppm_season, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -850,7 +868,7 @@ tidy_model_ppm_season <- tidy(model_ppm_season, conf.int = TRUE) %>%
 ##### CPP and personal PM initial model - bmi instead of waist_cm
 model_ppm_bmi <- lmer(pulse_pressure_central ~ log_p_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
-                      bmi + school_bi + (1 | house_id), r00_model_data)
+                      bmi + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_bmi)
 tidy_model_ppm_bmi <- tidy(model_ppm_bmi, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -859,7 +877,7 @@ tidy_model_ppm_bmi <- tidy(model_ppm_bmi, conf.int = TRUE) %>%
 ##### CPP and personal PM initial model - whr instead of waist_cm
 model_ppm_whr <- lmer(pulse_pressure_central ~ log_p_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
-                      whr + school_bi + (1 | house_id), r00_model_data)
+                      whr + school_bi + (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_whr)
 tidy_model_ppm_whr <- tidy(model_ppm_whr, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -870,7 +888,7 @@ tidy_model_ppm_whr <- tidy(model_ppm_whr, conf.int = TRUE) %>%
 model_ppm_beds <- lmer(pulse_pressure_central ~ log_p_twa + 
                        ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + beds_new + 
-                       (1 | house_id), r00_model_data)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_beds)
 tidy_model_ppm_beds <- tidy(model_ppm_beds, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -880,7 +898,7 @@ tidy_model_ppm_beds <- tidy(model_ppm_beds, conf.int = TRUE) %>%
 model_ppm_ses <- lmer(pulse_pressure_central ~ log_p_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + ses_materials + 
-                      (1 | house_id), r00_model_data)
+                      (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_ses)
 tidy_model_ppm_ses <- tidy(model_ppm_ses, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -890,7 +908,7 @@ tidy_model_ppm_ses <- tidy(model_ppm_ses, conf.int = TRUE) %>%
 model_ppm_pa <- lmer(pulse_pressure_central ~ log_p_twa + 
                      ns(date_sphygmo, df=6) + age_baseline +
                      waist_cm + school_bi + phys_act + (1 | house_id), 
-                     r00_model_data)
+                     r00_model_data_phase2)
 #summary(model_ppm_pa)
 tidy_model_ppm_pa <- tidy(model_ppm_pa, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -900,7 +918,7 @@ tidy_model_ppm_pa <- tidy(model_ppm_pa, conf.int = TRUE) %>%
 model_ppm_dds <- lmer(pulse_pressure_central ~ log_p_twa + 
                       ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + dds_total + 
-                      (1 | house_id), r00_model_data)
+                      (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_dds)
 tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -911,7 +929,7 @@ model_ppm_full <- lmer(pulse_pressure_central ~ log_p_twa +
                        ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + dds_total + phys_act +
                        ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_ppm_full)
 tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -919,7 +937,8 @@ tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>%
 
 
 
-cpp_results <- rbind(tidy_model_ppm,
+cpp_results <- rbind(tidy_model_ppm_phase2,
+                     tidy_model_ppm,
                      tidy_model_ppm_no_bp_meds,
                      tidy_model_ppm_6phases,
                      tidy_model_ppm_phase,
@@ -937,7 +956,7 @@ cpp_results <- rbind(tidy_model_ppm,
 ## Plot model estimates - CPP and Personal PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("primary", "no bp meds", "6 phases",
+  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", "6 phases",
                                           "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
@@ -949,13 +968,11 @@ plot_estimates <- cpp_results %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate per natural log increase
-       in fine particulate matter 
-       (mmHg)") +
+  labs(y = "Estimate per natural log increase in \n fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
           axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = .8, vjust = .8),
+                                     hjust = 1, vjust = .8),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),

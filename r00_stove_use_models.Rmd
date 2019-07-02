@@ -1,7 +1,7 @@
 ---
 title: "R00 Stove Use Models"
 author: "Ethan Walker"
-date: "June 26, 2019"
+date: "2 July 2019"
 output: pdf_document
 ---
 
@@ -46,11 +46,9 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 
 stove_use_data <- r00_model_data_outliers_removed %>% 
   # removed MOM054 who moved and wasn't assigned to a study arm
-  filter(!is.na(assigned_stove))  
-
-# filter out 22 instances of pregnancy
-no_preg_data <- stove_use_data %>% 
-  filter(pregnant_new == 0) 
+  filter(!is.na(assigned_stove)) %>% 
+  # filter out 22 instances of pregnancy
+  filter(pregnant_new == 0)
 
 # Dataset for participants who did not miss phase 2
 r00_model_data_phase2 <- stove_use_data %>% 
@@ -58,34 +56,19 @@ r00_model_data_phase2 <- stove_use_data %>%
   mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
   group_by(house_id) %>% 
   filter(sum(phase2) == 6) %>% 
-  ungroup() %>% 
-  group_by(phase) %>% 
-  summarize(n())
-
-r00_model_data_phase2_nopreg <- r00_model_data_phase2 %>% 
-  filter(pregnant_new == 0)
+  ungroup() 
 
 # Filtering out medication users
-r00_model_data_meds <- r00_model_data_phase2_nopreg %>% 
+r00_model_data_meds <- r00_model_data_phase2 %>% 
   #filtering out bp med users
   filter(is.na(med_bp)) 
 
-# Dataset for participants who have AIx data for all 6 Phases (107 participants)
-r00_model_data_6phases <- no_preg_data %>% 
+# Dataset for participants who have AIx data for all 6 Phases (106 participants)
+r00_model_data_6phases <- stove_use_data %>% 
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
   filter(sum(phase_complete) == 6) %>%
-  ungroup() %>% 
-  group_by(phase) %>% 
-  summarize(n())
-
-# Dataset for participants who have AIx data for all <6 Phases
-r00_model_data_5phases <- stove_use_data %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>%
   ungroup() 
 ```
 
@@ -185,50 +168,26 @@ table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
 ### stove_use_3, stove_use_days_stack, stove_use_hours
 ```{r}
 # AIx and Stove use variables
-
 model_stove_use_3 <- lmer(aug_index ~ stove_use_3 + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), stove_use_data)
 #summary(model_stove_use_3)
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "stove use") 
-icc(model_stove_use_3)
-
-
-##### data filtering out 22 pregnancies
-model_no_preg <- lmer(aug_index ~ stove_use_3 + pregnant_previous +
-                        ns(date_sphygmo, df=6) + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), no_preg_data)
-#summary(model_no_preg)
-tidy_model_no_preg <- tidy(model_no_preg, conf.int = TRUE) %>% 
-    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "no pregnancies") 
-
+    mutate(model = "all data") 
+#icc(model_stove_use_3)
 
 ##### Only participants with phase 2 data 
-model_phase2_yes <- lmer(aug_index ~ stove_use_3 + 
+model_phase2 <- lmer(aug_index ~ stove_use_3 + 
                           ns(date_sphygmo, df=6) + age_baseline +
                           waist_cm + school_bi + (1 | house_id), 
                           r00_model_data_phase2)
-#summary(model_phase2_yes)
-tidy_model_phase2_yes <- tidy(model_phase2_yes, conf.int = TRUE) %>% 
+#summary(model_phase2)
+tidy_model_phase2 <- tidy(model_phase2, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "data for phase 2")
+    mutate(model = "primary")
 
-
-##### Only participants with phase 2 data and no pregnancies
-model_phase2_nopreg <- lmer(aug_index ~ stove_use_3 + 
-                          ns(date_sphygmo, df=6) + age_baseline +
-                          waist_cm + school_bi + (1 | house_id), 
-                          r00_model_data_phase2_nopreg)
-#summary(model_phase2_nopreg)
-tidy_model_phase2_nopreg <- tidy(model_phase2_nopreg, conf.int = TRUE) %>% 
-    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "phase 2 + no preg")
-
-
-##### bp meds removed (57 obs)
+##### bp meds removed
 model_no_bp_meds <- lmer(aug_index ~ stove_use_3 + 
                              ns(date_sphygmo, df=6) + age_baseline +
                              waist_cm + school_bi + (1 | house_id), 
@@ -238,17 +197,15 @@ tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "no bp meds")
 
-
 ##### date spline with 12 df
 model_spline12 <- lmer(aug_index ~ stove_use_3 + 
                            ns(date_sphygmo, df=12) + age_baseline +
                            waist_cm + school_bi + (1 | house_id), 
-                           r00_model_data_phase2_nopreg)
+                           r00_model_data_phase2)
 #summary(model_spline12)
 tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "spline 12 df")
-
 
 ##### 6 phases model 
 model_6phases <- lmer(aug_index ~ stove_use_3 + 
@@ -259,117 +216,95 @@ model_6phases <- lmer(aug_index ~ stove_use_3 +
 tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "6 phases")
-icc(model_6phases)
-
-
-##### 5 phases model 
-model_5phases <- lmer(aug_index ~ stove_use_3 + 
-                          ns(date_sphygmo, df=6) + age_baseline +
-                          waist_cm + school_bi + (1 | house_id), 
-                          r00_model_data_5phases)
-#summary(model_5phases)
-tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
-    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "<6 phases")
-icc(model_5phases)
-
+#icc(model_6phases)
 
 ##### phase instead of spline
 model_phase <- lmer(aug_index ~ stove_use_3 + phase + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                    r00_model_data_phase2_nopreg)
+                    r00_model_data_phase2)
 #summary(model_phase)
 tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phase")
 
-
 ##### season instead of spline
 model_season <- lmer(aug_index ~ stove_use_3 + season + age_baseline +
                          waist_cm + school_bi + (1 | house_id), 
-                     r00_model_data_phase2_nopreg)
+                     r00_model_data_phase2)
 #summary(model_season)
 tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "season")
 
-
 ##### bmi instead of waist_cm
 model_bmi <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       bmi + school_bi + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_bmi)
 tidy_model_bmi <- tidy(model_bmi, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "bmi")
 
-
 ##### whr instead of waist_cm
 model_whr <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       whr + school_bi + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_whr)
 tidy_model_whr <- tidy(model_whr, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "whr")
 
-
 ##### adding beds_new
 model_beds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + beds_new + (1 | house_id), 
-                   r00_model_data_phase2_nopreg)
+                   r00_model_data_phase2)
 #summary(model_beds)
 tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "beds")
 
-
 ##### adding ses_materials
 model_ses <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + ses_materials + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_ses)
 tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "ses assets")
 
-
 ##### adding phys_act
 model_pa <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                      waist_cm + school_bi + phys_act + (1 | house_id), 
-                 r00_model_data_phase2_nopreg)
+                 r00_model_data_phase2)
 #summary(model_pa)
 tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phys act")
 
-
 ##### adding dds_total
 model_dds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + dds_total + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_dds)
 tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "dds")
 
-
 ##### full model with all potential confounders
 model_full <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + dds_total + phys_act +
                        ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data_phase2_nopreg)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_full)
 tidy_model_full <- tidy(model_full, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "full")
 
-
 ##### stove_use_4
 model_stove_use_4 <- lmer(aug_index ~ stove_use_4 + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2_nopreg)
+                        r00_model_data_phase2)
 #summary(model_stove_use_4)
 tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
@@ -380,7 +315,7 @@ tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>%
 model_stove_use_days <- lmer(aug_index ~ stove_use_days_stack + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2_nopreg)
+                        r00_model_data_phase2)
 #summary(model_stove_use_days)
 tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
@@ -391,24 +326,15 @@ tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>%
 model_stove_use_hours <- lmer(aug_index ~ stove_use_hours + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2_nopreg)
+                        r00_model_data_phase2)
 #summary(model_stove_use_hours)
 tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use hours") 
 
 
-
-aix_results_phase2 <- rbind(tidy_model_stove_use_3,
-                     tidy_model_no_preg,
-                     tidy_model_phase2_yes,
-                     tidy_model_phase2_nopreg)
-
-aix_results_phase56 <- rbind(tidy_model_stove_use_3,
-                     tidy_model_6phases,
-                     tidy_model_5phases)
-
-aix_results <- rbind(tidy_model_phase2_nopreg,
+aix_results <- rbind(tidy_model_phase2,
+                     tidy_model_stove_use_3,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
                      tidy_model_season,
@@ -424,79 +350,9 @@ aix_results <- rbind(tidy_model_phase2_nopreg,
 
 ## Plot model estimates - AIx and Stove Use
 ```{r}
-plot_estimates <- aix_results_phase56 %>%
-  mutate(model = factor(model, levels = c("stove use", "6 phases", "<6 phases"))) %>% 
-  mutate(level = factor(term, 
-                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
-                        labels = c("justa+trad", "justa/imprvd"))) %>% 
-  ggplot(aes(group = level, shape = level)) +
-  geom_point(aes(x=model, y=estimate), 
-             position = position_dodge(width = 0.5), size = 4) +
-  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate vs traditional stove with \n or without secondary stove (%)") +
-  labs(x = "") +
-  theme(title = element_text(size = 16),
-          legend.position = "top",
-          legend.text = element_text(size = 14, colour = "black"),
-          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = 1, vjust = .9),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
-                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8)) 
-plot_estimates
-
-
-plot_estimates <- aix_results_phase2 %>%
-  mutate(model = factor(model, levels = c("stove use", "no pregnancies", 
-                                          "data for phase 2", "phase 2 + no preg"))) %>% 
-  mutate(level = factor(term, 
-                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
-                        labels = c("justa+trad", "justa/imprvd"))) %>% 
-  ggplot(aes(group = level, shape = level)) +
-  geom_point(aes(x=model, y=estimate), 
-             position = position_dodge(width = 0.5), size = 4) +
-  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate vs traditional stove with \n or without secondary stove (%)") +
-  labs(x = "") +
-  theme(title = element_text(size = 16),
-          legend.position = "top",
-          legend.text = element_text(size = 14, colour = "black"),
-          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = 1, vjust = .9),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
-                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8)) 
-plot_estimates
-
-
 # primary stove-use model with sensitivity analyses
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("phase 2 + no preg", 
-                                          "no bp meds", 
+  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", 
                                           "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
@@ -653,11 +509,11 @@ plot(model_stove_use_3, main = "AIx and stove-use model",
 qqnorm(residuals(model_stove_use_3), main = "AIx and stove-use model")
 
 
-aix_influential <- influence(model_stove_use_3, obs = TRUE)
+#aix_influential <- influence(model_stove_use_3, obs = TRUE)
 
-aix_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
+#aix_cooks <- cooks.distance.estex(aix_influential, sort = TRUE)
 
-plot.estex(aix_influential, which = "cook")
+#plot.estex(aix_influential, which = "cook")
 ```
 
 
@@ -667,50 +523,26 @@ plot.estex(aix_influential, which = "cook")
 ### stove_use_3, stove_use_days_stack, stove_use_hours
 ```{r}
 # CPP and Stove use variables
-
 model_stove_use_3 <- lmer(pulse_pressure_central ~ stove_use_3 + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), stove_use_data)
 #summary(model_stove_use_3)
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "stove use") 
-icc(model_stove_use_3)
-
-
-##### data filtering out 22 pregnancies
-model_no_preg <- lmer(pulse_pressure_central ~ stove_use_3 + pregnant_previous +
-                        ns(date_sphygmo, df=6) + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), no_preg_data)
-#summary(model_no_preg)
-tidy_model_no_preg <- tidy(model_no_preg, conf.int = TRUE) %>% 
-    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "no pregnancies") 
-
+    mutate(model = "all data") 
+#icc(model_stove_use_3)
 
 ##### Only participants with phase 2 data 
-model_phase2_yes <- lmer(pulse_pressure_central ~ stove_use_3 + 
+model_phase2 <- lmer(pulse_pressure_central ~ stove_use_3 + 
                           ns(date_sphygmo, df=6) + age_baseline +
                           waist_cm + school_bi + (1 | house_id), 
                           r00_model_data_phase2)
-#summary(model_phase2_yes)
-tidy_model_phase2_yes <- tidy(model_phase2_yes, conf.int = TRUE) %>% 
+#summary(model_phase2)
+tidy_model_phase2 <- tidy(model_phase2, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "data for phase 2")
+    mutate(model = "primary")
 
-
-##### Only participants with phase 2 data and no pregnancies
-model_phase2_nopreg <- lmer(pulse_pressure_central ~ stove_use_3 + 
-                          ns(date_sphygmo, df=6) + age_baseline +
-                          waist_cm + school_bi + (1 | house_id), 
-                          r00_model_data_phase2_nopreg)
-#summary(model_phase2_nopreg)
-tidy_model_phase2_nopreg <- tidy(model_phase2_nopreg, conf.int = TRUE) %>% 
-    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "phase 2 + no preg")
-
-
-##### bp meds removed (57 obs)
+##### bp meds removed
 model_no_bp_meds <- lmer(pulse_pressure_central ~ stove_use_3 + 
                              ns(date_sphygmo, df=6) + age_baseline +
                              waist_cm + school_bi + (1 | house_id), 
@@ -720,17 +552,15 @@ tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "no bp meds")
 
-
 ##### date spline with 12 df
 model_spline12 <- lmer(pulse_pressure_central ~ stove_use_3 + 
                            ns(date_sphygmo, df=12) + age_baseline +
                            waist_cm + school_bi + (1 | house_id), 
-                           r00_model_data_phase2_nopreg)
+                           r00_model_data_phase2)
 #summary(model_spline12)
 tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "spline 12 df")
-
 
 ##### 6 phases model 
 model_6phases <- lmer(pulse_pressure_central ~ stove_use_3 + 
@@ -741,117 +571,95 @@ model_6phases <- lmer(pulse_pressure_central ~ stove_use_3 +
 tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "6 phases")
-icc(model_6phases)
-
-
-##### 5 phases model 
-model_5phases <- lmer(pulse_pressure_central ~ stove_use_3 + 
-                          ns(date_sphygmo, df=6) + age_baseline +
-                          waist_cm + school_bi + (1 | house_id), 
-                          r00_model_data_5phases)
-#summary(model_5phases)
-tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
-    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "<6 phases")
-icc(model_5phases)
-
+#icc(model_6phases)
 
 ##### phase instead of spline
 model_phase <- lmer(pulse_pressure_central ~ stove_use_3 + phase + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                    r00_model_data_phase2_nopreg)
+                    r00_model_data_phase2)
 #summary(model_phase)
 tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phase")
 
-
 ##### season instead of spline
 model_season <- lmer(pulse_pressure_central ~ stove_use_3 + season + age_baseline +
                          waist_cm + school_bi + (1 | house_id), 
-                     r00_model_data_phase2_nopreg)
+                     r00_model_data_phase2)
 #summary(model_season)
 tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "season")
 
-
 ##### bmi instead of waist_cm
 model_bmi <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       bmi + school_bi + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_bmi)
 tidy_model_bmi <- tidy(model_bmi, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "bmi")
 
-
 ##### whr instead of waist_cm
 model_whr <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       whr + school_bi + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_whr)
 tidy_model_whr <- tidy(model_whr, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "whr")
 
-
 ##### adding beds_new
 model_beds <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + beds_new + (1 | house_id), 
-                   r00_model_data_phase2_nopreg)
+                   r00_model_data_phase2)
 #summary(model_beds)
 tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "beds")
 
-
 ##### adding ses_materials
 model_ses <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + ses_materials + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_ses)
 tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "ses assets")
 
-
 ##### adding phys_act
 model_pa <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                      waist_cm + school_bi + phys_act + (1 | house_id), 
-                 r00_model_data_phase2_nopreg)
+                 r00_model_data_phase2)
 #summary(model_pa)
 tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phys act")
 
-
 ##### adding dds_total
 model_dds <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + dds_total + (1 | house_id), 
-                  r00_model_data_phase2_nopreg)
+                  r00_model_data_phase2)
 #summary(model_dds)
 tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "dds")
 
-
 ##### full model with all potential confounders
 model_full <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + dds_total + phys_act +
                        ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data_phase2_nopreg)
+                       (1 | house_id), r00_model_data_phase2)
 #summary(model_full)
 tidy_model_full <- tidy(model_full, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "full")
 
-
 ##### stove_use_4
 model_stove_use_4 <- lmer(pulse_pressure_central ~ stove_use_4 + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2_nopreg)
+                        r00_model_data_phase2)
 #summary(model_stove_use_4)
 tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
@@ -862,7 +670,7 @@ tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>%
 model_stove_use_days <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2_nopreg)
+                        r00_model_data_phase2)
 #summary(model_stove_use_days)
 tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
@@ -873,24 +681,15 @@ tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>%
 model_stove_use_hours <- lmer(pulse_pressure_central ~ stove_use_hours + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2_nopreg)
+                        r00_model_data_phase2)
 #summary(model_stove_use_hours)
 tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use hours") 
 
 
-
-cpp_results_phase2 <- rbind(tidy_model_stove_use_3,
-                     tidy_model_no_preg,
-                     tidy_model_phase2_yes,
-                     tidy_model_phase2_nopreg)
-
-cpp_results_phase56 <- rbind(tidy_model_stove_use_3,
-                     tidy_model_6phases,
-                     tidy_model_5phases)
-
-cpp_results <- rbind(tidy_model_phase2_nopreg,
+cpp_results <- rbind(tidy_model_phase2,
+                     tidy_model_stove_use_3,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
                      tidy_model_season,
@@ -906,77 +705,8 @@ cpp_results <- rbind(tidy_model_phase2_nopreg,
 
 ## Plot model estimates - CPP and Stove Use
 ```{r}
-plot_estimates <- cpp_results_phase56 %>%
-  mutate(model = factor(model, levels = c("stove use", "6 phases", "<6 phases"))) %>% 
-  mutate(level = factor(term, 
-                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
-                        labels = c("justa+trad", "justa/imprvd"))) %>% 
-  ggplot(aes(group = level, shape = level)) +
-  geom_point(aes(x=model, y=estimate), 
-             position = position_dodge(width = 0.5), size = 4) +
-  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
-  labs(x = "") +
-  theme(title = element_text(size = 16),
-          legend.position = "top",
-          legend.text = element_text(size = 14, colour = "black"),
-          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = 1, vjust = .9),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
-                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4), 
-                     labels = c(-2, -1, 0, 1, 2, 3, 4)) 
-plot_estimates
-
-
-plot_estimates <- cpp_results_phase2 %>%
-  mutate(model = factor(model, levels = c("stove use", "no pregnancies", 
-                                          "data for phase 2", "phase 2 + no preg"))) %>% 
-  mutate(level = factor(term, 
-                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
-                        labels = c("justa+trad", "justa/imprvd"))) %>% 
-  ggplot(aes(group = level, shape = level)) +
-  geom_point(aes(x=model, y=estimate), 
-             position = position_dodge(width = 0.5), size = 4) +
-  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate vs traditional stove \n with or without secondary stove (mmHg)") +
-  labs(x = "") +
-  theme(title = element_text(size = 16),
-          legend.position = "top",
-          legend.text = element_text(size = 14, colour = "black"),
-          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
-                                     hjust = 1, vjust = .9),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
-                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank(), 
-          panel.border = element_blank(), 
-          panel.grid = element_blank()) +
-  scale_y_continuous(breaks = c(-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2), 
-                     labels = c(-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2)) 
-plot_estimates
-
-
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("phase 2 + no preg", 
-                                          "no bp meds", 
+  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", 
                                           "phase", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 

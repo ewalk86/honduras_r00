@@ -12,16 +12,19 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(readr)
 library(knitr)
 ```
 
 ```{r, message=FALSE}
 # load full database
-r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds") %>% 
-  filter(!is.na(assigned_stove))
+r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")  
+
+#r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 # Dataset for participants who have AIx data for all 6 Phases (113 participants)
 r00_data_6phases <- r00_full_repeated_by_phase %>% 
+  filter(!is.na(assigned_stove)) %>% 
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
@@ -30,10 +33,11 @@ r00_data_6phases <- r00_full_repeated_by_phase %>%
 
 # Dataset for participants who did not miss phase 2
 r00_model_data_phase2 <- r00_full_repeated_by_phase %>% 
+  filter(!is.na(assigned_stove)) %>% 
   mutate(phase2 = 1) %>% 
   mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
   group_by(house_id) %>% 
-  filter(sum(phase2) == 6) %>% 
+  filter(sum(phase2) == 6) %>%
   ungroup() 
 ```
 
@@ -82,7 +86,7 @@ kable(personal_pm_summary, digits = 1)
 
 # Area PM - total
 ```{r}
-summary_area_pm_study_arm <- r00_data_6phases %>% 
+summary_area_pm_study_arm <- r00_full_repeated_by_phase %>% 
   select(study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>%
@@ -100,7 +104,7 @@ kable(summary_area_pm_study_arm, digits = 0)
 
 # Personal PM - total
 ```{r}
-summary_personal_pm_study_arm <- r00_data_6phases %>% 
+summary_personal_pm_study_arm <- r00_model_data_phase2 %>% 
   select(study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>%
@@ -120,7 +124,7 @@ kable(summary_personal_pm_study_arm, digits = 0)
 
 # Area PM grouped by study arm - phase 1
 ```{r}
-summary_area_pm_study_arm <- r00_data_6phases %>% 
+summary_area_pm_study_arm <- r00_full_repeated_by_phase %>% 
   filter(phase == 1) %>% 
   select(study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
@@ -140,7 +144,7 @@ kable(summary_area_pm_study_arm, digits = 0)
 
 # Personal PM grouped by study arm - phase 1
 ```{r}
-summary_personal_pm_study_arm <- r00_data_6phases %>% 
+summary_personal_pm_study_arm <- r00_full_repeated_by_phase %>% 
   filter(phase == 1) %>% 
   select(study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
@@ -175,7 +179,7 @@ summary_area_pm_phase <- r00_full_repeated_by_phase %>%
             "Median" = median(a_twa),
             "75th" = quantile(a_twa, c(.75)),
             "Max" = max(a_twa),
-            "IQR" = IQR(p_twa))
+            "IQR" = IQR(a_twa))
 kable(summary_area_pm_phase, digits = 0)
 ```
 

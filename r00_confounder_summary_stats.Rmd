@@ -27,21 +27,18 @@ library(knitr)
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 
-# Dataset for participants who have AIx data for all 6 Phases (107 participants)
-r00_data_6phases <- r00_full_long %>% 
-  filter(!is.na(assigned_stove)) %>% 
+# Dataset for participants who did not miss phase 2
+r00_data_phase2_yes <- r00_full_long %>%
+  mutate(phase2 = 1) %>% 
+  mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
   group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  # filter out participant with 1 repeat AIx measurement who didn't complete 6 phases
-  filter(house_id != "MOM001") %>% 
-  ungroup()
+  filter(sum(phase2) == 6) %>% 
+  ungroup() 
 ```
 
 # Frequency of meds
 ```{r}
-r00_meds <- r00_data_6phases %>% 
+r00_meds <- r00_full_long %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(phase == 1) %>% 
   select(study_arm,
@@ -86,10 +83,10 @@ table(sec_stove_stats$sec_stove)
 ## Current database says none reported across whole study?
 ```{r}
 pregnancies <- r00_full_long %>% 
-  select(study_arm, pregnant) %>% 
-  mutate(pregnant = as.numeric(pregnant)) %>% 
+  select(study_arm, pregnant_new) %>% 
+  mutate(pregnant_new = as.numeric(pregnant_new)) %>% 
   group_by(study_arm) %>% 
-  summarise(sum(pregnant, na.rm=TRUE))
+  summarise(sum(pregnant_new, na.rm=TRUE))
 pregnancies
 ```
 

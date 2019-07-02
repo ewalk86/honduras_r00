@@ -1,7 +1,7 @@
 ---
 title: "Data Cleaning"
 author: "Ethan Walker"
-date: "26 June 2018"
+date: "2 July 2019"
 output: pdf_document
 ---
 
@@ -18,7 +18,7 @@ library(lubridate)
 
 ```{r, message=FALSE}
 # Load data
-r00_full_wide <- read_xlsx("input/R00_health_wide_28June2019_v2_by.xlsx")
+r00_full_wide <- read_xlsx("input/R00_health_wide_01July2019_by.xlsx")
 
 #r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
@@ -171,25 +171,32 @@ r00_joined_2 <- r00_joined_1 %>%
 
 # Combine with old exposure dataset (from r00_exposure_wide_to_long.rmd)
 ```{r}
+# This is old exposure data that has already been added to the wide database
+# Don't do this step!
 r00_exposure_repeated_by_phase <- read_rds("output/r00_exposure_repeated_by_phase.rds")
 
 r00_joined_3 <- r00_joined_2 %>% 
   full_join(r00_exposure_repeated_by_phase, by = c("house_id", "phase")) 
 
+test <- r00_joined_3 %>% 
+  select(house_id, phase, co_a_15minmax.x, co_a_15minmax.y, mean_temp.x, mean_temp.y, 
+         a_pm.x, a_pm.y, log_a_pm25.x, log_a_pm25.y)
 ```
 
 # Combine with Megan's new PM2.5 dataset (from r00_pm_database_final.rmd)
 ```{r}
-r00_pm_final <- read_rds("output/r00_pm_final.rds") 
+r00_pm_final <- read_rds("output/r00_pm_final.rds") %>% 
+  # select these vars out - already in the wide database
+  select(-a_twa, -p_twa)
 
-r00_joined_4 <- r00_joined_3 %>% 
+r00_joined_3 <- r00_joined_2 %>% 
   full_join(r00_pm_final, by = c("house_id", "phase")) 
 
 ```
 
 # Create new variables to use in analyses
 ```{r}
-r00_final_long <- r00_joined_4 %>% 
+r00_final_long <- r00_joined_3 %>% 
   ##### Fix incorrect height/bmi in database #####
   mutate(height = as.numeric(height)) %>% 
   mutate(weight = as.numeric(weight)) %>% 
@@ -258,6 +265,8 @@ r00_final_long <- r00_joined_4 %>%
   mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
   mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn"))) %>% 
   #log transforming personal and area pm2.5
+  mutate(a_twa = as.numeric(a_twa)) %>% 
+  mutate(p_twa = as.numeric(p_twa)) %>% 
   mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
   mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
   # Add dichotomous variable for secondary stove use (50C)
