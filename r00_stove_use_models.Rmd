@@ -48,7 +48,165 @@ stove_use_data <- r00_model_data_outliers_removed %>%
   # removed MOM054 who moved and wasn't assigned to a study arm
   filter(!is.na(assigned_stove)) %>% 
   # filter out 22 instances of pregnancy
+  filter(pregnant_new == 0) %>% 
+  filter(!is.na(aug_index))
+
+# Dataset for participants who have AIx data for all 6 Phases (106 participants)
+r00_model_data_6phases <- stove_use_data %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>%
+  ungroup() 
+
+# Dataset for participants who have AIx data for all <6 Phases (124 participants)
+r00_data_5phases <- stove_use_data %>%
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  #select(house_id, phase, aug_index, phase_complete) %>% 
+  group_by(house_id) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  ungroup() 
+
+# Creating datasets for sensitivity analysis
+## based on odd high/low values seen in participants who missed at least one phase
+## seen when assessing mean AIx grouped by stove_use_3 and phase
+r00_data_phase3low <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_3low = if_else(stove_use_3 == "trad" 
+                            & phase==3, 1, 0),
+         phase_3low = if_else(phase==4, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==5, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==6, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==2, lead(phase_3low), phase_3low),
+         phase_3low = if_else(phase==1, lead(phase_3low), phase_3low)) %>% 
+  select(house_id, phase, phase_3low) %>% 
+  filter(phase_3low == 1) %>%     # filtered down to 226 obs from 49 participants
+  ungroup()
+
+r00_data_phase3hi <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_3hi = if_else(stove_use_3 == "justa/imprvd" 
+                            & phase==3, 1, 0),
+         phase_3hi = if_else(phase==4, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==5, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==6, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==2, lead(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==1, lead(phase_3hi), phase_3hi)) %>% 
+  select(house_id, phase, phase_3hi) %>% 
+  filter(phase_3hi == 1) %>%     # filtered down to 81 obs from 17 participants
+  ungroup()
+  
+r00_data_phase4 <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_4 = if_else(stove_use_3 == "justa/imprvd" 
+                            & phase==4, 1, 0),
+         phase_4 = if_else(phase==5, lag(phase_4), phase_4),
+         phase_4 = if_else(phase==6, lag(phase_4), phase_4),
+         phase_4 = if_else(phase==3, lead(phase_4), phase_4),
+         phase_4 = if_else(phase==2, lead(phase_4), phase_4),
+         phase_4 = if_else(phase==1, lead(phase_4), phase_4)) %>% 
+  select(house_id, phase, phase_4) %>% 
+  filter(phase_4 == 1) %>%      # filtered down to 77 obs from 16 participants
+  ungroup()
+
+r00_data_phase2 <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_2 = if_else(stove_use_3 == "trad" & phase==2,
+                            1, 0),
+         phase_2 = if_else(phase==3, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==4, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==5, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==6, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==1, lead(phase_2), phase_2)) %>% 
+  select(house_id, phase, phase_2) %>% 
+  filter(phase_2 == 1) %>%    # filtered down to 132 obs from 56 participants
+  ungroup()
+  
+r00_highlow_data <- r00_data_phase2 %>% 
+  full_join(r00_data_phase3low, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase3hi, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase4, by = c("house_id", "phase")) %>%
+  mutate(filter_highlow = as.numeric(1))      # 440 obs from 97 participants
+
+highlow_filter_data <- stove_use_data %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_highlow = if_else(is.na(filter_highlow), 0, 1)) %>% 
+  filter(filter_highlow == 0)   # filtered to 722 obs from 133 participants
+
+low_filter_data <- stove_use_data %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_low = if_else(phase_2==1 | phase_3low==1, 1, 0),
+         filter_low = if_else(is.na(filter_low), 0, filter_low)) %>% 
+  #select(house_id, phase, phase_2, phase_3low, filter_low)
+  filter(filter_low == 0)   # filtered to  795 obs from 148 participants
+
+hi_filter_data <- stove_use_data %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_hi = if_else(phase_4==1 | phase_3hi==1, 1, 0),
+         filter_hi = if_else(is.na(filter_hi), 0, filter_hi)) %>% 
+  #select(house_id, phase, phase_2, phase_3low, filter_low)
+  filter(filter_hi == 0)    # filtered to  1047 obs from 206 participants
+
+
+# Dataset filtering out 46 participants with no sphygmocor data from phase 2
+sphygmo_p2_data <- r00_model_data_outliers_removed %>% 
+  # removed MOM054 who moved and wasn't assigned to a study arm
+  filter(!is.na(assigned_stove)) %>% 
+  mutate(sys_bp_final_nurse = as.numeric(sys_bp_final_nurse)) %>% 
+  mutate(phase2_sphygmo = 1) %>% 
+  mutate(phase2_sphygmo = if_else(!is.na(sys_bp_final_nurse), 0, phase2_sphygmo),
+         phase2_sphygmo = if_else(phase == 2 & pregnant_new == 1, 0, phase2_sphygmo)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(phase2_sphygmo) == 6) %>% 
+  ungroup() %>% 
   filter(pregnant_new == 0)
+
+# Dataset filtering out 16 participants who were pregnant during any phase
+no_pregnant_data <- r00_model_data_outliers_removed %>%
+  mutate(p1_preg = if_else(phase == 1 & ((date_sphygmo - child_born_date) < 365), 1, 0)) %>% 
+  mutate(p1_preg = as.numeric(p1_preg)) %>%
+  mutate(pregnant_ever = 0) %>% 
+  mutate(pregnant_ever = if_else(pregnant_new == 1 | p1_preg == 1, 1, pregnant_ever)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(pregnant_ever) == 0) %>% 
+  ungroup()
+
+# Missed sessions due to pregnancy, refusal, etc
+house_id <- c("ANT011", "ANT020", "ANT039", "ANT042", "CAC034", "CAC042",
+                     "CAC060", "CAC062", "CAC063", "CER010", "CER021", "CER023",
+                     "CER036", "CER042", "CER065", "CER068", "HOR041", "HOR071",
+                     "MOM001", "MOM026", "MOM031", "MOM043", "MOM051", "MOM054",
+                     "MOM061", "MOM062", "OLO053", "OLO078", "OLO102", "PER002",
+                     "PER015", "PER018", "PER028", "PER035", "PER037", "PER046",
+                     "PER057", "PER058", "PER059", "PER067", "PER068", "QDL017",
+                     "QDL018", "QDL019", "QDL024", "QDL025", "QDL026", "QDL027",
+                     "ZAC003", "ZAC004", "ZAC006", "ZAC014", "ZAC016", "ZAC022",
+                     "ZAC027", "ZAC090", "ZAC095", "ZAC097", "OLO093", "ZAC098")
+missed_sessions <- as.data.frame(house_id) %>% 
+  mutate(missed = 1)
+
+# database filtering out participants who missed a session (n=171)
+missed_sessions_data <- r00_model_data_outliers_removed %>% 
+  # removed MOM054 who moved and wasn't assigned to a study arm
+  filter(!is.na(assigned_stove)) %>% 
+  full_join(missed_sessions, by = "house_id") %>% 
+  mutate(missed = as.numeric(missed)) %>% 
+  filter(is.na(missed)) 
+  
+
 
 # Dataset for participants who did not miss phase 2
 r00_model_data_phase2 <- stove_use_data %>% 
@@ -63,13 +221,6 @@ r00_model_data_meds <- r00_model_data_phase2 %>%
   #filtering out bp med users
   filter(is.na(med_bp)) 
 
-# Dataset for participants who have AIx data for all 6 Phases (106 participants)
-r00_model_data_6phases <- stove_use_data %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>%
-  ungroup() 
 ```
 
 # Analysis plan
@@ -168,14 +319,42 @@ table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
 ### stove_use_3, stove_use_days_stack, stove_use_hours
 ```{r}
 # AIx and Stove use variables
+## tried: prim_sum_temp_percent_50 (and other SUMs vars), prim_stove_loc, hours_primary,
+## hours_primary_3.5, community (random and fixed), days_sec, times_cook,
+## dds_total, ses_materials, beds_new, salt_cat, sugar_cat, manteca_cat, elevation,
+## haptrash_freq, hapsmoke_freq, mean_hum, mean_dew, mean_temp, max_temp, max_hum, max_dew,
+## sec_stove, sums, hours_secondary, SES_weighted_sum, ses_weighted_cat, enclosure, 
+## condition, 
 model_stove_use_3 <- lmer(aug_index ~ stove_use_3 + 
-                        ns(date_sphygmo, df=6) + age_baseline +
-                        waist_cm + school_bi + (1 | house_id), stove_use_data)
-#summary(model_stove_use_3)
+                         ns(date_sphygmo, df=6) + age_baseline +
+                         waist_cm + school_bi + 
+                         (1 | house_id), stove_use_data)
+summary(model_stove_use_3)
+#icc(model_stove_use_3)
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "all data") 
-#icc(model_stove_use_3)
+
+
+model_highlow_filter <- lmer(aug_index ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + age_baseline +
+                         waist_cm + school_bi + 
+                         (1 | house_id), highlow_filter_data)
+summary(model_highlow_filter)
+tidy_model_highlow_filter <- tidy(model_highlow_filter, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "filter high/low data") 
+
+
+model_low_filter <- lmer(aug_index ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + age_baseline +
+                         waist_cm + school_bi + 
+                         (1 | house_id), low_filter_data)
+#summary(model_low_filter)
+tidy_model_low_filter <- tidy(model_low_filter, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "filter low data") 
+
 
 ##### Only participants with phase 2 data 
 model_phase2 <- lmer(aug_index ~ stove_use_3 + 
@@ -304,7 +483,7 @@ tidy_model_full <- tidy(model_full, conf.int = TRUE) %>%
 model_stove_use_4 <- lmer(aug_index ~ stove_use_4 + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2)
+                        stove_use_data)
 #summary(model_stove_use_4)
 tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
@@ -334,6 +513,7 @@ tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>%
 
 
 aix_results <- rbind(tidy_model_phase2,
+                     tidy_model_highlow_filter,
                      tidy_model_stove_use_3,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
@@ -345,6 +525,10 @@ aix_results <- rbind(tidy_model_phase2,
                      tidy_model_ses,
                      tidy_model_pa,
                      tidy_model_dds)
+
+aix_results <- rbind(tidy_model_highlow_filter,
+                     tidy_model_stove_use_3)
+
 #kable(aix_results)
 ```
 
@@ -352,10 +536,11 @@ aix_results <- rbind(tidy_model_phase2,
 ```{r}
 # primary stove-use model with sensitivity analyses
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", 
-                                          "phase", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "filter high/low data"))) %>% 
+  #mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", 
+   #                                       "phase", "season", "spline 12 df", 
+    #                                      "bmi", "whr", "beds", "ses assets", "dds",
+     #                                     "phys act"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
                         labels = c("justa+trad", "justa/imprvd"))) %>% 
@@ -532,6 +717,16 @@ tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>%
     mutate(model = "all data") 
 #icc(model_stove_use_3)
 
+model_highlow_filter <- lmer(pulse_pressure_central ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + age_baseline +
+                         waist_cm + school_bi + 
+                         (1 | house_id), highlow_filter_data)
+#summary(model_highlow_filter)
+tidy_model_highlow_filter <- tidy(model_highlow_filter, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "filter high/low data") 
+
+
 ##### Only participants with phase 2 data 
 model_phase2 <- lmer(pulse_pressure_central ~ stove_use_3 + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -659,7 +854,7 @@ tidy_model_full <- tidy(model_full, conf.int = TRUE) %>%
 model_stove_use_4 <- lmer(pulse_pressure_central ~ stove_use_4 + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2)
+                        stove_use_data)
 #summary(model_stove_use_4)
 tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
@@ -700,16 +895,21 @@ cpp_results <- rbind(tidy_model_phase2,
                      tidy_model_ses,
                      tidy_model_pa,
                      tidy_model_dds)
+
+cpp_results <- rbind(tidy_model_highlow_filter,
+                     tidy_model_stove_use_3)
+
 #kable(cpp_results)
 ```
 
 ## Plot model estimates - CPP and Stove Use
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", 
-                                          "phase", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "filter high/low data"))) %>%
+  #mutate(model = factor(model, levels = c("primary", "all data", "no bp meds", 
+   #                                       "phase", "season", "spline 12 df", 
+    #                                      "bmi", "whr", "beds", "ses assets", "dds",
+     #                                     "phys act"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
                         labels = c("justa+trad", "justa/imprvd"))) %>% 

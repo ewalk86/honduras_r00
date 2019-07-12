@@ -27,11 +27,12 @@ library(knitr)
 #r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 #load dataset
-r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")%>% 
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS") %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(assigned_stove)) %>% 
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>% 
+  # filter(phase ==1)
   # further removes 196 observations (n=1162)
   filter(!is.na(aug_index))
 
@@ -48,8 +49,48 @@ r00_data_5phases <- r00_model_data_outliers_removed %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>%
+  filter(sum(phase_complete) < 6) %>% 
   ungroup() 
+
+
+r00_data_phase34 <- r00_model_data_outliers_removed %>%
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_34 = if_else(stove_use_3 == "justa/imprvd" & (phase==3 | phase==4),
+                            1, 0),
+         phase_34 = if_else(phase==5, lag(phase_34), phase_34),
+         phase_34 = if_else(phase==6, lag(phase_34), phase_34),
+         phase_34 = if_else(phase==2, lead(phase_34), phase_34),
+         phase_34 = if_else(phase==1, lead(phase_34), phase_34)) %>% 
+  select(house_id, phase, phase_34, study_arm, aug_index, stove_use_3, assigned_stove) %>% 
+  filter(phase_34 == 1)  %>% 
+  #select(house_id, phase, phase_34)
+  group_by(phase) %>% 
+  summarize(mean(aug_index), n())
+
+r00_data_phase23 <- r00_model_data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_23 = if_else(stove_use_3 == "trad" & (phase==3 | phase==2),
+                            1, 0),
+         phase_23 = if_else(phase==4, lag(phase_23), phase_23),
+         phase_23 = if_else(phase==5, lag(phase_23), phase_23),
+         phase_23 = if_else(phase==6, lag(phase_23), phase_23),
+         phase_23 = if_else(phase==1, lead(phase_23), phase_23)) %>% 
+  select(house_id, phase, phase_23, study_arm, aug_index, stove_use_3, assigned_stove) %>% 
+  filter(phase_23 == 1)  %>% 
+  #select(house_id, phase, phase_23)
+  #group_by(study_arm) %>% 
+  summarize(mean(aug_index), n())
+  
+r00_highlow_data <- r00_data_phase23 %>% 
+  full_join(r00_data_phase34, by = c("house_id", "phase")) %>% 
+  mutate(filter_highlow = as.numeric(1))
+  
 
 # Dataset for participants who missed phase 2
 r00_data_phase2_no <- r00_model_data_outliers_removed %>% 
@@ -66,9 +107,31 @@ r00_data_phase2_yes <- r00_model_data_outliers_removed %>%
   mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
   group_by(house_id) %>% 
   filter(sum(phase2) == 6) %>% 
-  ungroup() %>% 
+  ungroup() %>%
+  #filter(!is.na(aug_index) & phase == 6)
+  filter(!is.na(aug_index) & phase == 6 & pregnant_new == 0)
   # further removes 80 observations (n=838)
   filter(!is.na(aug_index)) 
+
+test <- read_rds("output/r00_model_data_outliers_removed.RDS") %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(assigned_stove)) %>% 
+  # removes 22 observations for pregnancies
+  filter(!is.na(aug_index) & phase == 2) %>% 
+  filter(pregnant_new == 0) %>% 
+  select(house_id, phase, aug_index, assigned_stove, pulse_pressure_central)
+  # further removes 196 observations (n=1162)
+  filter(!is.na(aug_index))
+  
+  
+# 6 participants pregnant during phase 2, but they didn't have phase 2 data anyway
+# 162 participants with phase 2 data, not pregnant
+## Of those:
+  ## 7 additional are missing phase 1 AIx data (0 pregnant)
+  ## 14 additional missing phase 3 AIx data (1 additional pregnant)
+  ## 14 additional missing phase 4 AIx data (1 additional pregnant)
+  ## 25 additional missing phase 5 AIx data (0 additional pregnant)
+  ## 30 additional missing phase 6 AIx data (0 additional pregnant)
 ```
 
 # Overall and within subject standard deviations for outcomes
@@ -269,15 +332,19 @@ kable(summary_stats_all, digits = 2)
 
 \pagebreak 
 
-# AIx grouped by stove use - all phases
+# AIx grouped by stove use and study arm - all phases
 ```{r}
+## Grouped by stove use
+
 summary_aix_stove_use <- r00_model_data_outliers_removed %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm) %>% 
-  group_by(stove_use_3) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Mean" = mean(aug_index),
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(stove_use_3, phase) %>% 
+  summarise("Data" = "all",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
             "SD" = sd(aug_index), 
             "n" = n(),
             "%" = n()/1162*100,
@@ -287,54 +354,199 @@ summary_aix_stove_use <- r00_model_data_outliers_removed %>%
             "Min" = min(aug_index), 
             "Max" = max(aug_index),
             "IQR" = IQR(aug_index))
-kable(summary_aix_stove_use, digits = 1)
+#kable(summary_aix_stove_use, digits = 1)
 
-summary_aix_stove_use_phase2_no <- r00_data_phase2_no %>% 
+summary_aix_stove_use_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm) %>% 
-  group_by(stove_use_3) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Mean" = mean(aug_index, na.rm = TRUE),
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(stove_use_3, phase) %>% 
+  summarise("Data" = "6 phases",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
             "SD" = sd(aug_index), 
             "n" = n(),
-            "%" = n()/301*100,
+            "%" = n()/636*100,
             "25th" = quantile(aug_index, c(.25)),
             "75th" = quantile(aug_index, c(.75)),
             "Median" = median(aug_index),
             "Min" = min(aug_index), 
             "Max" = max(aug_index),
             "IQR" = IQR(aug_index))
-kable(summary_aix_stove_use_phase2_no, digits = 1)
+#kable(summary_aix_stove_use_6phases, digits = 1)
 
-summary_aix_stove_use_phase2_yes <- r00_data_phase2_yes %>% 
+summary_aix_stove_use_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm) %>% 
-  group_by(stove_use_3) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Mean" = mean(aug_index, na.rm = TRUE),
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(stove_use_3, phase) %>% 
+  summarise("Data" = "<6 phases",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
             "SD" = sd(aug_index), 
             "n" = n(),
-            "%" = n()/838*100,
+            "%" = n()/526*100,
             "25th" = quantile(aug_index, c(.25)),
             "75th" = quantile(aug_index, c(.75)),
             "Median" = median(aug_index),
             "Min" = min(aug_index), 
             "Max" = max(aug_index),
             "IQR" = IQR(aug_index))
-kable(summary_aix_stove_use_phase2_yes, digits = 1)
+#kable(summary_aix_stove_use_5phases, digits = 1)
+
+aix_summary_all_stove_use <- rbind(summary_aix_stove_use, summary_aix_stove_use_6phases,
+                     summary_aix_stove_use_5phases) 
+kable(aix_summary_all_stove_use, digits = 1)
+
+
+## Grouped by study arm
+
+summary_aix_study_arm <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise("Data" = "all",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "%" = n()/1162*100,
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+#kable(summary_aix_study_arm, digits = 1)
+
+summary_aix_study_arm_6phases <- r00_data_6phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise("Data" = "6 phases",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "%" = n()/636*100,
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+#kable(summary_aix_study_arm_6phases, digits = 1)
+
+summary_aix_study_arm_5phases <- r00_data_5phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise("Data" = "<6 phases",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "%" = n()/526*100,
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+#kable(summary_aix_study_arm_5phases, digits = 1)
+
+aix_summary_all_study_arm <- rbind(summary_aix_study_arm, summary_aix_study_arm_6phases,
+                     summary_aix_study_arm_5phases) 
+kable(aix_summary_all_study_arm, digits = 1)
+
+
+## Ungrouped
+
+summary_aix <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(phase) %>% 
+  summarise("Data" = "all",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "%" = n()/1162*100,
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+#kable(summary_aix, digits = 1)
+
+summary_aix_6phases <- r00_data_6phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(phase) %>% 
+  summarise("Data" = "6 phases",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "%" = n()/636*100,
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+#kable(summary_aix_phase2_no, digits = 1)
+
+summary_aix_5phases <- r00_data_5phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(phase) %>% 
+  summarise("Data" = "<6 phases",
+            "Mean AIx" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index), 
+            "n" = n(),
+            "%" = n()/526*100,
+            "25th" = quantile(aug_index, c(.25)),
+            "75th" = quantile(aug_index, c(.75)),
+            "Median" = median(aug_index),
+            "Min" = min(aug_index), 
+            "Max" = max(aug_index),
+            "IQR" = IQR(aug_index))
+#kable(summary_aix_phase2_yes, digits = 1)
+
+aix_summary_all <- rbind(summary_aix, summary_aix_6phases,
+                     summary_aix_5phases) 
+kable(aix_summary_all, digits = 1)
 ```
 
 # CPP grouped by stove use - all phases
 ```{r}
+## Grouped by stove use
+
 summary_cpp_stove_use <- r00_model_data_outliers_removed %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(pulse_pressure_central)) %>% 
   select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(study_arm) %>% 
+  group_by(stove_use_3) %>% 
   #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Mean" = mean(pulse_pressure_central),
+  summarise("Data" = "All",
+            "Mean" = mean(pulse_pressure_central),
             "SD" = sd(pulse_pressure_central), 
             "n" = n(),
             "%" = n()/1164*100,
@@ -344,43 +556,174 @@ summary_cpp_stove_use <- r00_model_data_outliers_removed %>%
             "Min" = min(pulse_pressure_central), 
             "Max" = max(pulse_pressure_central),
             "IQR" = IQR(pulse_pressure_central))
-kable(summary_cpp_stove_use, digits = 1)
+#kable(summary_cpp_stove_use, digits = 1)
 
-summary_cpp_stove_use_phase2_no <- r00_data_phase2_no %>% 
+summary_cpp_stove_use_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(pulse_pressure_central)) %>% 
   select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(study_arm) %>% 
+  group_by(stove_use_3) %>% 
   #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Mean" = mean(pulse_pressure_central, na.rm = TRUE),
+  summarise("Data" = "6 phases",
+            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
             "SD" = sd(pulse_pressure_central), 
             "n" = n(),
-            "%" = n()/301*100,
+            "%" = n()/633*100,
             "25th" = quantile(pulse_pressure_central, c(.25)),
             "75th" = quantile(pulse_pressure_central, c(.75)),
             "Median" = median(pulse_pressure_central),
             "Min" = min(pulse_pressure_central), 
             "Max" = max(pulse_pressure_central),
             "IQR" = IQR(pulse_pressure_central))
-kable(summary_cpp_stove_use_phase2_no, digits = 1)
+#kable(summary_cpp_stove_use_phase2_no, digits = 1)
 
-summary_cpp_stove_use_phase2_yes <- r00_data_phase2_yes %>% 
+summary_cpp_stove_use_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(pulse_pressure_central)) %>% 
   select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(study_arm) %>% 
+  group_by(stove_use_3) %>% 
   #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Mean" = mean(pulse_pressure_central, na.rm = TRUE),
+  summarise("Data" = "<6 phases",
+            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
             "SD" = sd(pulse_pressure_central), 
             "n" = n(),
-            "%" = n()/840*100,
+            "%" = n()/531*100,
             "25th" = quantile(pulse_pressure_central, c(.25)),
             "75th" = quantile(pulse_pressure_central, c(.75)),
             "Median" = median(pulse_pressure_central),
             "Min" = min(pulse_pressure_central), 
             "Max" = max(pulse_pressure_central),
             "IQR" = IQR(pulse_pressure_central))
-kable(summary_cpp_stove_use_phase2_yes, digits = 1)
+#kable(summary_cpp_stove_use_phase2_yes, digits = 1)
+
+cpp_summary_all_stove_use <- rbind(summary_cpp_stove_use, summary_cpp_stove_use_6phases,
+                     summary_cpp_stove_use_5phases) 
+kable(cpp_summary_all_stove_use, digits = 1)
+
+
+## Grouped by stove use
+
+summary_cpp_stove_use <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
+  group_by(study_arm) %>% 
+  #group_by(stove_use_3, phase, study_arm) %>% 
+  summarise("Data" = "All",
+            "Mean" = mean(pulse_pressure_central),
+            "SD" = sd(pulse_pressure_central), 
+            "n" = n(),
+            "%" = n()/1164*100,
+            "25th" = quantile(pulse_pressure_central, c(.25)),
+            "75th" = quantile(pulse_pressure_central, c(.75)),
+            "Median" = median(pulse_pressure_central),
+            "Min" = min(pulse_pressure_central), 
+            "Max" = max(pulse_pressure_central),
+            "IQR" = IQR(pulse_pressure_central))
+#kable(summary_cpp_stove_use, digits = 1)
+
+summary_cpp_stove_use_6phases <- r00_data_6phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
+  group_by(study_arm) %>% 
+  #group_by(stove_use_3, phase, study_arm) %>% 
+  summarise("Data" = "6 phases",
+            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
+            "SD" = sd(pulse_pressure_central), 
+            "n" = n(),
+            "%" = n()/633*100,
+            "25th" = quantile(pulse_pressure_central, c(.25)),
+            "75th" = quantile(pulse_pressure_central, c(.75)),
+            "Median" = median(pulse_pressure_central),
+            "Min" = min(pulse_pressure_central), 
+            "Max" = max(pulse_pressure_central),
+            "IQR" = IQR(pulse_pressure_central))
+#kable(summary_cpp_stove_use_phase2_no, digits = 1)
+
+summary_cpp_stove_use_5phases <- r00_data_5phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
+  group_by(study_arm) %>% 
+  #group_by(stove_use_3, phase, study_arm) %>% 
+  summarise("Data" = "<6 phases",
+            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
+            "SD" = sd(pulse_pressure_central), 
+            "n" = n(),
+            "%" = n()/531*100,
+            "25th" = quantile(pulse_pressure_central, c(.25)),
+            "75th" = quantile(pulse_pressure_central, c(.75)),
+            "Median" = median(pulse_pressure_central),
+            "Min" = min(pulse_pressure_central), 
+            "Max" = max(pulse_pressure_central),
+            "IQR" = IQR(pulse_pressure_central))
+#kable(summary_cpp_stove_use_phase2_yes, digits = 1)
+
+cpp_summary_all_study_arm <- rbind(summary_cpp_stove_use, summary_cpp_stove_use_6phases,
+                     summary_cpp_stove_use_5phases) 
+kable(cpp_summary_all_study_arm, digits = 1)
+
+
+## Ungrouped
+
+summary_cpp <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
+  #group_by(stove_use_3, phase, study_arm) %>% 
+  summarise("Data" = "All",
+            "Mean" = mean(pulse_pressure_central),
+            "SD" = sd(pulse_pressure_central), 
+            "n" = n(),
+            "%" = n()/1164*100,
+            "25th" = quantile(pulse_pressure_central, c(.25)),
+            "75th" = quantile(pulse_pressure_central, c(.75)),
+            "Median" = median(pulse_pressure_central),
+            "Min" = min(pulse_pressure_central), 
+            "Max" = max(pulse_pressure_central),
+            "IQR" = IQR(pulse_pressure_central))
+#kable(summary_cpp, digits = 1)
+
+summary_cpp_6phases <- r00_data_6phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
+  #group_by(stove_use_3, phase, study_arm) %>% 
+  summarise("Data" = "6 phases",
+            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
+            "SD" = sd(pulse_pressure_central), 
+            "n" = n(),
+            "%" = n()/633*100,
+            "25th" = quantile(pulse_pressure_central, c(.25)),
+            "75th" = quantile(pulse_pressure_central, c(.75)),
+            "Median" = median(pulse_pressure_central),
+            "Min" = min(pulse_pressure_central), 
+            "Max" = max(pulse_pressure_central),
+            "IQR" = IQR(pulse_pressure_central))
+#kable(summary_cpp_stove_use_phase2_no, digits = 1)
+
+summary_cpp_5phases <- r00_data_5phases %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
+  #group_by(stove_use_3, phase, study_arm) %>% 
+  summarise("Data" = "<6 phases",
+            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
+            "SD" = sd(pulse_pressure_central), 
+            "n" = n(),
+            "%" = n()/531*100,
+            "25th" = quantile(pulse_pressure_central, c(.25)),
+            "75th" = quantile(pulse_pressure_central, c(.75)),
+            "Median" = median(pulse_pressure_central),
+            "Min" = min(pulse_pressure_central), 
+            "Max" = max(pulse_pressure_central),
+            "IQR" = IQR(pulse_pressure_central))
+#kable(summary_cpp_stove_use_phase2_yes, digits = 1)
+
+cpp_summary_all <- rbind(summary_cpp, summary_cpp_6phases,
+                     summary_cpp_5phases) 
+kable(cpp_summary_all, digits = 1)
 ```
 
 # AIx grouped by study arm - all phases

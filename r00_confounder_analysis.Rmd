@@ -45,89 +45,7 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 ```{r}
 ## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  filter(phase == 1) %>% 
-  select(sys_bp_central, dia_bp_central, aug_index, aug_index_75,
-         pulse_pressure_periph, pulse_pressure_central, hr, bmi, waist,
-         whr, whr_cat, age_baseline, phase, house_id, season, assigned_stove,
-         dds_total, phys_act, school_self, school_bi, beds_new, ses_materials, 
-         a_twa, p_twa, sys_bp_periph, dia_bp_periph, phase, date_sphygmo, med_bp,
-         sys_bp_periph, dia_bp_periph, hba1c, hdl, triglycerides,
-         salt, sugar, manteca, mean_temp) %>% 
-  mutate(sys_bp_central = as.numeric(sys_bp_central),
-         dia_bp_central = as.numeric(dia_bp_central),
-         sys_bp_periph = as.numeric(sys_bp_periph),
-         dia_bp_periph = as.numeric(dia_bp_periph),
-         aug_index = as.numeric(aug_index),
-         aug_index_75 = as.numeric(aug_index_75),
-         pulse_pressure_periph = as.numeric(pulse_pressure_periph),
-         pulse_pressure_central = as.numeric(pulse_pressure_central),
-         hr = as.numeric(hr),
-         bmi = as.numeric(bmi),
-         whr = as.numeric(whr),
-         waist = as.numeric(waist),
-         waist_cm = as.numeric(waist * 2.54),
-         dds_total = as.numeric(dds_total),
-         phys_act = as.numeric(phys_act),
-         beds_new = as.numeric(beds_new),
-         ses_materials = as.numeric(ses_materials),
-         school_self = as.numeric(school_self),
-         age_baseline = as.numeric(age_baseline),
-         hba1c = as.numeric(hba1c),
-         hdl = as.numeric(hdl),
-         triglycerides = as.numeric(triglycerides),
-         mean_temp = as.numeric(mean_temp))%>% 
-  mutate(phase = as.factor(phase),
-         season = as.factor(season),
-         house_id = as.factor(house_id),
-         school_bi = as.factor(school_bi),
-         whr_cat = as.factor(whr_cat)) %>%
-  mutate(ses_cat_2 = if_else(ses_materials > 2, "SES 3+", "SES < 3")) %>% 
-  mutate(bpp_cat = if_else(beds_new >=0.5, "BPP 0.5+", "BPP < 0.5")) %>% 
-  mutate(dds_cat = if_else(dds_total >=6, "DDS 6+", "DDS < 6")) %>% 
-  mutate(phys_act_cat = if_else(phys_act >=300, "METS 300+", "METS < 300")) %>% 
-  mutate(salt_cat = if_else(salt >=8, "Salt 8+", "Salt < 8")) %>% 
-  mutate(sugar_cat = if_else(sugar >=4, "Sugar 4+", "Sugar < 4")) %>% 
-  mutate(manteca_cat = if_else(manteca >=7, "Manteca 7+", "Manteca < 7")) %>% 
-  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
-                                 labels = c("Traditional", "Justa"))) %>% 
-  #split waist at 80cm
-  mutate(waist_cat = if_else(waist_cm < 79.9, "waist < 80cm", "waist >= 80cm")) %>%
-  mutate(waist_cat = as.factor(waist_cat)) %>% 
-  #split age at 40
-  mutate(age_cat_40 = if_else(age_baseline < 39.9, "age < 40", "age >= 40")) %>% 
-  mutate(age_cat_40 = as.factor(age_cat_40)) %>% 
-  #split age at 30
-  mutate(age_cat_30 = if_else(age_baseline < 29.9, "age < 30", "age >= 30")) %>% 
-  mutate(age_cat_30 = as.factor(age_cat_30)) %>% 
-  #split bmi at 25
-  mutate(bmi_cat = if_else(bmi < 24.99, "bmi < 25", "bmi >= 25")) %>% 
-  mutate(bmi_cat = as.factor(bmi_cat)) %>%
-  #split a1c at 5.7
-  mutate(hba1c_cat = if_else(hba1c < 5.69, "a1c < 5.7", "a1c >=5.7")) %>% 
-  mutate(hba1c_cat = as.factor(hba1c_cat)) %>%
-  #bp normal/high
-  mutate(bp_cat = if_else(sys_bp_periph < 120.9 & dia_bp_periph < 80.9, 
-                          "bp norm", "bp high")) %>% 
-  mutate(bp_cat = factor(bp_cat, levels = c("bp norm", "bp high"))) %>% 
-  #new metsyn variable
-  mutate(sys_bp_ms = if_else(sys_bp_periph >= 130, 1, 0),
-         dia_bp_ms = if_else(dia_bp_periph >= 85, 1, 0),
-         trigs_ms = if_else(triglycerides > 200, 1, 0),
-         hdl_ms = if_else(hdl < 50, 1, 0),
-         a1c_ms = if_else(hba1c > 5.6, 1, 0),
-         waist_ms = if_else(waist_cm > 80, 1, 0)) %>% 
-  mutate(ms_sum = (sys_bp_ms + dia_bp_ms + trigs_ms + hdl_ms + a1c_ms)) %>% 
-  mutate(met_syn = if_else(waist_ms == 1 & ms_sum > 1, "met syn", "no met syn")) %>% 
-  mutate(met_syn = factor(met_syn, levels = c("no met syn", "met syn"))) %>% 
-  #log transforming and standardizing based on IQR
-  mutate(log_a_twa_iqr = as.numeric(log(a_twa)/1.78)) %>% 
-  mutate(log_p_twa_iqr = as.numeric(log(p_twa)/1.14)) %>% 
-  #standardizing based on IQR
-  mutate(a_twa_iqr = as.numeric(a_twa/200)) %>% 
-  mutate(p_twa_iqr = as.numeric(p_twa/75)) %>% 
-  #log transforming
-  mutate(log_a_twa = as.numeric(log(a_twa))) %>% 
-  mutate(log_p_twa = as.numeric(log(p_twa))) %>% 
+  filter(phase == 1) %>%
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(aug_index))
 ```
@@ -163,6 +81,8 @@ aix_numeric_function(df = r00_model_data, term_fun = manteca,
                        label_fun = "manteca")
 aix_numeric_function(df = r00_model_data, term_fun = mean_temp,
                        label_fun = "mean_temp")
+aix_numeric_function(df = r00_model_data, term_fun = SES_weighted_sum,
+                       label_fun = "SES_weighted_sum")
 ```
 
 ```{r}
@@ -181,6 +101,7 @@ aix_categorical_function(df = r00_model_data, term_fun = age_cat_40)
 aix_categorical_function(df = r00_model_data, term_fun = bpp_cat)
 aix_categorical_function(df = r00_model_data, term_fun = school_bi)
 aix_categorical_function(df = r00_model_data, term_fun = ses_cat_2)
+aix_categorical_function(df = r00_model_data, term_fun = ses_weighted_cat)
 aix_categorical_function(df = r00_model_data, term_fun = dds_cat)
 aix_categorical_function(df = r00_model_data, term_fun = bmi_cat)
 aix_categorical_function(df = r00_model_data, term_fun = whr_cat)
@@ -223,6 +144,8 @@ cpp_numeric_function(df = r00_model_data, term_fun = manteca,
                        label_fun = "manteca")
 cpp_numeric_function(df = r00_model_data, term_fun = mean_temp,
                        label_fun = "mean_temp")
+cpp_numeric_function(df = r00_model_data, term_fun = SES_weighted_sum,
+                       label_fun = "SES_weighted_sum")
 ```
 
 ```{r}
@@ -241,6 +164,7 @@ cpp_categorical_function(df = r00_model_data, term_fun = age_cat_40)
 cpp_categorical_function(df = r00_model_data, term_fun = bpp_cat)
 cpp_categorical_function(df = r00_model_data, term_fun = school_bi)
 cpp_categorical_function(df = r00_model_data, term_fun = ses_cat_2)
+cpp_categorical_function(df = r00_model_data, term_fun = ses_weighted_cat)
 cpp_categorical_function(df = r00_model_data, term_fun = dds_cat)
 cpp_categorical_function(df = r00_model_data, term_fun = bmi_cat)
 cpp_categorical_function(df = r00_model_data, term_fun = whr_cat)

@@ -18,7 +18,7 @@ library(lubridate)
 
 ```{r, message=FALSE}
 # Load data
-r00_full_wide <- read_xlsx("input/R00_health_wide_01July2019_by.xlsx")
+r00_full_wide <- read_xlsx("input/r00_health_wide_dataset_09July2019_by.xlsx")
 
 #r00_full_wide <- readRDS("output/r00_full_wide.rds")
 ```
@@ -26,6 +26,8 @@ r00_full_wide <- read_xlsx("input/R00_health_wide_01July2019_by.xlsx")
 ##### Convert Dataset from Wide to Long #####
 ```{r}
 r00_full_long <- r00_full_wide %>% 
+  #taking out duplicate variables
+  select(-sys_bp_periph_r00_p2, -dia_bp_periph_r00_p2) %>% 
   #creating new variables for phases 2-6 if it was only collected at phase 1
   mutate(electricity_r00_p2 = electricity_r00_p1, 
          electricity_r00_p3 = electricity_r00_p1, 
@@ -173,14 +175,10 @@ r00_joined_2 <- r00_joined_1 %>%
 ```{r}
 # This is old exposure data that has already been added to the wide database
 # Don't do this step!
-r00_exposure_repeated_by_phase <- read_rds("output/r00_exposure_repeated_by_phase.rds")
+#r00_exposure_repeated_by_phase <- read_rds("output/r00_exposure_repeated_by_phase.rds")
 
-r00_joined_3 <- r00_joined_2 %>% 
-  full_join(r00_exposure_repeated_by_phase, by = c("house_id", "phase")) 
-
-test <- r00_joined_3 %>% 
-  select(house_id, phase, co_a_15minmax.x, co_a_15minmax.y, mean_temp.x, mean_temp.y, 
-         a_pm.x, a_pm.y, log_a_pm25.x, log_a_pm25.y)
+#r00_joined_3 <- r00_joined_2 %>% 
+ # full_join(r00_exposure_repeated_by_phase, by = c("house_id", "phase")) 
 ```
 
 # Combine with Megan's new PM2.5 dataset (from r00_pm_database_final.rmd)
@@ -377,7 +375,7 @@ r00_final_long <- r00_joined_3 %>%
   mutate(pregnant_new = if_else(house_id == "OLO093" & phase == 4, 1, pregnant_new),
          pregnant_new = if_else(house_id == "ZAC098" & phase == 3, 1, pregnant_new)) %>% 
   mutate(pregnant_previous = lag(pregnant_new)) %>%
-  select(-pregnant2, -pregnant3, -pregnant_test, -child_born_date, -date_diff) %>% 
+  select(-pregnant2, -pregnant3, -pregnant_test, -date_diff) %>% 
   ungroup()
 ```
 
@@ -387,6 +385,22 @@ r00_final_long <- r00_joined_3 %>%
 write_rds(r00_final_long, "output/r00_full_repeated_by_phase.rds")
 
 write_csv(r00_final_long, "output/r00_full_repeated_by_phase.csv", na = " ")
+```
+
+# Remove AIx/CPP outliers and save dataset
+```{r}
+# USE THIS DATASET FOR ANALYSES!!!
+## Removes values >75 for AIx and CPP, and <-25 for AIx
+## This dataset is already saved -- use code above to load
+r00_model_data_outliers_removed <- r00_final_long %>% 
+  # removes 6 potential "outliers" with high or low AIx
+  # removes 4 potential "outliers" > 75mmHg CPP
+  mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 
+  mutate(pulse_pressure_central = if_else(pulse_pressure_central > 75,
+                                          9999, pulse_pressure_central)) %>% 
+  replace_with_na(replace = list(aug_index = 9999)) %>% 
+  replace_with_na(replace = list(pulse_pressure_central = 9999)) 
+write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed.rds")
 ```
 
 
