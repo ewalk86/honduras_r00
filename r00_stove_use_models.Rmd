@@ -49,28 +49,63 @@ stove_use_data <- r00_model_data_outliers_removed %>%
   filter(!is.na(assigned_stove)) %>% 
   # filter out 22 instances of pregnancy
   filter(pregnant_new == 0) %>% 
-  filter(!is.na(aug_index))
+  filter(!is.na(aug_index)) %>% 
+  mutate(age_multicat = cut(age_baseline, seq(20, 60, 10)),
+         age_multicat = factor(age_multicat,
+                               levels = c("(20,30]", "(30,40]", "(40,50]", "(50,60]"),
+                               labels = c("20-30", "30-40", "40-50", "50-60")))
 
-# Dataset for participants who have AIx data for all 6 Phases (106 participants)
-r00_model_data_6phases <- stove_use_data %>% 
+
+test_data <- r00_56_combined %>% 
+  mutate(test = if_else(all_phases == "no" & stove_use_3 == "trad" & phase == 2 
+                        & study_arm == 2, 1, 0)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(test) == 0) %>% 
+  ungroup() 
+
+
+
+# Dataset for participants who have AIx data for all 6 Phases (107 participants)
+r00_data_6phases <- stove_use_data %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>%
+  filter(sum(phase_complete) == 6) %>% 
+  mutate(all_phases = "yes") %>% 
   ungroup() 
 
-# Dataset for participants who have AIx data for all <6 Phases (124 participants)
+# Dataset for participants who have AIx data for all <6 Phases
 r00_data_5phases <- stove_use_data %>%
+  group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  #select(house_id, phase, aug_index, phase_complete) %>% 
-  group_by(house_id) %>% 
   filter(sum(phase_complete) < 6) %>% 
+  mutate(all_phases = "no") %>% 
   ungroup() 
+
+# combine 6 phases and <6 phases datasets with indicator variable to group by
+r00_56_combined <- rbind(r00_data_6phases, r00_data_5phases)
 
 # Creating datasets for sensitivity analysis
 ## based on odd high/low values seen in participants who missed at least one phase
 ## seen when assessing mean AIx grouped by stove_use_3 and phase
+r00_data_phase2 <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_2 = if_else(stove_use_3 == "trad" & phase==2,
+                            1, 0),
+         phase_2 = if_else(phase==3, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==4, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==5, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==6, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==1, lead(phase_2), phase_2)) %>% 
+  select(house_id, phase, phase_2) %>% 
+  filter(phase_2 == 1) %>%    # filtered down to 244 obs from 56 participants
+  #summarise(n())
+  ungroup()
+
 r00_data_phase3low <- stove_use_data %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
@@ -119,21 +154,13 @@ r00_data_phase4 <- stove_use_data %>%
   filter(phase_4 == 1) %>%      # filtered down to 77 obs from 16 participants
   ungroup()
 
-r00_data_phase2 <- stove_use_data %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>%
-  mutate(phase_2 = if_else(stove_use_3 == "trad" & phase==2,
-                            1, 0),
-         phase_2 = if_else(phase==3, lag(phase_2), phase_2),
-         phase_2 = if_else(phase==4, lag(phase_2), phase_2),
-         phase_2 = if_else(phase==5, lag(phase_2), phase_2),
-         phase_2 = if_else(phase==6, lag(phase_2), phase_2),
-         phase_2 = if_else(phase==1, lead(phase_2), phase_2)) %>% 
-  select(house_id, phase, phase_2) %>% 
-  filter(phase_2 == 1) %>%    # filtered down to 132 obs from 56 participants
-  ungroup()
+r00_phase34_filter_data <- r00_data_phase3low %>% 
+  full_join(r00_data_phase3hi, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase4, by = c("house_id", "phase")) %>% 
+  mutate(filter_phase34 = as.numeric(1)) %>% 
+  full_join(stove_use_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_phase34 = if_else(is.na(filter_phase34), 0, 1)) %>% 
+  filter(filter_phase34 == 0)
   
 r00_highlow_data <- r00_data_phase2 %>% 
   full_join(r00_data_phase3low, by = c("house_id", "phase")) %>% 
@@ -326,9 +353,9 @@ table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
 ## sec_stove, sums, hours_secondary, SES_weighted_sum, ses_weighted_cat, enclosure, 
 ## condition, 
 model_stove_use_3 <- lmer(aug_index ~ stove_use_3 + 
-                         ns(date_sphygmo, df=6) + age_baseline +
-                         waist_cm + school_bi + 
-                         (1 | house_id), stove_use_data)
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_multicat +
+                         (1 | house_id), summary_aix_subgroups)
 summary(model_stove_use_3)
 #icc(model_stove_use_3)
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
@@ -349,8 +376,8 @@ tidy_model_highlow_filter <- tidy(model_highlow_filter, conf.int = TRUE) %>%
 model_low_filter <- lmer(aug_index ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + age_baseline +
                          waist_cm + school_bi + 
-                         (1 | house_id), low_filter_data)
-#summary(model_low_filter)
+                         (1 | house_id), hi_filter_data)
+summary(model_low_filter)
 tidy_model_low_filter <- tidy(model_low_filter, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "filter low data") 
@@ -481,10 +508,10 @@ tidy_model_full <- tidy(model_full, conf.int = TRUE) %>%
 
 ##### stove_use_4
 model_stove_use_4 <- lmer(aug_index ~ stove_use_4 + 
-                        ns(date_sphygmo, df=6) + age_baseline +
+                        ns(date_sphygmo, df=6) + age_multicat +
                         waist_cm + school_bi + (1 | house_id), 
-                        stove_use_data)
-#summary(model_stove_use_4)
+                        summary_aix_subgroups)
+summary(model_stove_use_4)
 tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use 4-level") 
@@ -494,8 +521,8 @@ tidy_model_stove_use_4 <- tidy(model_stove_use_4, conf.int = TRUE) %>%
 model_stove_use_days <- lmer(aug_index ~ stove_use_days_stack + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2)
-#summary(model_stove_use_days)
+                        summary_aix_subgroups)
+summary(model_stove_use_days)
 tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use days") 
@@ -505,8 +532,8 @@ tidy_model_stove_use_days <- tidy(model_stove_use_days, conf.int = TRUE) %>%
 model_stove_use_hours <- lmer(aug_index ~ stove_use_hours + 
                         ns(date_sphygmo, df=6) + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
-                        r00_model_data_phase2)
-#summary(model_stove_use_hours)
+                        summary_aix_subgroups)
+summary(model_stove_use_hours)
 tidy_model_stove_use_hours <- tidy(model_stove_use_hours, conf.int = TRUE) %>% 
     filter(grepl('stove_use', term)) %>% 
     mutate(model = "stove use hours") 

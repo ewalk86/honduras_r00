@@ -27,22 +27,25 @@ library(knitr)
 #r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 #load dataset
-r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS") %>% 
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+
+data_outliers_removed <- r00_model_data_outliers_removed %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(assigned_stove)) %>% 
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>% 
-  # filter(phase ==1)
   # further removes 196 observations (n=1162)
   filter(!is.na(aug_index))
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
-r00_data_6phases <- r00_model_data_outliers_removed %>%
+r00_data_6phases <- data_outliers_removed %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
   filter(sum(phase_complete) == 6) %>% 
-  ungroup() 
+  ungroup() %>% 
+  mutate(all_phases = "yes")
+  
 
 # Dataset for participants who have AIx data for all <6 Phases
 r00_data_5phases <- r00_model_data_outliers_removed %>%
@@ -50,46 +53,168 @@ r00_data_5phases <- r00_model_data_outliers_removed %>%
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
   filter(sum(phase_complete) < 6) %>% 
-  ungroup() 
+  ungroup() %>% 
+  mutate(all_phases = "no") %>% 
+  filter(!is.na(aug_index)) 
 
-
-r00_data_phase34 <- r00_model_data_outliers_removed %>%
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+%>% 
+  mutate(all_phases2 = if_else(phase == 6 & phase_complete == 0, 1, 0)) %>% 
   group_by(house_id) %>% 
-  filter(sum(phase_complete) < 6) %>%
-  mutate(phase_34 = if_else(stove_use_3 == "justa/imprvd" & (phase==3 | phase==4),
-                            1, 0),
-         phase_34 = if_else(phase==5, lag(phase_34), phase_34),
-         phase_34 = if_else(phase==6, lag(phase_34), phase_34),
-         phase_34 = if_else(phase==2, lead(phase_34), phase_34),
-         phase_34 = if_else(phase==1, lead(phase_34), phase_34)) %>% 
-  select(house_id, phase, phase_34, study_arm, aug_index, stove_use_3, assigned_stove) %>% 
-  filter(phase_34 == 1)  %>% 
-  #select(house_id, phase, phase_34)
-  group_by(phase) %>% 
-  summarize(mean(aug_index), n())
-
-r00_data_phase23 <- r00_model_data_outliers_removed %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>%
-  mutate(phase_23 = if_else(stove_use_3 == "trad" & (phase==3 | phase==2),
-                            1, 0),
-         phase_23 = if_else(phase==4, lag(phase_23), phase_23),
-         phase_23 = if_else(phase==5, lag(phase_23), phase_23),
-         phase_23 = if_else(phase==6, lag(phase_23), phase_23),
-         phase_23 = if_else(phase==1, lead(phase_23), phase_23)) %>% 
-  select(house_id, phase, phase_23, study_arm, aug_index, stove_use_3, assigned_stove) %>% 
-  filter(phase_23 == 1)  %>% 
-  #select(house_id, phase, phase_23)
-  #group_by(study_arm) %>% 
-  summarize(mean(aug_index), n())
+  mutate(all_phases = if_else(sum(all_phases2) == 1 & sum(phase_complete) >2, 
+                              "late dropout", "no")) %>% 
+  select(-all_phases2) %>% 
+  ungroup() %>% 
+  filter(!is.na(aug_index)) 
   
-r00_highlow_data <- r00_data_phase23 %>% 
-  full_join(r00_data_phase34, by = c("house_id", "phase")) %>% 
-  mutate(filter_highlow = as.numeric(1))
+  
+# Dataset for 46 participants who missed AIx in phase 2 from sphygmo malfunction
+r00_data_sphygmo_missing <- r00_model_data_outliers_removed %>%
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>% 
+  mutate(all_phases2 = "sphygmo missing") %>%  
+  group_by(house_id) %>% 
+  filter(sum(sphygmo_missing_phase2) == 1) %>% 
+  ungroup() %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(house_id, phase, all_phases2)
+  
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  group_by(house_id) %>% 
+  # 46 participants missed phase 2 due to sphygmo malfunction
+  # 33 did not miss another phase; 13 missed at least one more phase
+  mutate(all_phases2 = if_else(sum(phase_complete) == 5, "sphygmo missing", "no")) %>% 
+  filter(!is.na(aug_index)) %>% 
+  select(house_id, phase, all_phases2) %>%
+  ungroup()
+
+r00_5phase_sphygmo_missing <- r00_data_5phases %>% 
+  left_join(r00_data_sphygmo_missing, by = c("house_id", "phase")) %>% 
+  mutate(all_phases2 = if_else(is.na(all_phases2), "other", all_phases2)) %>% 
+  mutate(all_phases = if_else(all_phases2 == "sphygmo missing",
+                              all_phases2, all_phases)) %>%
+  #select(house_id, phase, all_phases, aug_index)
+  select(-all_phases2)
+
+# combine 6 phases and <6 phases datasets with indicator variable to group by
+r00_56_combined <- rbind(r00_data_6phases, r00_5phase_sphygmo_missing) %>% 
+  group_by(house_id) %>% 
+  mutate(all_phases2 = if_else(sum(phase_complete) < 3, "early dropout", "others")) %>% 
+  mutate(all_phases = if_else(all_phases2 == "early dropout", 
+                              "early dropout", all_phases)) %>% 
+  ungroup() %>% 
+  mutate(missed_phases = factor(all_phases,
+                                levels = c("early dropout", 
+                                           "sphygmo missing", "no", "yes"),
+                                labels = c("early dropout", 
+                                           "no sphygmo p2", "missed phase", 
+                                           "complete case"))) 
+%>% 
+  filter(missed_phases == "late dropout")
+  
+%>% 
+  mutate(test = if_else(phase == 2 & missed_phases == "missed phase", 1, 0)) %>% 
+    group_by(house_id) %>% 
+    filter(sum(test) != 1) %>% 
+  filter(missed_phases == "complete case" | missed_phases == "missed phase")
+
+
+# Creating datasets for sensitivity analysis
+## based on odd high/low values seen in participants who missed at least one phase
+## seen when assessing mean AIx grouped by stove_use_3 and phase
+r00_data_phase2 <- r00_model_data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_2 = if_else(stove_use_3 == "trad" & phase==2,
+                            1, 0),
+         phase_2 = if_else(phase==3, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==4, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==5, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==6, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==1, lead(phase_2), phase_2)) %>% 
+  select(house_id, phase, phase_2, aug_index, pulse_pressure_central,
+         study_arm, assigned_stove, stove_use_3) %>% 
+  filter(phase_2 == 1) %>%    # filtered down to 132 obs from 56 participants
+  ungroup()
+
+r00_data_phase3low <- r00_model_data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_3low = if_else(stove_use_3 == "trad" 
+                            & phase==3, 1, 0),
+         phase_3low = if_else(phase==4, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==5, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==6, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==2, lead(phase_3low), phase_3low),
+         phase_3low = if_else(phase==1, lead(phase_3low), phase_3low)) %>% 
+  select(house_id, phase, phase_3low, aug_index, pulse_pressure_central,
+         study_arm, assigned_stove, stove_use_3) %>% 
+  filter(phase_3low == 1) %>%     # filtered down to 226 obs from 49 participants
+  ungroup()
+
+r00_data_phase3hi <- r00_model_data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_3hi = if_else(stove_use_3 == "justa/imprvd" 
+                            & phase==3, 1, 0),
+         phase_3hi = if_else(phase==4, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==5, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==6, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==2, lead(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==1, lead(phase_3hi), phase_3hi)) %>% 
+  select(house_id, phase, phase_3hi, aug_index, pulse_pressure_central,
+         study_arm, assigned_stove, stove_use_3) %>% 
+  filter(phase_3hi == 1) %>%     # filtered down to 81 obs from 17 participants
+  ungroup()
+  
+r00_data_phase4 <- r00_model_data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_4 = if_else(stove_use_3 == "justa/imprvd" 
+                            & phase==4, 1, 0),
+         phase_4 = if_else(phase==5, lag(phase_4), phase_4),
+         phase_4 = if_else(phase==6, lag(phase_4), phase_4),
+         phase_4 = if_else(phase==3, lead(phase_4), phase_4),
+         phase_4 = if_else(phase==2, lead(phase_4), phase_4),
+         phase_4 = if_else(phase==1, lead(phase_4), phase_4)) %>% 
+  select(house_id, phase, phase_4, aug_index, pulse_pressure_central,
+         study_arm, assigned_stove, stove_use_3) %>% 
+  filter(phase_4 == 1) %>%      # filtered down to 77 obs from 16 participants
+  ungroup()
+  
+r00_highlow_data <- r00_data_phase2 %>% 
+  full_join(r00_data_phase3low, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase3hi, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase4, by = c("house_id", "phase")) %>%
+  mutate(filter_highlow = as.numeric(1))      # 440 obs from 97 participants
+
+highlow_filter_data <- r00_model_data_outliers_removed %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_highlow = if_else(is.na(filter_highlow), 0, 1)) %>% 
+  filter(filter_highlow == 0)   # filtered to 722 obs from 133 participants
+
+low_filter_data <- r00_model_data_outliers_removed %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_low = if_else(phase_2==1 | phase_3low==1, 1, 0),
+         filter_low = if_else(is.na(filter_low), 0, filter_low)) %>% 
+  #select(house_id, phase, phase_2, phase_3low, filter_low)
+  filter(filter_low == 0)   # filtered to  795 obs from 148 participants
+
+hi_filter_data <- r00_model_data_outliers_removed %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_hi = if_else(phase_4==1 | phase_3hi==1, 1, 0),
+         filter_hi = if_else(is.na(filter_hi), 0, filter_hi)) %>% 
+  #select(house_id, phase, phase_2, phase_3low, filter_low)
+  filter(filter_hi == 0)    # filtered to  1047 obs from 206 participants
   
 
 # Dataset for participants who missed phase 2
@@ -133,6 +258,84 @@ test <- read_rds("output/r00_model_data_outliers_removed.RDS") %>%
   ## 25 additional missing phase 5 AIx data (0 additional pregnant)
   ## 30 additional missing phase 6 AIx data (0 additional pregnant)
 ```
+
+# Testing subgroups of data
+```{r}
+aix_justatrad_diff <- r00_56_combined %>% 
+  select(house_id, phase, aug_index, pulse_pressure_central,
+         study_arm, assigned_stove, stove_use_3, stove_use_4, all_phases,
+         sys_bp_periph, dia_bp_periph, missed_phases) %>%
+  group_by(house_id, stove_use_3, missed_phases) %>% 
+  summarize(mean_aix = mean(aug_index)) %>% 
+  group_by(house_id) %>% 
+  filter(n() == 3) %>%   # 61 have AIx readings from all levels of stove_use_3
+  ungroup() %>% 
+  spread(stove_use_3, mean_aix) %>% 
+  mutate(aix_diff = `trad` - `justa/imprvd`) %>% 
+  mutate(aix_diff_neg = if_else(aix_diff < -5, 1, 0)) %>% 
+  select(house_id, aix_diff, aix_diff_neg)
+
+%>% 
+  group_by(missed_phases, aix_diff_neg) %>% 
+  summarize(n())
+kable(aix_justatrad_diff)
+
+
+summary_aix_subgroups <- r00_56_combined %>% 
+  filter(!is.na(study_arm)) %>% 
+  left_join(aix_justatrad_diff, by = "house_id") %>% 
+  #filter(!is.na(aix_diff_neg)) %>%
+  mutate(SES_weighted_sum = as.numeric(SES_weighted_sum)) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  mutate(sugar = as.numeric(sugar)) %>% 
+  mutate(manteca = as.numeric(manteca)) %>% 
+  mutate(med_bp = as.numeric(med_bp)) %>% 
+  mutate(med_lipids = as.numeric(med_lipids)) %>% 
+  mutate(age_multicat = cut(age_baseline, seq(20, 60, 10)),
+         age_multicat = factor(age_multicat,
+                               levels = c("(20,30]", "(30,40]", "(40,50]", "(50,60]"),
+                               labels = c("20-30", "30-40", "40-50", "50-60"))) %>% 
+  #filter(missed_phases != "early dropout" & missed_phases != "no sphygmo p2") %>% 
+  filter(missed_phases != "early dropout") %>%
+  #filter(phase != 3 & phase != 4) %>% 
+  mutate(test = if_else(missed_phases == "missed phase" &
+                        stove_use_3 == "justa/imprvd" &
+                        phase == 3, 1, 0)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(test) != 1) %>% 
+  mutate(test = if_else(missed_phases == "missed phase" &
+                        stove_use_3 == "justa/imprvd" &
+                        phase == 4, 1, 0)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(test) != 1) %>%
+  group_by(stove_use_3) %>% 
+  summarise("Mean AIx" = mean(aug_index, na.rm = TRUE),
+            "SD" = sd(aug_index, na.rm = TRUE), 
+            "Age" = mean(age_baseline, na.rm = TRUE),
+            "SES" = mean(ses_materials, na.rm = TRUE),
+            "n" = n(),
+            "%" = n()/1053*100,
+            "Median" = median(aug_index, na.rm = TRUE))
+kable(summary_aix_subgroups, digits = 1)
+
+# Those with negative difference started with lower AIx (P1), and were more likely
+# to miss phase 2 than those without a negative difference. They are also 4.5 years
+# younger on average, weigh 6 lbs more (bmi 1 unit higher). SES factors are similar,
+# however, weighted SES sum is higher (5.8 vs 3.7) in those with neg diff in AIx.
+# They were more likely to take bp meds (18 vs 8), although BP was similar in both groups.
+
+# Arm 2 had more people who missed phases than Arm 1 - could be r/t intervention?
+# AIx was slightly lower in Arm 2 than Arm 1 (20.5 vs 21)
+# Participants were more likely to drop out as the study went on
+## 18 fewer in P6 than in P1
+# Those assigned to Traditional and Justa were essentially the same
+## Where was it grouped differently to create a bias?
+###
+```
+
+
+
+
 
 # Overall and within subject standard deviations for outcomes
 ```{r}
@@ -336,12 +539,12 @@ kable(summary_stats_all, digits = 2)
 ```{r}
 ## Grouped by stove use
 
-summary_aix_stove_use <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
-         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
-  mutate(salt = as.numeric(salt)) %>% 
+summary_aix_stove_use <- r00_data_phase2 %>% 
+  #filter(!is.na(assigned_stove)) %>% 
+  #filter(!is.na(aug_index)) %>% 
+  #select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+   #      a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  #mutate(salt = as.numeric(salt)) %>% 
   group_by(stove_use_3, phase) %>% 
   summarise("Data" = "all",
             "Mean AIx" = mean(aug_index, na.rm = TRUE),
@@ -354,7 +557,7 @@ summary_aix_stove_use <- r00_model_data_outliers_removed %>%
             "Min" = min(aug_index), 
             "Max" = max(aug_index),
             "IQR" = IQR(aug_index))
-#kable(summary_aix_stove_use, digits = 1)
+kable(summary_aix_stove_use, digits = 1)
 
 summary_aix_stove_use_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 

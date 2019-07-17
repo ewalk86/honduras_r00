@@ -41,56 +41,67 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 
 
 ```{r}
-## Data prep
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(study_arm)) %>% 
-  select(aug_index, aug_index_75, pulse_pressure_central, assigned_stove, 
-         house_id, phase, study_arm) %>% 
-  mutate(aug_index = as.numeric(aug_index)) %>% 
-  mutate(aug_index_75 = as.numeric(aug_index_75)) %>% 
-  mutate(pulse_pressure_central = as.numeric(pulse_pressure_central)) %>% 
-  mutate(phase = as.factor(phase)) %>%
-  mutate(house_id = as.factor(house_id)) %>%
-  mutate(assigned_stove = factor(assigned_stove, levels = c(0, 1), 
-                                 labels = c("Traditional", "Justa")))
+  filter(!is.na(assigned_stove)) %>% 
+  filter(pregnant_new == 0) 
+
+# Dataset for participants who have AIx data for all 6 Phases (107 participants)
+r00_data_6phases <- r00_model_data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  mutate(all_phases = "yes") %>% 
+  ungroup() 
+
+# Dataset for participants who have AIx data for all <6 Phases
+r00_data_5phases <- r00_model_data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  mutate(all_phases = "no") %>% 
+  ungroup() 
+
+# combine 6 phases and <6 phases datasets with indicator variable to group by
+r00_56_combined <- rbind(r00_data_6phases, r00_data_5phases)
 ```
 
 
 ```{r}
 ## Prep data for T-Tests
 # Filter for within arm t-tests - AIx
-aix_arm1_phase13 <- r00_model_data %>% 
+aix_arm1_phase13 <- r00_data_6phases %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 3)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm1_phase14 <- r00_model_data %>% 
+aix_arm1_phase14 <- r00_data_6phases %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 4)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm1_phase15 <- r00_model_data %>% 
+aix_arm1_phase15 <- r00_data_6phases %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 5)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
-  filter(house_id != "MOM001") %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm1_phase16 <- r00_model_data %>% 
+aix_arm1_phase16 <- r00_data_6phases %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 6)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm2_phase15 <- r00_model_data %>% 
+aix_arm2_phase15 <- r00_data_6phases %>% 
   filter(study_arm == 2 & (phase == 1 | phase == 5)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm2_phase16 <- r00_model_data %>% 
+aix_arm2_phase16 <- r00_data_6phases %>% 
   filter(study_arm == 2 & (phase == 1 | phase == 6)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
