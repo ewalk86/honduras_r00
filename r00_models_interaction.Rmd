@@ -37,25 +37,59 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 ```{r}
 # USE THIS DATASET FOR ANALYSES!!!
-## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
+## Removes values >75 for AIx and CPP, and <-25 for AIx
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
-## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(assigned_stove)) %>% 
-  filter(pregnant_new == 0) 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0) %>% 
+  # further removes 196 observations (n=1162)
+  filter(!is.na(aug_index)) 
 
-# Dataset for participants who did not miss phase 2
-r00_model_data_phase2 <- r00_model_data %>% 
-  mutate(phase2 = 1) %>% 
-  mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
+# Dataset for participants who have AIx data for all 6 Phases (107 participants)
+r00_data_6phases <- r00_model_data %>%
   group_by(house_id) %>% 
-  filter(sum(phase2) == 6) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  ungroup()
+  
+
+# Dataset for participants who have AIx data for all <6 Phases
+r00_data_5phases <- r00_model_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
   ungroup() 
+
+
+# Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  filter(!is.na(aug_index))  # 949 obs from 184 participants  
+
+
+# Filtering out medication users (n=34 obs)
+r00_model_data_meds <- r00_model_data %>% 
+  #filtering out bp med users
+  filter(is.na(med_bp)) 
 ```
 
 ### PM interaction analysis
 ```{r}
+## Use these vars as interaction terms
 # Age split at 40: age_cat_40
 # Waist split at 80: waist_cat
 # Blood pressure: bp_cat
@@ -63,40 +97,40 @@ r00_model_data_phase2 <- r00_model_data %>%
 # Metabolic Syndrome: met_syn
 
 # AIx and area pm
-model_apm_int <- lmer(aug_index ~ log_a_twa*waist_cat + ns(date_sphygmo, df=6) +
+model_apm_int <- lmer(aug_index ~ log_a_twa*met_syn + ns(date_sphygmo, df=6) +
                       waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data_phase2)
+                      (1 | house_id), r00_model_data)
    #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ waist_cat, var = "log_a_twa")
+int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
+#emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
 
 # AIx and personal pm
-model_ppm_int <- lmer(aug_index ~ log_p_twa*waist_cat + ns(date_sphygmo, df=6) +
+model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
                       waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data_phase2)
+                      (1 | house_id), r00_model_data)
    #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ waist_cat, var = "log_p_twa")
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
+#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
 
 # CPP and area pm
-model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*waist_cat + 
+model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*met_syn + 
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data_phase2)
+                      school_bi + (1 | house_id), r00_model_data)
    #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ waist_cat, var = "log_a_twa")
+int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
+#emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
 
 # CPP and personal pm
-model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*waist_cat + 
+model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*met_syn + 
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data_phase2)
+                      school_bi + (1 | house_id), r00_model_data)
    #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ waist_cat, var = "log_p_twa")
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
-emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
+#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
 ```
 
 ### ITT interaction analysis
@@ -109,19 +143,19 @@ emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
 
 # AIx
 sphygmo_model_int <- lmer(aug_index ~ assigned_stove*met_syn + 
-                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data_phase2)
+                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
 int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
 summary(sphygmo_model_int)
-summary(int_emmeans)
+#summary(int_emmeans)
 confint(int_emmeans)
-emmip(sphygmo_model_int, met_syn ~ assigned_stove, cov.reduce = range)
+emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
 
 # CPP
 sphygmo_model_int <- lmer(pulse_pressure_central ~ assigned_stove*met_syn + 
-                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data_phase2)
+                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
 summary(sphygmo_model_int)
 int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
-summary(int_emmeans, conf.int = TRUE)
+#summary(int_emmeans, conf.int = TRUE)
 confint(int_emmeans)
-emmip(sphygmo_model_int, met_syn ~ assigned_stove, cov.reduce = range)
+emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
 ```

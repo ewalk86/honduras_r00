@@ -45,7 +45,6 @@ r00_data_6phases <- data_outliers_removed %>%
   filter(sum(phase_complete) == 6) %>% 
   ungroup()
   
-
 # Dataset for participants who have AIx data for all <6 Phases
 r00_data_5phases <- data_outliers_removed %>%
   group_by(house_id) %>% 
@@ -53,6 +52,20 @@ r00_data_5phases <- data_outliers_removed %>%
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
   filter(sum(phase_complete) < 6) %>% 
   ungroup() 
+
+# Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  filter(!is.na(aug_index))  # 949 obs from 184 participants  
 ```
 
 

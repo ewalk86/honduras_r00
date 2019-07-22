@@ -42,7 +42,7 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 
 ```{r}
 r00_model_data <- r00_model_data_outliers_removed %>% 
-  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(study_arm)) %>% 
   filter(pregnant_new == 0) 
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
@@ -71,37 +71,37 @@ r00_56_combined <- rbind(r00_data_6phases, r00_data_5phases)
 ```{r}
 ## Prep data for T-Tests
 # Filter for within arm t-tests - AIx
-aix_arm1_phase13 <- r00_data_6phases %>% 
+aix_arm1_phase13 <- r00_model_data %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 3)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm1_phase14 <- r00_data_6phases %>% 
+aix_arm1_phase14 <- r00_model_data %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 4)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm1_phase15 <- r00_data_6phases %>% 
+aix_arm1_phase15 <- r00_model_data %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 5)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm1_phase16 <- r00_data_6phases %>% 
+aix_arm1_phase16 <- r00_model_data %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 6)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm2_phase15 <- r00_data_6phases %>% 
+aix_arm2_phase15 <- r00_model_data %>% 
   filter(study_arm == 2 & (phase == 1 | phase == 5)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
   na.omit()
 
-aix_arm2_phase16 <- r00_data_6phases %>% 
+aix_arm2_phase16 <- r00_model_data %>% 
   filter(study_arm == 2 & (phase == 1 | phase == 6)) %>% 
   select(aug_index, assigned_stove, house_id) %>% 
   spread(assigned_stove, aug_index) %>% 
@@ -123,8 +123,7 @@ cpp_arm1_phase14 <- r00_model_data %>%
 
 cpp_arm1_phase15 <- r00_model_data %>% 
   filter(study_arm == 1 & (phase == 1 | phase == 5)) %>% 
-  select(pulse_pressure_central, assigned_stove, house_id) %>% 
-  filter(house_id != "MOM001") %>% 
+  select(pulse_pressure_central, assigned_stove, house_id) %>%
   spread(assigned_stove, pulse_pressure_central) %>% 
   na.omit()
 

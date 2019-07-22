@@ -72,6 +72,21 @@ r00_data_5phases <- r00_model_data %>%
   ungroup() 
 
 
+# Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  filter(!is.na(aug_index))  # 949 obs from 184 participants  
+
+
 # Filtering out medication users (n=34 obs)
 r00_model_data_meds <- r00_model_data %>% 
   #filtering out bp med users
@@ -182,6 +197,15 @@ tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "missed phase", "na")) 
 
 
+##### AIx ITT model - participants who missed phase 2 - sphygmo malfunction filtered out
+model_p2_sphygmo <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_data_sphygmo_p2)
+# summary(model_p2_sphygmo)
+tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "missed phase 2", "na")) 
+
+
 ##### AIx ITT model - spline with 12 df
 model_itt_12df <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
                   (1 | house_id), r00_model_data)
@@ -222,6 +246,7 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
 aix_results <- rbind(tidy_model_itt,
                      tidy_model_6phases,
                      tidy_model_5phases,
+                     tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
                      tidy_model_season,
@@ -236,7 +261,8 @@ aix_results <- rbind(tidy_model_itt,
 
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data", "complete case", "missed phase",
-                                          "no bp meds", "phase", "season", "spline 12 df"))) %>% 
+                                          "missed phase 2", "no bp meds", "phase", 
+                                          "season", "spline 12 df"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
@@ -324,6 +350,15 @@ tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "missed phase", "na")) 
 
 
+##### CPP ITT model - participants who missed phase 2 - sphygmo malfunction filtered out
+model_p2_sphygmo <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_data_sphygmo_p2)
+# summary(model_p2_sphygmo)
+tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "missed phase 2", "na")) 
+
+
 ##### CPP ITT model - spline with 12 df
 model_itt_12df <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
                   (1 | house_id), r00_model_data)
@@ -365,6 +400,7 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
 cpp_results <- rbind(tidy_model_itt,
                      tidy_model_6phases,
                      tidy_model_5phases,
+                     tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
                      tidy_model_season,
@@ -377,7 +413,8 @@ cpp_results <- rbind(tidy_model_itt,
 # CPP Model Plots
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data", "complete case", "missed phase",
-                                          "no bp meds", "phase", "season", "spline 12 df"))) %>% 
+                                          "missed phase 2", "no bp meds", 
+                                          "phase", "season", "spline 12 df"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
@@ -400,8 +437,8 @@ plot_estimates <- cpp_results %>%
           panel.border = element_blank(), 
           panel.grid = element_blank(),
           legend.position = "none") +
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), 
-                     labels = c(-2, -1, 0, 1, 2)) 
+  scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3), 
+                     labels = c(-3, -2, -1, 0, 1, 2, 3)) 
 plot_estimates
 ```
 
