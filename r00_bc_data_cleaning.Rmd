@@ -15,7 +15,9 @@ library(lubridate)
 library(readxl)
 ```
 
-#Read in BC files
+# Read in BC files from T-drive
+## File location: T:\Rsch-Clark\Honduras Cookstove Projects\Data\Data R00\original data
+## For each phase, go to: Phase 6 - Feb-May 2018\Black Carbon\Sootscan Data
 ```{r, message=FALSE}
 r00_phase1_bc <- read_xlsx("input/pollution/r00_phase1_bc.xlsx", 
                            col_types = c("text", "date", "text", "guess", "numeric",
@@ -47,7 +49,7 @@ r00_phase5_bc <- read_csv("input/pollution/r00_phase5_bc.csv")
 r00_phase6_bc <- read_csv("input/pollution/r00_phase6_bc.csv")
 ```
 
-#Join BC files
+# Join pre/post files for each phase
 ```{r}
 r00_phase2_bc <- full_join(r00_phase2_bc_pre, r00_phase2_bc_post, by = "filter_id")
 # should the blank filters with ID beginning "L" actually begin "BL"?
@@ -61,7 +63,8 @@ r00_phase5_bc <- full_join(r00_phase5_bc_pre, r00_phase5_bc_post, by = "filter_i
 r00_phase6_bc <- full_join(r00_phase6_bc_pre, r00_phase6_bc_post, by = "filter_id")
 ```
 
-#Join BC sootscan data with field data
+# Join BC sootscan data with field data
+## Field data found on T-drive
 ```{r}
 r00_phase1_bc_full <- full_join(r00_phase1_bc, r00_phase1_field_data, by = "filter_id")
 r00_phase2_bc_full <- full_join(r00_phase2_bc, r00_phase2_field_data, by = "filter_id")
@@ -75,7 +78,8 @@ r00_phase6_bc_full <- full_join(r00_phase6_bc, r00_phase6_field_data, by = "filt
 #save data
 ```{r}
 # Joined BC pre/post data
-write_csv(r00_phase1_bc_post, "output/r00_phase1_bc.csv", na = " ") #we didn't pre-scan for phase 1
+write_csv(r00_phase1_bc_post, "output/r00_phase1_bc.csv", na = " ") 
+#we didn't pre-scan for phase 1
 write_csv(r00_phase2_bc, "output/r00_phase2_bc.csv", na = " ")
 write_csv(r00_phase3_bc, "output/r00_phase3_bc.csv", na = " ")
 write_csv(r00_phase4_bc, "output/r00_phase4_bc.csv", na = " ")
@@ -83,7 +87,8 @@ write_csv(r00_phase5_bc, "output/r00_phase5_bc.csv", na = " ")
 write_csv(r00_phase6_bc, "output/r00_phase6_bc.csv", na = " ")
 
 # Joined BC with field data
-write_csv(r00_phase1_bc_full, "output/r00_phase1_bc_full.csv", na = " ") #we didn't pre-scan for phase 1
+write_csv(r00_phase1_bc_full, "output/r00_phase1_bc_full.csv", na = " ") 
+#we didn't pre-scan for phase 1
 write_csv(r00_phase2_bc_full, "output/r00_phase2_bc_full.csv", na = " ")
 write_csv(r00_phase3_bc_full, "output/r00_phase3_bc_full.csv", na = " ")
 write_csv(r00_phase4_bc_full, "output/r00_phase4_bc_full.csv", na = " ")

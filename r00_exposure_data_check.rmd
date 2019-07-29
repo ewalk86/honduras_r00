@@ -14,6 +14,10 @@ library(tidyverse)
 library(readxl)
 ```
 
+# This RMD is outdated
+# Initial check of phase 6 pre and post filter weights after I finished weighing
+# Megan BC has since processed all filter weights and exposure data
+
 ```{r, message=FALSE}
 # Load data
 #r00_p6_pre_weights <- read_csv("input/honduras_r00_p6_pre_weights.csv")

@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 Intent-to-treat Models and Plots"
 author: "Ethan Walker"
-date: "2 July 2019"
+date: "27 July 2019"
 output: pdf_document
 ---
 
@@ -35,6 +35,8 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
                   "#FF3366", "#33CC99", "#33999")
 ```
 
+# Intent-to-treat models
+
 ```{r}
 #load full dataset
  #r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
@@ -44,7 +46,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
-
+# Creating datasets for various analyses
 ```{r}
 r00_model_data <- r00_model_data_outliers_removed %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
@@ -53,6 +55,7 @@ r00_model_data <- r00_model_data_outliers_removed %>%
   filter(pregnant_new == 0) %>% 
   # further removes 196 observations (n=1162)
   filter(!is.na(aug_index)) 
+
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
 r00_data_6phases <- r00_model_data %>%
@@ -161,24 +164,27 @@ aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p6)
 tidy(aix_bmi)
 ```
 
-
+# Run ITT models for AIx
 ```{r, echo=TRUE}
 ##### AIx ITT primary model - spline with 6 df
+# run and save model
 model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
                   (1 | house_id), r00_model_data)
 
+## 2 methods to calculate ICC for models
 # ICC using sjstats package
 #icc(model_itt)
 # ICC using rptR package
 #rptGaussian(aug_index ~ (1 | house_id), 
 #            grname = "house_id", data = r00_model_data)
 
-#summary(model_itt)
+# summary(model_itt)
+# format model output for plotting
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "all data", "na")) 
 
-
+############################################################
 ##### AIx ITT model - participants who completed all 6 phases
 model_6phases <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_data_6phases)
@@ -187,7 +193,7 @@ tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "complete case", "na")) 
 
-
+############################################################
 ##### AIx ITT model - participants who missed a phase
 model_5phases <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_data_5phases)
@@ -196,7 +202,7 @@ tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "missed phase", "na")) 
 
-
+############################################################
 ##### AIx ITT model - participants who missed phase 2 - sphygmo malfunction filtered out
 model_p2_sphygmo <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_data_sphygmo_p2)
@@ -205,7 +211,7 @@ tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "missed phase 2", "na")) 
 
-
+############################################################
 ##### AIx ITT model - spline with 12 df
 model_itt_12df <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=12) + 
                   (1 | house_id), r00_model_data)
@@ -214,7 +220,7 @@ tidy_model_12df <- tidy(model_itt_12df, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "spline 12 df", "na")) 
 
-
+############################################################
 ##### AIx ITT model - bp meds removed (57 obs)
 model_no_bp_meds <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
                          (1 | house_id), r00_model_data_meds)
@@ -223,7 +229,7 @@ tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "no bp meds", "na")) 
 
-
+############################################################
 ##### AIx ITT model - phase instead of spline
 model_phase <- lmer(aug_index ~ assigned_stove + phase + 
                     (1 | house_id), r00_model_data)
@@ -232,7 +238,7 @@ tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na")) 
 
-
+############################################################
 ##### AIx ITT model - season instead of spline
 model_season <- lmer(aug_index ~ assigned_stove + season + 
                      (1 | house_id), r00_model_data)
@@ -241,7 +247,7 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
 
-
+############################################################
 # Combine prepped data for plotting
 aix_results <- rbind(tidy_model_itt,
                      tidy_model_6phases,
@@ -254,11 +260,8 @@ aix_results <- rbind(tidy_model_itt,
 #kable(aix_results)
 ```
 
-
+# Plot model results 
 ```{r}
-# AIx Model Summaries and Plots
-## Analyses with 6 outliers removed: 2 below -25 and 4 above 75
-
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data", "complete case", "missed phase",
                                           "missed phase 2", "no bp meds", "phase", 
@@ -309,7 +312,6 @@ qqnorm(residuals(model_phase2), main = "AIx primary model QQ Plot")
 
 \pagebreak  
 
-
 ```{r, eval=FALSE}
 # Simple linear models between CPP and age/bmi
 cpp_age <- lm(pulse_pressure_central ~ age_baseline, data = r00_model_data_baseline)
@@ -319,7 +321,7 @@ cpp_bmi <- lm(pulse_pressure_central ~ bmi, data = r00_model_data_baseline)
 tidy(cpp_bmi)
 ```
 
-
+# Run ITT models for CPP
 ```{r, echo=TRUE}
 ##### CPP ITT primary model - spline with 6 df
 model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
@@ -331,7 +333,7 @@ tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "all data", "na")) 
 
-
+############################################################
 ##### CPP ITT model - participants who completed all 6 phases
 model_6phases <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_data_6phases)
@@ -340,7 +342,7 @@ tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "complete case", "na")) 
 
-
+############################################################
 ##### CPP ITT model - participants who missed a phase
 model_5phases <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_data_5phases)
@@ -349,7 +351,7 @@ tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "missed phase", "na")) 
 
-
+############################################################
 ##### CPP ITT model - participants who missed phase 2 - sphygmo malfunction filtered out
 model_p2_sphygmo <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_data_sphygmo_p2)
@@ -358,7 +360,7 @@ tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "missed phase 2", "na")) 
 
-
+############################################################
 ##### CPP ITT model - spline with 12 df
 model_itt_12df <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=12) + 
                   (1 | house_id), r00_model_data)
@@ -367,7 +369,7 @@ tidy_model_12df <- tidy(model_itt_12df, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "spline 12 df", "na")) 
 
-
+############################################################
 ##### CPP ITT model - bp meds removed (57 obs)
 model_no_bp_meds <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
                          (1 | house_id), r00_model_data_meds)
@@ -376,7 +378,7 @@ tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "no bp meds", "na")) 
 
-
+############################################################
 ##### CPP ITT model - phase instead of spline
 model_phase <- lmer(pulse_pressure_central ~ assigned_stove + phase + 
                     (1 | house_id), r00_model_data)
@@ -385,7 +387,7 @@ tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>%
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "phase", "na")) 
 
-
+############################################################
 ##### CPP ITT model - season instead of spline
 model_season <- lmer(pulse_pressure_central ~ assigned_stove + season + 
                      (1 | house_id), r00_model_data)
@@ -395,7 +397,7 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
 
 
-
+############################################################
 # Combine prepped data for plotting
 cpp_results <- rbind(tidy_model_itt,
                      tidy_model_6phases,
@@ -408,9 +410,8 @@ cpp_results <- rbind(tidy_model_itt,
 #kable(cpp_results)
 ```
 
-
+# Plot CPP results
 ```{r}
-# CPP Model Plots
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data", "complete case", "missed phase",
                                           "missed phase 2", "no bp meds", 

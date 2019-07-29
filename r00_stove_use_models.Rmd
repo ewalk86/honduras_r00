@@ -414,7 +414,7 @@ tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_5phases <- lmer(aug_index ~ stove_use_3 + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -426,7 +426,7 @@ tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_5phases)
 
-
+################################################################
 model_stove_use_3 <- lmer(aug_index ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -437,7 +437,7 @@ tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_p2_sphygmo <- lmer(aug_index ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -448,8 +448,7 @@ tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "missed phase 2") 
 
-
-
+################################################################
 ##### bp meds removed
 model_no_bp_meds <- lmer(aug_index ~ stove_use_3 + 
                              ns(date_sphygmo, df=6) + age_baseline +
@@ -460,7 +459,7 @@ tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "no bp meds")
 
-
+################################################################
 ##### date spline with 12 df
 model_spline12 <- lmer(aug_index ~ stove_use_3 + 
                            ns(date_sphygmo, df=12) + age_baseline +
@@ -471,7 +470,7 @@ tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "spline 12 df")
 
-
+################################################################
 ##### phase instead of spline
 model_phase <- lmer(aug_index ~ stove_use_3 + phase + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
@@ -481,7 +480,7 @@ tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phase")
 
-
+################################################################
 ##### season instead of spline
 model_season <- lmer(aug_index ~ stove_use_3 + season + age_baseline +
                          waist_cm + school_bi + (1 | house_id), 
@@ -491,7 +490,7 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "season")
 
-
+################################################################
 ##### bmi instead of waist_cm
 model_bmi <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       bmi + school_bi + (1 | house_id), 
@@ -501,7 +500,7 @@ tidy_model_bmi <- tidy(model_bmi, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "bmi")
 
-
+################################################################
 ##### whr instead of waist_cm
 model_whr <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       whr + school_bi + (1 | house_id), 
@@ -511,7 +510,7 @@ tidy_model_whr <- tidy(model_whr, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "whr")
 
-
+################################################################
 ##### adding beds_new
 model_beds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + beds_new + (1 | house_id), 
@@ -521,7 +520,7 @@ tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "beds")
 
-
+################################################################
 ##### adding ses_materials
 model_ses <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + ses_materials + (1 | house_id), 
@@ -531,7 +530,7 @@ tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "ses assets")
 
-
+################################################################
 ##### adding phys_act
 model_pa <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                      waist_cm + school_bi + phys_act + (1 | house_id), 
@@ -541,7 +540,7 @@ tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phys act")
 
-
+################################################################
 ##### adding dds_total
 model_dds <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + dds_total + (1 | house_id), 
@@ -551,7 +550,7 @@ tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "dds")
 
-
+################################################################
 ##### full model with all potential confounders
 model_full <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
                        waist_cm + school_bi + dds_total + phys_act +
@@ -562,6 +561,7 @@ tidy_model_full <- tidy(model_full, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "full")
 
+################################################################
 ######################################### stove_use_4
 ##### Complete-case model 
 model_4level_6phases <- lmer(aug_index ~ stove_use_4 + 
@@ -574,7 +574,7 @@ tidy_model_4level_6phases <- tidy(model_4level_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_4level_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_4level_5phases <- lmer(aug_index ~ stove_use_4 + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -586,7 +586,7 @@ tidy_model_4level_5phases <- tidy(model_4level_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_4level_5phases)
 
-
+################################################################
 model_4level <- lmer(aug_index ~ stove_use_4 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -597,7 +597,7 @@ tidy_model_4level <- tidy(model_4level, conf.int = TRUE) %>%
     filter(grepl('stove_use_4', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_4level_p2_sphygmo <- lmer(aug_index ~ stove_use_4 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -608,6 +608,7 @@ tidy_model_4level_p2_sphygmo <- tidy(model_4level_p2_sphygmo, conf.int = TRUE) %
     filter(grepl('stove_use_4', term)) %>% 
     mutate(model = "missed phase 2") 
 
+################################################################
 ######################################### stove_use_days_stack
 ##### Complete-case model 
 model_days_6phases <- lmer(aug_index ~ stove_use_days_stack + 
@@ -620,7 +621,7 @@ tidy_model_days_6phases <- tidy(model_days_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_days_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_days_5phases <- lmer(aug_index ~ stove_use_days_stack + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -632,7 +633,7 @@ tidy_model_days_5phases <- tidy(model_days_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_days_5phases)
 
-
+################################################################
 model_days <- lmer(aug_index ~ stove_use_days_stack + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -643,7 +644,7 @@ tidy_model_days <- tidy(model_days, conf.int = TRUE) %>%
     filter(grepl('stove_use_days_stack', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_days_p2_sphygmo <- lmer(aug_index ~ stove_use_days_stack + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -654,6 +655,7 @@ tidy_model_days_p2_sphygmo <- tidy(model_days_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('stove_use_days_stack', term)) %>% 
     mutate(model = "missed phase 2") 
 
+################################################################
 ######################################### stove_use_hours
 ##### Complete-case model 
 model_hours_6phases <- lmer(aug_index ~ stove_use_hours + 
@@ -666,7 +668,7 @@ tidy_model_hours_6phases <- tidy(model_hours_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_hours_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_hours_5phases <- lmer(aug_index ~ stove_use_hours + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -678,7 +680,7 @@ tidy_model_hours_5phases <- tidy(model_hours_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_hours_5phases)
 
-
+################################################################
 model_hours <- lmer(aug_index ~ stove_use_hours + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -689,7 +691,7 @@ tidy_model_hours <- tidy(model_hours, conf.int = TRUE) %>%
     filter(grepl('stove_use_hours', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_hours_p2_sphygmo <- lmer(aug_index ~ stove_use_hours + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -700,7 +702,7 @@ tidy_model_hours_p2_sphygmo <- tidy(model_hours_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('stove_use_hours', term)) %>% 
     mutate(model = "missed phase 2") 
 
-
+################################################################
 aix_results_3level <- rbind(tidy_model_6phases,
                      tidy_model_5phases,
                      tidy_model_stove_use_3,
@@ -926,7 +928,7 @@ tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_5phases <- lmer(pulse_pressure_central ~ stove_use_3 + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -938,7 +940,7 @@ tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_5phases)
 
-
+################################################################
 model_stove_use_3 <- lmer(pulse_pressure_central ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -949,7 +951,7 @@ tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -960,8 +962,7 @@ tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "missed phase 2") 
 
-
-
+################################################################
 ##### bp meds removed
 model_no_bp_meds <- lmer(pulse_pressure_central ~ stove_use_3 + 
                              ns(date_sphygmo, df=6) + age_baseline +
@@ -972,7 +973,7 @@ tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "no bp meds")
 
-
+################################################################
 ##### date spline with 12 df
 model_spline12 <- lmer(pulse_pressure_central ~ stove_use_3 + 
                            ns(date_sphygmo, df=12) + age_baseline +
@@ -983,7 +984,7 @@ tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "spline 12 df")
 
-
+################################################################
 ##### phase instead of spline
 model_phase <- lmer(pulse_pressure_central ~ stove_use_3 + 
                       phase + age_baseline +
@@ -994,7 +995,7 @@ tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phase")
 
-
+################################################################
 ##### season instead of spline
 model_season <- lmer(pulse_pressure_central ~ stove_use_3 + 
                        season + age_baseline +
@@ -1005,7 +1006,7 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "season")
 
-
+################################################################
 ##### bmi instead of waist_cm
 model_bmi <- lmer(pulse_pressure_central ~ stove_use_3 + 
                     ns(date_sphygmo, df=6) + age_baseline +
@@ -1016,7 +1017,7 @@ tidy_model_bmi <- tidy(model_bmi, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "bmi")
 
-
+################################################################
 ##### whr instead of waist_cm
 model_whr <- lmer(pulse_pressure_central ~ stove_use_3 + 
                     ns(date_sphygmo, df=6) + age_baseline +
@@ -1027,7 +1028,7 @@ tidy_model_whr <- tidy(model_whr, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "whr")
 
-
+################################################################
 ##### adding beds_new
 model_beds <- lmer(pulse_pressure_central ~ stove_use_3 + 
                      ns(date_sphygmo, df=6) + age_baseline +
@@ -1038,7 +1039,7 @@ tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "beds")
 
-
+################################################################
 ##### adding ses_materials
 model_ses <- lmer(pulse_pressure_central ~ stove_use_3 + 
                     ns(date_sphygmo, df=6) + age_baseline +
@@ -1049,7 +1050,7 @@ tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "ses assets")
 
-
+################################################################
 ##### adding phys_act
 model_pa <- lmer(pulse_pressure_central ~ stove_use_3 + 
                    ns(date_sphygmo, df=6) + age_baseline +
@@ -1060,7 +1061,7 @@ tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "phys act")
 
-
+################################################################
 ##### adding dds_total
 model_dds <- lmer(pulse_pressure_central ~ stove_use_3 + 
                     ns(date_sphygmo, df=6) + age_baseline +
@@ -1071,7 +1072,7 @@ tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "dds")
 
-
+################################################################
 ##### full model with all potential confounders
 model_full <- lmer(pulse_pressure_central ~ stove_use_3 + 
                      ns(date_sphygmo, df=6) + age_baseline +
@@ -1083,7 +1084,7 @@ tidy_model_full <- tidy(model_full, conf.int = TRUE) %>%
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "full")
 
-
+################################################################
 ######################################### stove_use_4
 ##### Complete-case model 
 model_4level_6phases <- lmer(pulse_pressure_central ~ stove_use_4 + 
@@ -1096,7 +1097,7 @@ tidy_model_4level_6phases <- tidy(model_4level_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_4level_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_4level_5phases <- lmer(pulse_pressure_central ~ stove_use_4 + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -1108,7 +1109,7 @@ tidy_model_4level_5phases <- tidy(model_4level_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_4level_5phases)
 
-
+################################################################
 model_4level <- lmer(pulse_pressure_central ~ stove_use_4 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -1119,7 +1120,7 @@ tidy_model_4level <- tidy(model_4level, conf.int = TRUE) %>%
     filter(grepl('stove_use_4', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_4level_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_4 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -1130,6 +1131,7 @@ tidy_model_4level_p2_sphygmo <- tidy(model_4level_p2_sphygmo, conf.int = TRUE) %
     filter(grepl('stove_use_4', term)) %>% 
     mutate(model = "missed phase 2") 
 
+################################################################
 ######################################### stove_use_days_stack
 ##### Complete-case model 
 model_days_6phases <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
@@ -1142,7 +1144,7 @@ tidy_model_days_6phases <- tidy(model_days_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_days_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_days_5phases <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -1154,7 +1156,7 @@ tidy_model_days_5phases <- tidy(model_days_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_days_5phases)
 
-
+################################################################
 model_days <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -1165,7 +1167,7 @@ tidy_model_days <- tidy(model_days, conf.int = TRUE) %>%
     filter(grepl('stove_use_days_stack', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_days_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_days_stack + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -1176,6 +1178,7 @@ tidy_model_days_p2_sphygmo <- tidy(model_days_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('stove_use_days_stack', term)) %>% 
     mutate(model = "missed phase 2") 
 
+################################################################
 ######################################### stove_use_hours
 ##### Complete-case model 
 model_hours_6phases <- lmer(pulse_pressure_central ~ stove_use_hours + 
@@ -1188,7 +1191,7 @@ tidy_model_hours_6phases <- tidy(model_hours_6phases, conf.int = TRUE) %>%
     mutate(model = "complete case")
 #icc(model_hours_6phases)
 
-
+################################################################
 ##### Missed phases model 
 model_hours_5phases <- lmer(pulse_pressure_central ~ stove_use_hours + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -1200,7 +1203,7 @@ tidy_model_hours_5phases <- tidy(model_hours_5phases, conf.int = TRUE) %>%
     mutate(model = "missed phase")
 #icc(model_hours_5phases)
 
-
+################################################################
 model_hours <- lmer(pulse_pressure_central ~ stove_use_hours + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -1211,7 +1214,7 @@ tidy_model_hours <- tidy(model_hours, conf.int = TRUE) %>%
     filter(grepl('stove_use_hours', term)) %>% 
     mutate(model = "all data") 
 
-
+################################################################
 model_hours_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_hours + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -1222,7 +1225,7 @@ tidy_model_hours_p2_sphygmo <- tidy(model_hours_p2_sphygmo, conf.int = TRUE) %>%
     filter(grepl('stove_use_hours', term)) %>% 
     mutate(model = "missed phase 2") 
 
-
+################################################################
 cpp_results_3level <- rbind(tidy_model_6phases,
                      tidy_model_5phases,
                      tidy_model_stove_use_3,

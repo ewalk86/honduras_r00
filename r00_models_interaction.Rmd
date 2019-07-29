@@ -1,7 +1,7 @@
 ---
 title: "R00 Interaction Analyses"
 author: "Ethan Walker"
-date: "May 9, 2019"
+date: "27 July 2019"
 output: pdf_document
 ---
 
@@ -35,6 +35,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
                   "#FF3366", "#33CC99", "#33999")
 ```
 
+# Creating datasets for various analyses
 ```{r}
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
@@ -102,9 +103,12 @@ model_apm_int <- lmer(aug_index ~ log_a_twa*met_syn + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_model_data)
    #summary(model_apm_int)
 int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+# This summary gives estimates, confidence intervals, and p-values
 summary(int_emtrends, conf.int = TRUE)
-#emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
+# This line will plot the interaction term
+emmip(model_apm_int, met_syn ~ log_a_twa, cov.reduce = range)
 
+############################################################
 # AIx and personal pm
 model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
                       waist_cm + school_bi + age_baseline + 
@@ -114,6 +118,7 @@ int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
 #emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
 
+############################################################
 # CPP and area pm
 model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*met_syn + 
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
@@ -123,6 +128,7 @@ int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
 summary(int_emtrends, conf.int = TRUE)
 #emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
 
+############################################################
 # CPP and personal pm
 model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*met_syn + 
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
@@ -144,12 +150,16 @@ summary(int_emtrends, conf.int = TRUE)
 # AIx
 sphygmo_model_int <- lmer(aug_index ~ assigned_stove*met_syn + 
                           ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
+# Use this summary to get p-value for interaction term
 summary(sphygmo_model_int)
+int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
 #summary(int_emmeans)
+# Use this summary for estimates and confidence intervals
 confint(int_emmeans)
-emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+# This line will plot the interaction term
+#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
 
+############################################################
 # CPP
 sphygmo_model_int <- lmer(pulse_pressure_central ~ assigned_stove*met_syn + 
                           ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
@@ -157,5 +167,6 @@ summary(sphygmo_model_int)
 int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
 #summary(int_emmeans, conf.int = TRUE)
 confint(int_emmeans)
-emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+# This line will plot the interaction term
+#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
 ```

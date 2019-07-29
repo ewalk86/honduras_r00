@@ -25,6 +25,9 @@ library(naniar)
 library(splines)
 ```
 
+# Inital look at mixed model analysis
+# This file now outdated
+
 ```{r}
 #r00_sample_wide <- read_xlsx("input/data_meeting_14nov2018.xlsx")
 

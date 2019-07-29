@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Analysis"
 author: "Ethan Walker"
-date: "9 May 2019"
+date: "29 July 2019"
 output: pdf_document
 ---
 
@@ -28,9 +28,6 @@ library(lubridate)
 library(knitr)
 library(influence.ME)
 library(boxcoxmix)
-jvPalette <- c("#330099","#CC0066","#FF6633", 
-                 "#0099CC", "#FF9900","#CC6633",
-                  "#FF3366", "#33CC99", "#33999")
 ```
 
 ---
@@ -45,15 +42,19 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 ```{r}
 ## Data prep - primary model dataset
 r00_model_data <- r00_model_data_outliers_removed %>% 
+  # filter for baseline (phase 1)
   filter(phase == 1) %>%
-  filter(!is.na(assigned_stove)) %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
   filter(!is.na(aug_index))
 ```
 
 # Simple linear models between potential confounders and AIx
-## Running models for Phases 1 
+## Running models for Phase 1 
 
 ```{r}
+# Function for outcome = AIx and numeric/continuous predictor variables
+
 aix_numeric_function <- function(df = r00_model_data, term_fun, label_fun){
   term_new <- eval(substitute(term_fun), df, parent.frame())
   
@@ -66,6 +67,8 @@ aix_numeric_function <- function(df = r00_model_data, term_fun, label_fun){
   plot(aix_numeric, sub = label_fun)
 }
 
+
+# Run function from above on selected variables
 
 aix_numeric_function(df = r00_model_data, term_fun = age_baseline,
                        label_fun = "age_baseline")
@@ -86,6 +89,8 @@ aix_numeric_function(df = r00_model_data, term_fun = SES_weighted_sum,
 ```
 
 ```{r}
+# Function for outcome = AIx and categorical predictor variables
+
 aix_categorical_function <- function(df = r00_model_data, term_fun){
   term_new <- eval(substitute(term_fun), df, parent.frame())
   
@@ -96,6 +101,7 @@ aix_categorical_function <- function(df = r00_model_data, term_fun){
   plot(aix_cat)
 }
 
+# Run function from above on selected variables
 
 aix_categorical_function(df = r00_model_data, term_fun = age_cat_40)
 aix_categorical_function(df = r00_model_data, term_fun = bpp_cat)
@@ -117,6 +123,8 @@ aix_categorical_function(df = r00_model_data, term_fun = manteca_cat)
 ## CPP has some QQ plots with a slight U shape - log and sqrt transformations didn't help much
 
 ```{r}
+# Function for outcome = CPP and numeric/continuous predictor variables
+
 cpp_numeric_function <- function(df = r00_model_data, term_fun, label_fun){
   term_new <- eval(substitute(term_fun), df, parent.frame())
   
@@ -129,6 +137,8 @@ cpp_numeric_function <- function(df = r00_model_data, term_fun, label_fun){
   plot(cpp_numeric, sub = label_fun)
 }
 
+
+# Run function from above on selected variables
 
 cpp_numeric_function(df = r00_model_data, term_fun = age_baseline,
                        label_fun = "age_baseline")
@@ -149,6 +159,8 @@ cpp_numeric_function(df = r00_model_data, term_fun = SES_weighted_sum,
 ```
 
 ```{r}
+# Function for outcome = CPP and categorical predictor variables
+
 cpp_categorical_function <- function(df = r00_model_data, term_fun){
   term_new <- eval(substitute(term_fun), df, parent.frame())
   
@@ -159,6 +171,8 @@ cpp_categorical_function <- function(df = r00_model_data, term_fun){
   plot(cpp_cat)
 }
 
+
+# Run function from above on selected variables
 
 cpp_categorical_function(df = r00_model_data, term_fun = age_cat_40)
 cpp_categorical_function(df = r00_model_data, term_fun = bpp_cat)

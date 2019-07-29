@@ -15,6 +15,9 @@ library(readxl)
 library(naniar)
 ```
 
+# Combining personal and area PM databases from Megan BC
+# Prepping to join with full R00 health database
+
 ```{r, message=FALSE}
 # Load data
 r00_area_pm <- read_xlsx("input/r00_area_pm_database.xlsx")

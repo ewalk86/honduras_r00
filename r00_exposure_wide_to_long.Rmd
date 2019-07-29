@@ -17,6 +17,7 @@ library(naniar)
 
 ```{r, message=FALSE}
 # Load data
+## Pulled from T-drive: T:\Rsch-Clark\Honduras Cookstove Projects\Data\Data R00\data for analysis
 r00_exposure_wide <- read_xlsx("input/R00_exposure_wide_30July2018_by.xlsx")
 ```
 

@@ -1,7 +1,7 @@
 ---
 title: "Data Cleaning"
 author: "Ethan Walker"
-date: "2 July 2019"
+date: "29 July 2019"
 output: pdf_document
 ---
 
@@ -15,6 +15,12 @@ library(readxl)
 library(naniar)
 library(lubridate)
 ```
+
+# This RMD starts with Bonnie's health dataset in wide format,
+## then converts it to long format (repeated by phase),
+## then binds it to sphygmocor, SUMs, and exposure datasets,
+## then creates new variables for analysis,
+## then saves the final database as RDS and CSV files.
 
 ```{r, message=FALSE}
 # Load data
@@ -172,6 +178,7 @@ r00_joined_2 <- r00_joined_1 %>%
 ```
 
 # Combine with old exposure dataset (from r00_exposure_wide_to_long.rmd)
+#### Outdated step - DO NOT USE
 ```{r}
 # This is old exposure data that has already been added to the wide database
 # Don't do this step!
