@@ -349,13 +349,27 @@ kable(summary_personal_pm_stove_use, digits = 0)
 \pagebreak 
 
 # Area PM boxplots - all participants
-```{r}
+```{r, fig.height=6, fig.width=5}
 area_pm_boxplot <- r00_full_repeated_by_phase %>% 
   select(phase, study_arm, a_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
-  ggplot() +
-  geom_boxplot(aes("all participants", a_twa))
+  ggplot(aes("all participants", a_twa)) +
+    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
+               fatten = 1, outlier.size = 1.5, width = 0.35) +
+    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    theme_minimal() +
+    ylim(0, 2000) +
+    #labs(y = "Kitchen fine particulate matter (ug/m3)") +
+    labs(aes(x = "", y = paste("24-hour kitchen PM "[2.5], " (", mu, g/m^3, ")"))) +
+    theme(axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.title.x = element_blank(),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank())
 area_pm_boxplot
 
 log_area_pm_boxplot <- r00_full_repeated_by_phase %>% 
@@ -363,21 +377,48 @@ log_area_pm_boxplot <- r00_full_repeated_by_phase %>%
   mutate(log_a_twa = log(a_twa)) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
-  ggplot() +
-  geom_boxplot(aes("all participants", log_a_twa)) 
+  ggplot(aes("all participants", log_a_twa)) +
+    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
+               fatten = 1, outlier.size = 1.5, width = 0.35) +
+    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    theme_minimal() +
+    #ylim(0, 2000) +
+    labs(aes(x = "", 
+             y = paste("24-hour log-transformed kitchen PM  "[2.5], " (", mu, g/m^3, ")"))) +
+    theme(axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.title.x = element_blank(),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank())
 log_area_pm_boxplot
 ```
 
 \pagebreak  
 
 # Personal PM boxplots - all participants
-```{r}
+```{r, fig.height=6, fig.width=5}
 personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
   select(phase, study_arm, p_twa) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
-  ggplot() +
-  geom_boxplot(aes("all participants", p_twa))
+  ggplot(aes("all participants", p_twa)) +
+    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
+               fatten = 1, outlier.size = 1.5, width = 0.35) +
+    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    theme_minimal() +
+    ylim(0, 1000) +
+    labs(aes(x = "", y = paste("24-hour personal PM "[2.5], " (", mu, g/m^3, ")"))) +
+    theme(axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.title.x = element_blank(),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank())
 personal_pm_boxplot
 
 log_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
@@ -385,8 +426,22 @@ log_personal_pm_boxplot <- r00_full_repeated_by_phase %>%
   mutate(log_p_twa = log(p_twa)) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
-  ggplot() +
-  geom_boxplot(aes("all participants", log_p_twa)) 
+  ggplot(aes("all participants", log_p_twa)) +
+    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
+               fatten = 1, outlier.size = 1.5, width = 0.35) +
+    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    theme_minimal() +
+    #ylim(0, 2000) +
+    labs(aes(x = "", 
+             y = paste("24-hour log-transformed personal PM  "[2.5], " (", mu, g/m^3, ")"))) +
+    theme(axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.title.x = element_blank(),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank())
 log_personal_pm_boxplot
 ```
 
