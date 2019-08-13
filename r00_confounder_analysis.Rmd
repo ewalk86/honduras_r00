@@ -86,6 +86,8 @@ aix_numeric_function(df = r00_model_data, term_fun = mean_temp,
                        label_fun = "mean_temp")
 aix_numeric_function(df = r00_model_data, term_fun = SES_weighted_sum,
                        label_fun = "SES_weighted_sum")
+aix_numeric_function(df = r00_model_data, term_fun = phys_act,
+                       label_fun = "phys_act")
 ```
 
 ```{r}

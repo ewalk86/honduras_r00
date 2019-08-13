@@ -45,7 +45,7 @@ r00_data_6phases <- data_outliers_removed %>%
   filter(sum(phase_complete) == 6) %>% 
   ungroup()
   
-# Dataset for participants who have AIx data for all <6 Phases
+# Dataset for participants who have AIx data for <6 Phases
 r00_data_5phases <- data_outliers_removed %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases

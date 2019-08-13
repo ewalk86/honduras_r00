@@ -176,7 +176,9 @@ model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
 #icc(model_itt)
 # ICC using rptR package
 #rptGaussian(aug_index ~ (1 | house_id), 
-#            grname = "house_id", data = r00_model_data)
+ #           grname = "house_id", data = r00_model_data)
+#icc_model <- lmer(as.numeric(mean_temp) ~ (1 | house_id), r00_model_data)
+#icc(icc_model)
 
 # summary(model_itt)
 # format model output for plotting

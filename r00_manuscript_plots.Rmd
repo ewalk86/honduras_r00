@@ -1,0 +1,290 @@
+---
+title: "Manuscript Plots"
+author: "Ethan Walker"
+date: "August 13, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+library(sjstats)
+library(rptR)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+```{r}
+#load full dataset
+ #r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+# USE THIS DATASET FOR ANALYSES!!!
+## Removes values >75 for AIx and CPP, and <-25 for AIx
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+```
+
+# Creating datasets for various analyses
+```{r}
+r00_model_data <- r00_model_data_outliers_removed %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0) %>% 
+  # further removes 196 observations (n=1162)
+  filter(!is.na(aug_index)) 
+
+
+# Dataset for participants who have AIx data for all 6 Phases (107 participants)
+r00_data_6phases <- r00_model_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  ungroup()
+  
+
+# Dataset for participants who have AIx data for all <6 Phases
+r00_data_5phases <- r00_model_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  ungroup() 
+
+
+# Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  filter(!is.na(aug_index))  # 949 obs from 184 participants  
+
+
+# Filtering out medication users (n=34 obs)
+r00_model_data_meds <- r00_model_data %>% 
+  #filtering out bp med users
+  filter(is.na(med_bp)) 
+```
+
+
+# Run models for AIx
+```{r, echo=TRUE}
+##### AIx ITT primary model - spline with 6 df
+# run and save model
+model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                  (1 | house_id), r00_model_data)
+# summary(model_itt)
+# format model output for plotting
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "ITT: Justa vs Trad", "na")) 
+
+############################################################
+
+##### AIx and area PM all data
+# run and save model
+model_apm <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_apm)
+# format model output for plotting
+tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "Kitchen PM2.5", "na")) 
+
+############################################################
+
+##### AIx and personal PM all data
+model_ppm <- lmer(aug_index ~ log_p_twa + 
+                    ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm)
+tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "Personal PM2.5", "na")) 
+
+############################################################
+
+model_stove_use_3 <- lmer(aug_index ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_stove_use_3)
+#icc(model_stove_use_3)
+tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = 
+             if_else(term == "stove_use_3justa+trad", 
+                     "Stove-use: Justa+Trad vs Trad", "na")) %>% 
+    mutate(model = 
+             if_else(term == "stove_use_3justa/imprvd", 
+                     "Stove-use: Justa/Improved vs Trad", model))
+
+################################################################
+
+# Combine prepped data for plotting
+aix_results <- rbind(tidy_model_itt,
+                     tidy_model_apm,
+                     tidy_model_ppm,
+                     tidy_model_stove_use_3)
+#kable(aix_results)
+```
+
+# Plot model results 
+```{r}
+plot_estimates <- aix_results %>%
+  mutate(model = factor(model, levels = c("ITT: Justa vs Trad", 
+                                          "Kitchen PM2.5", "Personal PM2.5",
+                                          "Stove-use: Justa+Trad vs Trad",
+                                          "Stove-use: Justa/Improved vs Trad"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: intent-to-treat model") +
+  labs(y = "Augmentation Index (%)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3, 4, 5), 
+                     labels = c(-3, -2, -1, 0, 1, 2, 3, 4, 5)) 
+plot_estimates
+```
+
+
+# Run models for CPP
+```{r, echo=TRUE}
+##### CPP ITT primary model - spline with 6 df
+# run and save model
+model_itt <- lmer(pulse_pressure_central ~ assigned_stove + 
+                    ns(date_sphygmo, df=6) + 
+                  (1 | house_id), r00_model_data)
+# summary(model_itt)
+# format model output for plotting
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "ITT: Justa vs Trad", "na")) 
+
+############################################################
+
+##### CPP and area PM all data
+# run and save model
+model_apm <- lmer(pulse_pressure_central ~ log_a_twa + 
+                    ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_apm)
+# format model output for plotting
+tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "Kitchen PM2.5", "na")) 
+
+############################################################
+
+##### CPP and personal PM all data
+model_ppm <- lmer(pulse_pressure_central ~ log_p_twa + 
+                    ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm)
+tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "Personal PM2.5", "na")) 
+
+############################################################
+
+model_stove_use_3 <- lmer(pulse_pressure_central ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_stove_use_3)
+#icc(model_stove_use_3)
+tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = 
+             if_else(term == "stove_use_3justa+trad", 
+                     "Stove-use: Justa+Trad vs Trad", "na")) %>% 
+    mutate(model = 
+             if_else(term == "stove_use_3justa/imprvd", 
+                     "Stove-use: Justa/Improved vs Trad", model))
+
+################################################################
+
+# Combine prepped data for plotting
+cpp_results <- rbind(tidy_model_itt,
+                     tidy_model_apm,
+                     tidy_model_ppm,
+                     tidy_model_stove_use_3)
+#kable(cpp_results)
+```
+
+# Plot model results 
+```{r}
+plot_estimates <- cpp_results %>%
+  mutate(model = factor(model, levels = c("ITT: Justa vs Trad", 
+                                          "Kitchen PM2.5", "Personal PM2.5",
+                                          "Stove-use: Justa+Trad vs Trad",
+                                          "Stove-use: Justa/Improved vs Trad"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() + 
+  labs(y = "Central Pulse Pressure \n (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-1.5, -1, -0.5, 0, 0.5, 1, 1.5), 
+                     labels = c(-1.5, -1, -0.5, 0, 0.5, 1, 1.5)) 
+plot_estimates
+```

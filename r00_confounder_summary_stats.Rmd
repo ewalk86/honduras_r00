@@ -23,17 +23,70 @@ library(knitr)
 ---
 
 ```{r}
-#load full dataset
+# load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
+#load dataset
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
-# Dataset for participants who did not miss phase 2
-r00_data_phase2_yes <- r00_full_long %>%
-  mutate(phase2 = 1) %>% 
-  mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
+data_outliers_removed <- r00_model_data_outliers_removed %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0) %>% 
+  # further removes 196 observations (n=1162)
+  filter(!is.na(aug_index))
+
+# Dataset for participants who have AIx data for all 6 Phases (107 participants)
+r00_data_6phases <- data_outliers_removed %>%
   group_by(house_id) %>% 
-  filter(sum(phase2) == 6) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  ungroup()   # 636 obs from 106 participants
+
+  
+# Dataset for participants who have AIx data for <6 Phases
+r00_data_5phases <- data_outliers_removed %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
   ungroup() 
+
+# Dataset with 46 participants who missed AIx in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) > 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  filter(!is.na(aug_index)) # 213 obs from 46 participants  
+
+# Dataset for participants who have AIx data for <6 Phases (not 46 sphygmo participants)
+r00_data_missing <- r00_model_data_outliers_removed %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  filter(pregnant_new == 0) %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  ungroup() %>% 
+  #filter(!is.na(aug_index)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>%
+  filter(!is.na(aug_index))   # 313 obs from 78 participants
 ```
 
 # Frequency of meds
@@ -141,7 +194,7 @@ kable(summary_stats, digits = 2)
 # Summary stats for categorical confounders
 ## Phase 1 data
 ```{r}
-cat_summary_stats <- r00_data_6phases %>% 
+cat_summary_stats <- r00_data_missing %>% 
   select(house_id, phase, assigned_stove, school_bi, age_baseline,
          bmi, ses_materials, whr_cat, beds_new, dds_total, phys_act) %>% 
   filter(phase == 1) %>% 
@@ -197,7 +250,7 @@ kable(cat_summary_stats, digits = 0)
 ## Grouped by study arm
 ## Phase 1 data
 ```{r}
-cat_summary_stats <- r00_full_long %>% 
+cat_summary_stats <- r00_data_missing %>% 
   select(phase, study_arm, assigned_stove, school_bi, age_baseline,
          bmi, ses_materials, whr_cat, beds_new, dds_total, phys_act) %>% 
   filter(phase == 1) %>% 
@@ -308,7 +361,7 @@ kable(cat_summary_stats, digits = 0)
 # Numeric summary stats for entire study population with Sphygmocor data
 ### Data from phase 1
 ```{r}
-summary_stats <- r00_data_6phases %>% 
+summary_stats <- r00_data_missing %>% 
   filter(phase == 1) %>% 
   select(house_id, assigned_stove, age_baseline, height, weight, bmi, ses_materials,
          beds_new, dds_total, phys_act, school_self, whr, cook_years, salt, sugar,
@@ -347,7 +400,7 @@ kable(summary_stats, digits = 2)
 ### Data from phase 1
 ### Grouped by study arm
 ```{r}
-summary_stats <- r00_data_6phases %>% 
+summary_stats <- r00_data_missing %>% 
   filter(phase == 1) %>% 
   select(house_id, assigned_stove, age_baseline, height, weight, bmi, ses_materials,
          beds_new, dds_total, phys_act, school_self, whr, study_arm, cook_years, waist) %>% 

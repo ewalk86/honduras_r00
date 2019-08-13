@@ -170,3 +170,38 @@ confint(int_emmeans)
 # This line will plot the interaction term
 #emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
 ```
+
+### Stove-use interaction analysis
+```{r}
+# Age split at 40: age_cat_40
+# Waist split at 80: waist_cat
+# Blood pressure: bp_cat
+# Hba1c: hba1c_cat
+# Metabolic Syndrome: met_syn
+
+# AIx
+sphygmo_model_int <- lmer(aug_index ~ stove_use_3*met_syn + ns(date_sphygmo, df=6) +
+                      waist_cm + school_bi + age_baseline + 
+                      (1 | house_id), r00_model_data)
+# Use this summary to get p-value for interaction term
+summary(sphygmo_model_int)
+int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ stove_use_3 | met_syn)
+#summary(int_emmeans)
+# Use this summary for estimates and confidence intervals
+confint(int_emmeans)
+# This line will plot the interaction term
+#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+
+############################################################
+# CPP
+sphygmo_model_int <- lmer(pulse_pressure_central ~ stove_use_3*met_syn + 
+                            ns(date_sphygmo, df=6) +
+                      waist_cm + school_bi + age_baseline + 
+                      (1 | house_id), r00_model_data)
+summary(sphygmo_model_int)
+int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ stove_use_3 | met_syn)
+#summary(int_emmeans, conf.int = TRUE)
+confint(int_emmeans)
+# This line will plot the interaction term
+#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+```
