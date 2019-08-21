@@ -39,7 +39,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 ```{r}
 # load full dataset
-#r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+#r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") 
 
 #load dataset
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
@@ -391,6 +391,86 @@ table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_3)
 table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
 ```
 
+# Describe actual stove use over course of study, by assigned study arm
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0)
+
+stove_use <- r00_full_long %>% 
+  select(house_id, study_arm, phase, stove_use_3) %>% 
+  spread(phase, stove_use_3) %>%  # new columns for phase, filled in by stove use
+  unite(stove, c("1":"6"), sep = ", ") %>%  # unite new columns into one new column
+  arrange(study_arm)
+
+# create new dataframe from a frequency table of stove use options by study arm
+stove_use_options <- as.data.frame(table(stove_use$stove, stove_use$study_arm)) %>% 
+  rename(stove_use_combination = Var1) %>% 
+  rename(study_arm = Var2) %>% 
+  rename(freq = Freq) %>% 
+  arrange(study_arm, desc(freq)) %>% 
+  filter(freq != 0)
+
+#write_csv(stove_use_options, "output/stove_use_options.csv")
+
+##### assign stove-use var to participants based on above table
+
+stove_use_2 <- r00_full_long %>% 
+  #select(house_id, study_arm, phase, stove_use_3) %>% 
+  mutate(dummy_var = factor(stove_use_3, 
+                            levels = c("trad", "justa+trad", "justa/imprvd"),
+                            labels = c(1, 2, 3))) %>% 
+  mutate(dummy_var = as.numeric(dummy_var),
+         dummy_var = if_else(is.na(dummy_var), 0, dummy_var),
+         dummy_var = if_else(dummy_var == 1, 1, dummy_var),
+         dummy_var = if_else(dummy_var == 2, 10, dummy_var),
+         dummy_var = if_else(dummy_var == 3, 100, dummy_var)) %>% 
+  group_by(house_id) %>% 
+  # code below designates participants into 3 groups: compliers, stackers, and inconsistent
+  # compliers used the assigned stove based on their study arm assignment
+  # stackers used the assigned stove based on study arm, but stacked with traditional
+  # inconsistent meant they switched groups, didn't follow stove assignment, or missed 2+ visits
+  # stackers/compliers were allowed to miss 1 pre-intervention visit 
+    # or 1 post-intervention visit and still meet the above definitions
+  mutate(stove_use_label = if_else(study_arm == 1 & 
+                                         (sum(dummy_var) == 42 | sum(dummy_var) == 32 |
+                                          sum(dummy_var) == 41),
+                                         "stacker", "inconsistent"),
+         stove_use_label = if_else(study_arm == 1 & 
+                                         (sum(dummy_var) == 402 | sum(dummy_var) == 302 |
+                                          sum(dummy_var) == 401),
+                                         "complier", stove_use_label),
+         stove_use_label = if_else(study_arm == 2 & 
+                                         (sum(dummy_var) == 24 | sum(dummy_var) == 14 |
+                                          sum(dummy_var) == 23),
+                                         "stacker", stove_use_label),
+         stove_use_label = if_else(study_arm == 2 & 
+                                         (sum(dummy_var) == 204 | sum(dummy_var) == 104 |
+                                          sum(dummy_var) == 203),
+                                         "complier", stove_use_label)) %>% 
+  ungroup()  
+  #filter(phase == 1)
+
+table(stove_use_2$stove_use_label, stove_use_2$study_arm)
+
+stove_use_3 <- stove_use_2 %>% 
+  select(house_id, study_arm, phase, stove_use_3, stove_use_label) %>% 
+  spread(phase, stove_use_3) %>%  # new columns for phase, filled in by stove use
+  unite(stove, c("1":"6"), sep = ", ") %>%  # unite new columns into one new column
+  arrange(study_arm)
+
+# merge datasets to capture new stove-use designations
+stove_use_options_2 <- stove_use_3 %>% 
+  rename(stove_use_combination = stove) %>% 
+  right_join(stove_use_options, by = c("stove_use_combination", "study_arm")) %>% 
+  select(-house_id) %>% 
+  unique()
+
+#write_csv(stove_use_options_2, "output/stove_use_options_2.csv")
+```
 
 # Stove use analyses with a priori confounders
 ```{r}
@@ -423,7 +503,7 @@ model_5phases <- lmer(aug_index ~ stove_use_3 +
 #summary(model_5phases)
 tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_5phases)
 
 ################################################################
@@ -446,7 +526,18 @@ model_p2_sphygmo <- lmer(aug_index ~ stove_use_3 +
 #icc(model_p2_sphygmo)
 tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
+
+################################################################
+model_compliance <- lmer(aug_index ~ stove_use_label + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), stove_use_2)
+#summary(model_compliance)
+#icc(model_compliance)
+tidy_model_compliance <- tidy(model_compliance, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_label', term)) %>% 
+    mutate(model = "compliance") 
 
 ################################################################
 ##### bp meds removed
@@ -478,7 +569,7 @@ model_phase <- lmer(aug_index ~ stove_use_3 + phase + age_baseline +
 #summary(model_phase)
 tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "phase")
+    mutate(model = "visit")
 
 ################################################################
 ##### season instead of spline
@@ -583,7 +674,7 @@ model_4level_5phases <- lmer(aug_index ~ stove_use_4 +
 #summary(model_4level_5phases)
 tidy_model_4level_5phases <- tidy(model_4level_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_4', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_4level_5phases)
 
 ################################################################
@@ -606,7 +697,7 @@ model_4level_p2_sphygmo <- lmer(aug_index ~ stove_use_4 +
 #icc(model_4level_p2_sphygmo)
 tidy_model_4level_p2_sphygmo <- tidy(model_4level_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_4', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
 
 ################################################################
 ######################################### stove_use_days_stack
@@ -630,7 +721,7 @@ model_days_5phases <- lmer(aug_index ~ stove_use_days_stack +
 #summary(model_days_5phases)
 tidy_model_days_5phases <- tidy(model_days_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_days_stack', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_days_5phases)
 
 ################################################################
@@ -653,7 +744,7 @@ model_days_p2_sphygmo <- lmer(aug_index ~ stove_use_days_stack +
 #icc(model_days_p2_sphygmo)
 tidy_model_days_p2_sphygmo <- tidy(model_days_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_days_stack', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
 
 ################################################################
 ######################################### stove_use_hours
@@ -677,7 +768,7 @@ model_hours_5phases <- lmer(aug_index ~ stove_use_hours +
 #summary(model_hours_5phases)
 tidy_model_hours_5phases <- tidy(model_hours_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_hours', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_hours_5phases)
 
 ################################################################
@@ -700,7 +791,7 @@ model_hours_p2_sphygmo <- lmer(aug_index ~ stove_use_hours +
 #icc(model_hours_p2_sphygmo)
 tidy_model_hours_p2_sphygmo <- tidy(model_hours_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_hours', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
 
 ################################################################
 aix_results_3level <- rbind(tidy_model_6phases,
@@ -740,9 +831,9 @@ aix_results_hours <- rbind(tidy_model_hours_6phases,
 ```{r}
 # primary stove-use model with sensitivity analyses
 plot_estimates <- aix_results_3level %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2", 
-                                          "no bp meds", "phase", "season", "spline 12 df", 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2", 
+                                          "no bp meds", "visit", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   mutate(level = factor(term, 
@@ -774,13 +865,14 @@ plot_estimates <- aix_results_3level %>%
           panel.grid = element_blank()) +
   scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
                      labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8)) 
+
 plot_estimates
 
 
 # stove use 4-level
 plot_estimates <- aix_results_4level %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_4justa+trad",
                                    "stove_use_4justa+imp",
@@ -817,8 +909,8 @@ plot_estimates
 
 # stove use days/month model
 plot_estimates <- aix_results_days %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_days_stackjusta+trad, 4+",
                                    "stove_use_days_stackjusta+trad, <4",
@@ -856,8 +948,8 @@ plot_estimates
 
 # stove use hours/day model
 plot_estimates <- aix_results_hours %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_hourstrad, <3.5",
                                    "stove_use_hoursjusta+trad, 3.5+",
@@ -883,6 +975,40 @@ plot_estimates <- aix_results_hours %>%
           legend.text = element_text(size = 14, colour = "black"),
           axis.text.x = element_text(size = 16, colour = "black", angle = 25,
                                      hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 
+                     labels = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)) 
+plot_estimates
+
+
+# stove use - compliance
+plot_estimates <- tidy_model_compliance %>%
+  mutate(level = factor(term, 
+                        levels = c("stove_use_labelinconsistent",
+                                   "stove_use_labelstacker"),
+                        labels = c("inconsistent", "stacker"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.75), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate vs compliant \n stove users (%)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_blank(),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -937,7 +1063,7 @@ model_5phases <- lmer(pulse_pressure_central ~ stove_use_3 +
 #summary(model_5phases)
 tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_5phases)
 
 ################################################################
@@ -960,7 +1086,18 @@ model_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_3 +
 #icc(model_p2_sphygmo)
 tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
+
+################################################################
+model_compliance <- lmer(pulse_pressure_central ~ stove_use_label + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), stove_use_2)
+#summary(model_compliance)
+#icc(model_compliance)
+tidy_model_compliance <- tidy(model_compliance, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_label', term)) %>% 
+    mutate(model = "compliance") 
 
 ################################################################
 ##### bp meds removed
@@ -993,7 +1130,7 @@ model_phase <- lmer(pulse_pressure_central ~ stove_use_3 +
 #summary(model_phase)
 tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "phase")
+    mutate(model = "visit")
 
 ################################################################
 ##### season instead of spline
@@ -1106,7 +1243,7 @@ model_4level_5phases <- lmer(pulse_pressure_central ~ stove_use_4 +
 #summary(model_4level_5phases)
 tidy_model_4level_5phases <- tidy(model_4level_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_4', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_4level_5phases)
 
 ################################################################
@@ -1129,7 +1266,7 @@ model_4level_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_4 +
 #icc(model_4level_p2_sphygmo)
 tidy_model_4level_p2_sphygmo <- tidy(model_4level_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_4', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
 
 ################################################################
 ######################################### stove_use_days_stack
@@ -1153,7 +1290,7 @@ model_days_5phases <- lmer(pulse_pressure_central ~ stove_use_days_stack +
 #summary(model_days_5phases)
 tidy_model_days_5phases <- tidy(model_days_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_days_stack', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_days_5phases)
 
 ################################################################
@@ -1176,7 +1313,7 @@ model_days_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_days_stack +
 #icc(model_days_p2_sphygmo)
 tidy_model_days_p2_sphygmo <- tidy(model_days_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_days_stack', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
 
 ################################################################
 ######################################### stove_use_hours
@@ -1200,7 +1337,7 @@ model_hours_5phases <- lmer(pulse_pressure_central ~ stove_use_hours +
 #summary(model_hours_5phases)
 tidy_model_hours_5phases <- tidy(model_hours_5phases, conf.int = TRUE) %>% 
     filter(grepl('stove_use_hours', term)) %>% 
-    mutate(model = "missed phase")
+    mutate(model = "missed visit")
 #icc(model_hours_5phases)
 
 ################################################################
@@ -1223,7 +1360,7 @@ model_hours_p2_sphygmo <- lmer(pulse_pressure_central ~ stove_use_hours +
 #icc(model_hours_p2_sphygmo)
 tidy_model_hours_p2_sphygmo <- tidy(model_hours_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('stove_use_hours', term)) %>% 
-    mutate(model = "missed phase 2") 
+    mutate(model = "missed visit 2") 
 
 ################################################################
 cpp_results_3level <- rbind(tidy_model_6phases,
@@ -1262,9 +1399,9 @@ cpp_results_hours <- rbind(tidy_model_hours_6phases,
 ## Plot model estimates - CPP and Stove Use
 ```{r}
 plot_estimates <- cpp_results_3level %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2",
-                                          "no bp meds", "phase", "season", "spline 12 df", 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2",
+                                          "no bp meds", "visit", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   mutate(level = factor(term, 
@@ -1301,8 +1438,8 @@ plot_estimates
 
 # stove use 4-level
 plot_estimates <- cpp_results_4level %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_4justa+trad",
                                    "stove_use_4justa+imp",
@@ -1317,7 +1454,7 @@ plot_estimates <- cpp_results_4level %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
+  labs(y = "Estimate vs traditional stove with or \n without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
           legend.position = "right",
@@ -1325,7 +1462,7 @@ plot_estimates <- cpp_results_4level %>%
           axis.text.x = element_text(size = 16, colour = "black", angle = 25,
                                      hjust = 1, vjust = .9),
           axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
+          axis.title.y = element_text(size = 15,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1339,8 +1476,8 @@ plot_estimates
 
 # stove use days/month model
 plot_estimates <- cpp_results_days %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_days_stackjusta+trad, 4+",
                                    "stove_use_days_stackjusta+trad, <4",
@@ -1356,7 +1493,7 @@ plot_estimates <- cpp_results_days %>%
   geom_hline(yintercept = 0) +
   theme_bw() +  
   #ggtitle(label = "AIx sensitivity analyses: area PM model") +
-  labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
+  labs(y = "Estimate vs traditional stove with or \n without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
           legend.position = "right",
@@ -1364,7 +1501,7 @@ plot_estimates <- cpp_results_days %>%
           axis.text.x = element_text(size = 16, colour = "black", angle = 25,
                                      hjust = 1, vjust = .9),
           axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
+          axis.title.y = element_text(size = 15,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1378,8 +1515,8 @@ plot_estimates
 
 # stove use hours/day model
 plot_estimates <- cpp_results_hours %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2"))) %>% 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_hourstrad, <3.5",
                                    "stove_use_hoursjusta+trad, 3.5+",
@@ -1415,6 +1552,39 @@ plot_estimates <- cpp_results_hours %>%
           panel.grid = element_blank()) +
   scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3, 4, 5), 
                      labels = c(-3, -2, -1, 0, 1, 2, 3, 4, 5)) 
+plot_estimates
+
+
+# stove use - compliance
+plot_estimates <- tidy_model_compliance %>%
+  mutate(level = factor(term, 
+                        levels = c("stove_use_labelinconsistent",
+                                   "stove_use_labelstacker"),
+                        labels = c("inconsistent", "stacker"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.75), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() + 
+  labs(y = "Estimate vs compliant \n stove users (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 
+                     labels = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)) 
 plot_estimates
 ```
 

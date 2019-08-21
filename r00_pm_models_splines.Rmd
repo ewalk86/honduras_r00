@@ -67,9 +67,9 @@ model_apm_spline <- gamm4(aug_index ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) 
                           data = r00_model_data,
                           random = ~(1 | house_id))
 plot(model_apm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
-     xlab = expression(paste("Natural log transformed 24-hour area PM"[2.5], 
+     xlab = expression(paste("Natural log transformed 24-hour kitchen PM"[2.5], 
                              " (", mu, g/m^3, ")")),
-     ylab = expression(paste("Estimate, spline trend for area PM  "[2.5], " (%)")))
+     ylab = expression(paste("Estimate, spline trend for kitchen PM  "[2.5], " (%)")))
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
 
@@ -88,7 +88,7 @@ plot(model_apm_spline$gam, seWithMean = TRUE)
 model_ppm_spline <- gamm4(aug_index ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
                           age_baseline +  waist_cm + school_bi + 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
-                          data = r00_model_data_phase2,
+                          data = r00_model_data,
                           random = ~(1 | house_id))
 plot(model_ppm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
      xlab = expression(paste("Natural log transformed 24-hour personal PM"[2.5], 
@@ -112,12 +112,12 @@ plot(model_ppm_spline$gam, seWithMean = TRUE)
 model_apm_spline <- gamm4(pulse_pressure_central ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
                           age_baseline +  waist_cm + school_bi + 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
-                          data = r00_model_data_phase2,
+                          data = r00_model_data,
                           random = ~(1 | house_id))
 plot(model_apm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
-     xlab = expression(paste("Natural log transformed 24-hour area PM"[2.5], 
+     xlab = expression(paste("Natural log transformed 24-hour kitchen PM"[2.5], 
                              " (", mu, g/m^3, ")")),
-     ylab = expression(paste("Estimate, spline trend for area PM  "[2.5], " (mmHg)")))
+     ylab = expression(paste("Estimate, spline trend for kitchen PM  "[2.5], " (mmHg)")))
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
 
@@ -136,7 +136,7 @@ plot(model_apm_spline$gam, seWithMean = TRUE)
 model_ppm_spline <- gamm4(pulse_pressure_central ~ s(log_p_twa, fx = TRUE, bs = "cr", k = 6) + 
                           age_baseline +  waist_cm + school_bi + 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
-                          data = r00_model_data_phase2,
+                          data = r00_model_data,
                           random = ~(1 | house_id))
 plot(model_ppm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
      xlab = expression(paste("Natural log transformed 24-hour personal PM"[2.5], 

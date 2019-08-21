@@ -351,18 +351,19 @@ kable(summary_personal_pm_stove_use, digits = 0)
 # Area PM boxplots - all participants
 ```{r, fig.height=6, fig.width=5}
 area_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, a_twa) %>% 
+  select(phase, study_arm, a_twa, assigned_stove) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
-  ggplot(aes("all participants", a_twa)) +
+  ggplot(aes(assigned_stove, a_twa)) +
     geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
     stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
     theme_minimal() +
-    ylim(0, 2000) +
+    ylim(0, 1000) +
+    geom_hline(yintercept = 50, color = "red", size = 1.2) +
     #labs(y = "Kitchen fine particulate matter (ug/m3)") +
     labs(aes(x = "", y = paste("24-hour kitchen PM "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_blank(),
+    theme(axis.text.x = element_text(size = 16, colour = "black"),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -401,17 +402,18 @@ log_area_pm_boxplot
 # Personal PM boxplots - all participants
 ```{r, fig.height=6, fig.width=5}
 personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, p_twa) %>% 
+  select(phase, study_arm, p_twa, assigned_stove) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
-  ggplot(aes("all participants", p_twa)) +
+  ggplot(aes(assigned_stove, p_twa)) +
     geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
     stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
     theme_minimal() +
-    ylim(0, 1000) +
+    ylim(0, 500) +
+    geom_hline(yintercept = 50, color = "red", size = 1.2) +
     labs(aes(x = "", y = paste("24-hour personal PM "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_blank(),
+    theme(axis.text.x = element_text(size = 16, colour = "black"),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),

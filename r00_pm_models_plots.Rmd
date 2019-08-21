@@ -128,23 +128,23 @@ tidy_model_apm_6phases <- tidy(model_apm_6phases, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_a_twa", "complete case", "na")) 
 
 ############################################################
-##### AIx and area PM missed phase
+##### AIx and area PM missed visit
 model_apm_5phases <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
                       waist_cm + school_bi + (1 | house_id), r00_data_5phases)
 #summary(model_apm_5phases)
 tidy_model_apm_5phases <- tidy(model_apm_5phases, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "missed phase", "na")) 
+    mutate(model = if_else(term == "log_a_twa", "missed visit", "na")) 
 
 ############################################################
-##### AIx and area PM - participants who missed phase 2 - sphygmo malfunction filtered out
+##### AIx and area PM - participants who missed visit 2 - sphygmo malfunction filtered out
 model_p2_sphygmo <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) +
                            age_baseline + waist_cm + school_bi +
                       (1 | house_id), r00_data_sphygmo_p2)
 # summary(model_p2_sphygmo)
 tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "missed phase 2", "na")) 
+    mutate(model = if_else(term == "log_a_twa", "missed visit 2", "na")) 
 
 ############################################################
 ##### AIx and area PM initial model - bp meds removed (57 obs)
@@ -189,13 +189,13 @@ tidy_model_apm_reduced <- tidy(model_apm_reduced, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_a_twa", "reduced", "na")) 
 
 ############################################################
-##### AIx and area PM initial model - phase instead of spline
+##### AIx and area PM initial model - visit instead of spline
 model_apm_phase <- lmer(aug_index ~ log_a_twa + phase + age_baseline +
                         waist_cm + school_bi + (1 | house_id), r00_model_data)
 #summary(model_apm_phase)
 tidy_model_apm_phase <- tidy(model_apm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "phase", "na"))
+    mutate(model = if_else(term == "log_a_twa", "visit", "na"))
 
 ############################################################
 ##### AIx and area PM initial model - season instead of spline
@@ -299,9 +299,9 @@ aix_results <- rbind(tidy_model_apm,
 ## Plot model estimates - AIx and Area PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2",
-                                          "no bp meds", "phase", "season", "spline 12 df", 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2",
+                                          "no bp meds", "visit", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
@@ -377,7 +377,7 @@ model_ppm_5phases <- lmer(aug_index ~ log_p_twa +
 #summary(model_ppm_5phases)
 tidy_model_ppm_5phases <- tidy(model_ppm_5phases, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "missed phase", "na"))
+    mutate(model = if_else(term == "log_p_twa", "missed visit", "na"))
 
 ############################################################
 ##### AIx and personal PM - participants who missed phase 2 - sphygmo malfunction filtered out
@@ -387,7 +387,7 @@ model_p2_sphygmo <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) +
 # summary(model_p2_sphygmo)
 tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "missed phase 2", "na")) 
+    mutate(model = if_else(term == "log_p_twa", "missed visit 2", "na")) 
 
 ############################################################
 ##### AIx and personal PM initial model - bp meds removed (57 obs)
@@ -437,7 +437,7 @@ model_ppm_phase <- lmer(aug_index ~ log_p_twa + phase + age_baseline +
 #summary(model_ppm_phase)
 tidy_model_ppm_phase <- tidy(model_ppm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "phase", "na"))
+    mutate(model = if_else(term == "log_p_twa", "visit", "na"))
 
 ############################################################
 ##### AIx and personal PM initial model - season instead of spline
@@ -540,9 +540,9 @@ aix_results <- rbind(tidy_model_ppm,
 ## Plot model estimates - AIx and Personal PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2",
-                                          "no bp meds", "phase", "season", "spline 12 df", 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2",
+                                          "no bp meds", "visit", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
@@ -618,7 +618,7 @@ model_apm_5phases <- lmer(pulse_pressure_central ~ log_a_twa +
 #summary(model_apm_5phases)
 tidy_model_apm_5phases <- tidy(model_apm_5phases, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "missed phase", "na")) 
+    mutate(model = if_else(term == "log_a_twa", "missed visit", "na")) 
 
 ############################################################
 ##### CPP and area PM - participants who missed phase 2 - sphygmo malfunction filtered out
@@ -628,7 +628,7 @@ model_p2_sphygmo <- lmer(pulse_pressure_central ~ log_a_twa + ns(date_sphygmo, d
 # summary(model_p2_sphygmo)
 tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "missed phase 2", "na")) 
+    mutate(model = if_else(term == "log_a_twa", "missed visit 2", "na")) 
 
 ############################################################
 ##### CPP and area PM initial model - bp meds removed (57 obs)
@@ -680,7 +680,7 @@ model_apm_phase <- lmer(pulse_pressure_central ~ log_a_twa + phase + age_baselin
 #summary(model_apm_phase)
 tidy_model_apm_phase <- tidy(model_apm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "phase", "na"))
+    mutate(model = if_else(term == "log_a_twa", "visit", "na"))
 
 ############################################################
 ##### CPP and area PM initial model - season instead of spline
@@ -789,9 +789,9 @@ cpp_results <- rbind(tidy_model_apm,
 ## Plot model estimates - CPP and Area PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2",
-                                          "no bp meds", "phase", "season", "spline 12 df", 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2",
+                                          "no bp meds", "visit", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
@@ -883,7 +883,7 @@ model_ppm_5phases <- lmer(pulse_pressure_central ~ log_p_twa +
 #summary(model_ppm_5phases)
 tidy_model_ppm_5phases <- tidy(model_ppm_5phases, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "missed phase", "na")) 
+    mutate(model = if_else(term == "log_p_twa", "missed visit", "na")) 
 
 ############################################################
 ##### CPP and personal PM - participants who missed phase 2 - sphygmo malfunction filtered out
@@ -893,7 +893,7 @@ model_p2_sphygmo <- lmer(pulse_pressure_central ~ log_p_twa + ns(date_sphygmo, d
 # summary(model_p2_sphygmo)
 tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "missed phase 2", "na")) 
+    mutate(model = if_else(term == "log_p_twa", "missed visit 2", "na")) 
 
 ############################################################
 ##### CPP and personal PM initial model - bp meds removed (57 obs)
@@ -946,7 +946,7 @@ model_ppm_phase <- lmer(pulse_pressure_central ~ log_p_twa + phase + age_baselin
 #summary(model_ppm_phase)
 tidy_model_ppm_phase <- tidy(model_ppm_phase, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "phase", "na"))
+    mutate(model = if_else(term == "log_p_twa", "visit", "na"))
 
 ############################################################
 ##### CPP and personal PM initial model - season instead of spline
@@ -1056,9 +1056,9 @@ cpp_results <- rbind(tidy_model_ppm,
 ## Plot model estimates - CPP and Personal PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed phase", 
-                                          "missed phase 2",
-                                          "no bp meds", "phase", "season", "spline 12 df", 
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2",
+                                          "no bp meds", "visit", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "dds",
                                           "phys act"))) %>% 
   ggplot() +
