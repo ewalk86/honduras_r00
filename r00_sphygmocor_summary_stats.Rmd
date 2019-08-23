@@ -375,9 +375,10 @@ aix_sd <- r00_model_data_outliers_removed %>%
 ## Square root of RMS is within-person sd
 ## Source: https://europepmc.org/backend/ptpmcrender.fcgi?accid=PMC2352101&blobtype=pdf
 aix_anova_data <- r00_model_data_outliers_removed %>% 
-  select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
+  select(study_arm, aug_index, house_id, pulse_pressure_central, assigned_stove) %>% 
+  filter(assigned_stove == "Traditional") %>% 
   filter(!is.na(study_arm)) %>% 
-  filter(!is.na(aug_index)) 
+  filter(!is.na(aug_index))
 
 aix_anova_data5 <- r00_data_5phases %>% 
   select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
@@ -392,6 +393,8 @@ aix_anova_data6 <- r00_data_6phases %>%
 aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data)
 summary(aix_anova)
 sqrt(85.9) #9.27
+# pre-intervention data only
+sqrt(90.9) #9.5
 
 aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data5)
 summary(aix_anova)
@@ -403,7 +406,9 @@ sqrt(83.7) #9.15
 
 cpp_anova <- aov(pulse_pressure_central ~ house_id, data = aix_anova_data)
 summary(cpp_anova)
-sqrt(22.71) #4.77
+sqrt(22.71) #4.8
+# pre-intervention data only
+sqrt(22.81) #4.8
 
 # Hand-calc confirming anova calculation above
 aix_sd_within_person <- r00_model_data_outliers_removed %>% 

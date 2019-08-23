@@ -451,8 +451,10 @@ stove_use_2 <- r00_full_long %>%
                                          (sum(dummy_var) == 204 | sum(dummy_var) == 104 |
                                           sum(dummy_var) == 203),
                                          "complier", stove_use_label)) %>% 
-  ungroup()  
-  #filter(phase == 1)
+  ungroup() 
+  #filter(phase == 1) %>% 
+  #group_by(stove_use_label, phase) %>% 
+  #summarise(mean(aug_index, na.rm = TRUE), n())
 
 table(stove_use_2$stove_use_label, stove_use_2$study_arm)
 

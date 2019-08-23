@@ -351,10 +351,10 @@ kable(summary_personal_pm_stove_use, digits = 0)
 # Area PM boxplots - all participants
 ```{r, fig.height=6, fig.width=5}
 area_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, a_twa, assigned_stove) %>% 
-  filter(!is.na(study_arm)) %>% 
+  select(phase, study_arm, a_twa, assigned_stove, stove_use_3) %>% 
+  filter(!is.na(stove_use_3)) %>% 
   filter(!is.na(a_twa)) %>% 
-  ggplot(aes(assigned_stove, a_twa)) +
+  ggplot(aes(stove_use_3, a_twa)) +
     geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
     stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
@@ -402,10 +402,10 @@ log_area_pm_boxplot
 # Personal PM boxplots - all participants
 ```{r, fig.height=6, fig.width=5}
 personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, p_twa, assigned_stove) %>% 
-  filter(!is.na(study_arm)) %>% 
+  select(phase, study_arm, p_twa, assigned_stove, stove_use_3) %>% 
+  filter(!is.na(stove_use_3)) %>% 
   filter(!is.na(p_twa)) %>% 
-  ggplot(aes(assigned_stove, p_twa)) +
+  ggplot(aes(stove_use_3, p_twa)) +
     geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
     stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
