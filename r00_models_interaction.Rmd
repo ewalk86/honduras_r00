@@ -45,9 +45,9 @@ r00_model_data <- r00_model_data_outliers_removed %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>% 
+  filter(pregnant_new == 0)  
   # further removes 196 observations (n=1162)
-  filter(!is.na(aug_index)) 
+  # filter(!is.na(aug_index)) 
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
 r00_data_6phases <- r00_model_data %>%
@@ -88,57 +88,6 @@ r00_model_data_meds <- r00_model_data %>%
   filter(is.na(med_bp)) 
 ```
 
-### PM interaction analysis
-```{r}
-## Use these vars as interaction terms
-# Age split at 40: age_cat_40
-# Waist split at 80: waist_cat
-# Blood pressure: bp_cat
-# Hba1c: hba1c_cat
-# Metabolic Syndrome: met_syn
-
-# AIx and area pm
-model_apm_int <- lmer(aug_index ~ log_a_twa*met_syn + ns(date_sphygmo, df=6) +
-                      waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data)
-   #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
-# This summary gives estimates, confidence intervals, and p-values
-summary(int_emtrends, conf.int = TRUE)
-# This line will plot the interaction term
-emmip(model_apm_int, met_syn ~ log_a_twa, cov.reduce = range)
-
-############################################################
-# AIx and personal pm
-model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
-                      waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data)
-   #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
-summary(int_emtrends, conf.int = TRUE)
-#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
-
-############################################################
-# CPP and area pm
-model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*met_syn + 
-                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data)
-   #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
-summary(int_emtrends, conf.int = TRUE)
-#emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
-
-############################################################
-# CPP and personal pm
-model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*met_syn + 
-                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data)
-   #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
-summary(int_emtrends, conf.int = TRUE)
-#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
-```
-
 ### ITT interaction analysis
 ```{r}
 # Age split at 40: age_cat_40
@@ -169,6 +118,59 @@ int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
 confint(int_emmeans)
 # This line will plot the interaction term
 #emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+```
+
+### PM interaction analysis
+```{r}
+## Use these vars as interaction terms
+# Age split at 40: age_cat_40
+# Waist split at 80: waist_cat
+# Blood pressure: bp_cat
+# Hba1c: hba1c_cat
+# Metabolic Syndrome: met_syn
+
+# AIx and personal pm
+model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
+                      waist_cm + school_bi + age_baseline + 
+                      (1 | house_id), r00_model_data)
+   #summary(model_ppm_int)
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
+summary(int_emtrends, conf.int = TRUE)
+#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
+
+############################################################
+# CPP and personal pm
+model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*met_syn + 
+                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
+                      school_bi + (1 | house_id), r00_model_data)
+   #summary(model_ppm_int)
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
+summary(int_emtrends, conf.int = TRUE)
+#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
+
+############################################################
+
+# AIx and area pm
+model_apm_int <- lmer(aug_index ~ log_a_twa*met_syn + ns(date_sphygmo, df=6) +
+                      waist_cm + school_bi + age_baseline + 
+                      (1 | house_id), r00_model_data)
+   #summary(model_apm_int)
+int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+# This summary gives estimates, confidence intervals, and p-values
+summary(int_emtrends, conf.int = TRUE)
+# This line will plot the interaction term
+# emmip(model_apm_int, age_cat_40 ~ log_a_twa, cov.reduce = range)
+
+############################################################
+
+# CPP and area pm
+model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*met_syn + 
+                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
+                      school_bi + (1 | house_id), r00_model_data)
+   #summary(model_apm_int)
+int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+summary(int_emtrends, conf.int = TRUE)
+# emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
 ```
 
 ### Stove-use interaction analysis

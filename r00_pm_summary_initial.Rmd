@@ -352,15 +352,15 @@ kable(summary_personal_pm_stove_use, digits = 0)
 ```{r, fig.height=6, fig.width=5}
 area_pm_boxplot <- r00_full_repeated_by_phase %>% 
   select(phase, study_arm, a_twa, assigned_stove, stove_use_3) %>% 
-  filter(!is.na(stove_use_3)) %>% 
+  filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(a_twa)) %>% 
-  ggplot(aes(stove_use_3, a_twa)) +
+  ggplot(aes(assigned_stove, a_twa)) +
     geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
     stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
     theme_minimal() +
     ylim(0, 1000) +
-    geom_hline(yintercept = 50, color = "red", size = 1.2) +
+    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
     #labs(y = "Kitchen fine particulate matter (ug/m3)") +
     labs(aes(x = "", y = paste("24-hour kitchen PM "[2.5], " (", mu, g/m^3, ")"))) +
     theme(axis.text.x = element_text(size = 16, colour = "black"),
@@ -403,15 +403,15 @@ log_area_pm_boxplot
 ```{r, fig.height=6, fig.width=5}
 personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
   select(phase, study_arm, p_twa, assigned_stove, stove_use_3) %>% 
-  filter(!is.na(stove_use_3)) %>% 
+  filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(p_twa)) %>% 
-  ggplot(aes(stove_use_3, p_twa)) +
+  ggplot(aes(assigned_stove, p_twa)) +
     geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
     stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
     theme_minimal() +
     ylim(0, 500) +
-    geom_hline(yintercept = 50, color = "red", size = 1.2) +
+    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
     labs(aes(x = "", y = paste("24-hour personal PM "[2.5], " (", mu, g/m^3, ")"))) +
     theme(axis.text.x = element_text(size = 16, colour = "black"),
           axis.text.y = element_text(size = 16, colour = "black"),

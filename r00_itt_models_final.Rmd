@@ -52,9 +52,12 @@ r00_model_data <- r00_model_data_outliers_removed %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>% 
+  filter(pregnant_new == 0)  
+  # Creating variable for time of Sphygmocor assessment to include in the models
+  # separate(datetime_sphygmo, c("date_test", "time_test"), sep = " ") %>% 
+  # mutate(time_test = hms(time_test))
   # further removes 196 observations (n=1162)
-  filter(!is.na(aug_index)) 
+  # filter(!is.na(aug_index)) 
 
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
@@ -68,6 +71,7 @@ r00_data_6phases <- r00_model_data %>%
 
 # Dataset for participants who have AIx data for all <6 Phases
 r00_data_5phases <- r00_model_data %>%
+  filter(!is.na(aug_index)) %>% 
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
   mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
