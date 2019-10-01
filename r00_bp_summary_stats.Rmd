@@ -1,7 +1,7 @@
 ---
-title: "Sphygmocor Summary Stats"
+title: "Honduras R00 BP Summary Stats"
 author: "Ethan Walker"
-date: "1 July 2019"
+date: "1 Oct 2019"
 output: pdf_document
 ---
 
@@ -24,37 +24,38 @@ library(knitr)
 
 ```{r}
 # load full dataset
-#r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
-#load dataset
-r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+#load dataset with AIx/CPP outliers removed (10 total)
+# r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
-data_outliers_removed <- r00_model_data_outliers_removed %>% 
+r00_data <- r00_full_long %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) 
   # further removes 196 observations (n=1162)
-  # filter(!is.na(aug_index))
+  # filter(!is.na(sys_bp_periph))
 
-# Dataset for participants who have AIx data for all 6 Phases (107 participants)
-r00_data_6phases <- data_outliers_removed %>%
+# Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
+r00_data_6phases <- r00_full_long %>%
   group_by(house_id) %>% 
   #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
   filter(sum(phase_complete) == 6) %>% 
   ungroup()
   
-# Dataset for participants who have AIx data for <6 Phases
-r00_data_5phases <- data_outliers_removed %>%
+# Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
+r00_data_5phases <- r00_full_long %>%
+  filter(!is.na(sys_bp_periph)) %>% 
   group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  #create new var to be able to filter for participants that completed < 6 phases
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
   filter(sum(phase_complete) < 6) %>% 
   ungroup() 
 
-# Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
-r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
+# Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_full_long %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
@@ -65,7 +66,7 @@ r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
   ungroup() %>% 
   filter(pregnant_new == 0) %>% 
-  filter(!is.na(aug_index))  # 949 obs from 184 participants  
+  filter(!is.na(sys_bp_periph))  # 955 obs from 184 participants  
 ```
 
 
@@ -362,98 +363,73 @@ filter(house_id == "ANT011" | house_id == "MOM026" | house_id == "OLO050" |
 
 # Overall and within subject standard deviations for outcomes
 ```{r}
-aix_sd <- r00_model_data_outliers_removed %>% 
-  select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
+bp_sd <- r00_data %>% 
+  select(study_arm, sys_bp_periph, house_id, dia_bp_periph) %>% 
   filter(!is.na(study_arm)) %>% 
-  filter(!is.na(aug_index)) %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
   #filter(phase == 1) %>% 
-  summarize("mean aix" = mean(aug_index), "sd aix" = sd(aug_index),
-            "mean cpp" = mean(pulse_pressure_central), "sd cpp" = sd(pulse_pressure_central)) 
+  summarize("mean sbp" = mean(sys_bp_periph), "sd sbp" = sd(sys_bp_periph),
+            "mean dbp" = mean(dia_bp_periph), "sd dbp" = sd(dia_bp_periph)) 
 
 # Using one-way anova to calculate within-person sd
 ## Residual mean square is within-person variance
 ## Square root of RMS is within-person sd
 ## Source: https://europepmc.org/backend/ptpmcrender.fcgi?accid=PMC2352101&blobtype=pdf
-aix_anova_data <- r00_model_data_outliers_removed %>% 
-  select(study_arm, aug_index, house_id, pulse_pressure_central, assigned_stove) %>% 
+bp_anova_data <- r00_data %>% 
+  select(study_arm, sys_bp_periph, house_id, dia_bp_periph, assigned_stove) %>% 
   filter(assigned_stove == "Traditional") %>% 
   filter(!is.na(study_arm)) %>% 
-  filter(!is.na(aug_index))
+  filter(!is.na(sys_bp_periph))
 
-aix_anova_data5 <- r00_data_5phases %>% 
-  select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
+bp_anova_data5 <- r00_data_5phases %>% 
+  select(study_arm, sys_bp_periph, house_id, dia_bp_periph) %>% 
   filter(!is.na(study_arm)) %>% 
-  filter(!is.na(aug_index)) 
+  filter(!is.na(sys_bp_periph)) 
 
-aix_anova_data6 <- r00_data_6phases %>% 
-  select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
+bp_anova_data6 <- r00_data_6phases %>% 
+  select(study_arm, sys_bp_periph, house_id, dia_bp_periph) %>% 
   filter(!is.na(study_arm)) %>% 
-  filter(!is.na(aug_index)) 
+  filter(!is.na(sys_bp_periph)) 
 
-aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data)
-summary(aix_anova)
-sqrt(85.9) #9.27
+sbp_anova <- aov(sys_bp_periph ~ house_id, data = bp_anova_data)
+dbp_anova <- aov(dia_bp_periph ~ house_id, data = bp_anova_data)
+summary(sbp_anova)
+summary(dbp_anova)
+
 # pre-intervention data only
-sqrt(90.9) #9.5
+sqrt(62.3) #7.9 for SBP
+sqrt(22.83) #4.8 for DBP
 
-aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data5)
-summary(aix_anova)
-sqrt(88.3) #9.40
-
-aix_anova <- aov(aug_index ~ house_id, data = aix_anova_data6)
-summary(aix_anova)
-sqrt(83.7) #9.15
-
-cpp_anova <- aov(pulse_pressure_central ~ house_id, data = aix_anova_data)
-summary(cpp_anova)
-sqrt(22.71) #4.8
-# pre-intervention data only
-sqrt(22.81) #4.8
 
 # Hand-calc confirming anova calculation above
-aix_sd_within_person <- r00_model_data_outliers_removed %>% 
-  select(study_arm, aug_index, house_id, pulse_pressure_central) %>% 
+bp_sd_within_person <- r00_data %>% 
+  select(study_arm, sys_bp_periph, house_id, dia_bp_periph) %>% 
   filter(!is.na(study_arm)) %>% 
-  filter(!is.na(aug_index)) %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
   #filter(phase == 1) %>% 
   group_by(house_id) %>% 
-  summarize("meanaix" = mean(aug_index), "sdaix" = sd(aug_index), 
-            "varaix" = var(aug_index)) %>% 
-  summarize(sqrt(mean(varaix, na.rm = TRUE)))
-```
-
-# Assessing outliers by phase and study arm
-```{r}
-r00_model_data_outliers_aix <- r00_full_joined_sphygmocor %>% 
-  select(house_id, phase, study_arm, aug_index, pulse_pressure_central) %>% 
-  # removes 6 potential "outliers" with high or low AIx
-  filter(aug_index > 75 | aug_index < -25) %>% 
-  group_by(phase, study_arm)
-
-r00_model_data_outliers_cpp <- r00_full_joined_sphygmocor %>% 
-  select(house_id, phase, study_arm, aug_index, pulse_pressure_central) %>%
-  # removes 4 potential "outliers" > 75mmHg CPP
-  filter(pulse_pressure_central > 75) %>% 
-  group_by(phase, study_arm)
+  summarize("meansbp" = mean(sys_bp_periph), "sdsbp" = sd(sys_bp_periph), 
+            "varsbp" = var(sys_bp_periph)) %>% 
+  summarize(sqrt(mean(varsbp, na.rm = TRUE)))
 ```
 
 # Grouped by assigned stove, all phases
 ```{r}
-summary_stats_stove <- r00_model_data_outliers_removed %>% 
+summary_stats_stove <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(assigned_stove, aug_index, pulse_pressure_central) %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(assigned_stove, sys_bp_periph, dia_bp_periph) %>% 
   group_by(assigned_stove) %>% 
-  summarize(n(), mean(aug_index), sd(aug_index), mean(pulse_pressure_central),
-            sd(pulse_pressure_central))
+  summarize(n(), mean(sys_bp_periph), sd(sys_bp_periph), mean(dia_bp_periph),
+            sd(dia_bp_periph))
 summary_stats_stove
 ```
 
 # Variables grouped by study arm
 ### Data from phase 1
 ```{r}
-summary_stats <- data_outliers_removed %>% 
-  filter(!is.na(aug_index)) %>% 
+summary_stats <- r00_data %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
   select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
@@ -479,8 +455,8 @@ kable(summary_stats, digits = 2)
 # All households
 ### Data from phase 1
 ```{r}
-summary_stats_all <- data_outliers_removed %>% 
-  filter(!is.na(pulse_pressure_central)) %>%
+summary_stats_all <- r00_data %>% 
+  filter(!is.na(sys_bp_periph)) %>%
   select(phase, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
@@ -503,419 +479,410 @@ kable(summary_stats_all, digits = 2)
 
 \pagebreak 
 
-# AIx grouped by stove use and study arm - all phases
+# SBP grouped by stove use and study arm - all phases
 ```{r}
 ## Grouped by stove use
 
-summary_aix_stove_use <- data_outliers_removed %>% 
-  #filter(!is.na(assigned_stove)) %>% 
-  #filter(!is.na(aug_index)) %>% 
-  #select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
-   #      a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
-  #mutate(salt = as.numeric(salt)) %>% 
+summary_sbp_stove_use <- r00_data %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
   group_by(stove_use_3, phase) %>% 
   summarise("Data" = "all",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/1162*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-kable(summary_aix_stove_use, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_stove_use, digits = 1)
 
-summary_aix_stove_use_6phases <- r00_data_6phases %>% 
+summary_sbp_stove_use_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(stove_use_3, phase) %>% 
   summarise("Data" = "6 phases",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/636*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix_stove_use_6phases, digits = 1)
+            "%" = n()/1678*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_stove_use_6phases, digits = 1)
 
-summary_aix_stove_use_5phases <- r00_data_5phases %>% 
+summary_sbp_stove_use_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(stove_use_3, phase) %>% 
-  summarise("Data" = "<6 phases",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+  summarise("Data" = "5 phases",
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/526*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix_stove_use_5phases, digits = 1)
+            "%" = n()/493*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_stove_use_5phases, digits = 1)
 
-aix_summary_all_stove_use <- rbind(summary_aix_stove_use, summary_aix_stove_use_6phases,
-                     summary_aix_stove_use_5phases) 
-kable(aix_summary_all_stove_use, digits = 1)
+sbp_summary_all_stove_use <- rbind(summary_sbp_stove_use, summary_sbp_stove_use_6phases,
+                     summary_sbp_stove_use_5phases) 
+kable(sbp_summary_all_stove_use, digits = 1)
 
 
 ## Grouped by study arm
 
-summary_aix_study_arm <- data_outliers_removed %>% 
+summary_sbp_study_arm <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(study_arm, phase) %>% 
   summarise("Data" = "all",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/1162*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix_study_arm, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_study_arm, digits = 1)
 
-summary_aix_study_arm_6phases <- r00_data_6phases %>% 
+summary_sbp_study_arm_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(study_arm, phase) %>% 
-  summarise("Data" = "6 phases",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+  summarise("Data" = "6 Phases",
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/636*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix_study_arm_6phases, digits = 1)
+            "%" = n()/678*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_study_arm_6phases, digits = 1)
 
-summary_aix_study_arm_5phases <- r00_data_5phases %>% 
+summary_sbp_study_arm_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(study_arm, phase) %>% 
-  summarise("Data" = "<6 phases",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+  summarise("Data" = "5 Phases",
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/526*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix_study_arm_5phases, digits = 1)
+            "%" = n()/493*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_study_arm_5phases, digits = 1)
 
-aix_summary_all_study_arm <- rbind(summary_aix_study_arm, summary_aix_study_arm_6phases,
-                     summary_aix_study_arm_5phases) 
-kable(aix_summary_all_study_arm, digits = 1)
+sbp_summary_all_study_arm <- rbind(summary_sbp_study_arm, summary_sbp_study_arm_6phases,
+                     summary_sbp_study_arm_5phases) 
+kable(sbp_summary_all_study_arm, digits = 1)
 
 
 ## Ungrouped
 
-summary_aix <- data_outliers_removed %>% 
+summary_sbp <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(phase) %>% 
   summarise("Data" = "all",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/1162*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp, digits = 1)
 
-summary_aix_6phases <- r00_data_6phases %>% 
+summary_sbp_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(phase) %>% 
-  summarise("Data" = "6 phases",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+  summarise("Data" = "6 Phases",
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/636*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix_phase2_no, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_phase2_no, digits = 1)
 
-summary_aix_5phases <- r00_data_5phases %>% 
+summary_sbp_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm,
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, sys_bp_periph, phase, study_arm,
          a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
   mutate(salt = as.numeric(salt)) %>% 
   group_by(phase) %>% 
-  summarise("Data" = "<6 phases",
-            "Mean AIx" = mean(aug_index, na.rm = TRUE),
-            "SD" = sd(aug_index), 
+  summarise("Data" = "5 Phases",
+            "Mean SBP" = mean(sys_bp_periph, na.rm = TRUE),
+            "SD" = sd(sys_bp_periph), 
             "n" = n(),
-            "%" = n()/526*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-#kable(summary_aix_phase2_yes, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(sys_bp_periph, c(.25)),
+            "75th" = quantile(sys_bp_periph, c(.75)),
+            "Median" = median(sys_bp_periph),
+            "Min" = min(sys_bp_periph), 
+            "Max" = max(sys_bp_periph),
+            "IQR" = IQR(sys_bp_periph))
+kable(summary_sbp_5phases, digits = 1)
 
-aix_summary_all <- rbind(summary_aix, summary_aix_6phases,
-                     summary_aix_5phases) 
-kable(aix_summary_all, digits = 1)
+sbp_summary_all <- rbind(summary_sbp, summary_sbp_6phases,
+                     summary_sbp_5phases) 
+kable(sbp_summary_all, digits = 1)
 ```
 
-# CPP grouped by stove use - all phases
+# DBP grouped by stove use and study arm - all phases
 ```{r}
 ## Grouped by stove use
 
-summary_cpp_stove_use <- data_outliers_removed %>% 
+summary_dbp_stove_use <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(stove_use_3) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "All",
-            "Mean" = mean(pulse_pressure_central),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(stove_use_3, phase) %>% 
+  summarise("Data" = "all",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/1164*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_stove_use, digits = 1)
 
-summary_cpp_stove_use_6phases <- r00_data_6phases %>% 
+summary_dbp_stove_use_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(stove_use_3) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(stove_use_3, phase) %>% 
   summarise("Data" = "6 phases",
-            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
-            "SD" = sd(pulse_pressure_central), 
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/633*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use_phase2_no, digits = 1)
+            "%" = n()/1678*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_stove_use_6phases, digits = 1)
 
-summary_cpp_stove_use_5phases <- r00_data_5phases %>% 
+summary_dbp_stove_use_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(stove_use_3) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "<6 phases",
-            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(stove_use_3, phase) %>% 
+  summarise("Data" = "5 phases",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/531*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use_phase2_yes, digits = 1)
+            "%" = n()/493*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_stove_use_5phases, digits = 1)
 
-cpp_summary_all_stove_use <- rbind(summary_cpp_stove_use, summary_cpp_stove_use_6phases,
-                     summary_cpp_stove_use_5phases) 
-kable(cpp_summary_all_stove_use, digits = 1)
+dbp_summary_all_stove_use <- rbind(summary_dbp_stove_use, summary_dbp_stove_use_6phases,
+                     summary_dbp_stove_use_5phases) 
+kable(dbp_summary_all_stove_use, digits = 1)
 
 
-## Grouped by stove use
+## Grouped by study arm
 
-summary_cpp_stove_use <- r00_model_data_outliers_removed %>% 
+summary_dbp_study_arm <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(study_arm) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "All",
-            "Mean" = mean(pulse_pressure_central),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise("Data" = "all",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/1164*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_study_arm, digits = 1)
 
-summary_cpp_stove_use_6phases <- r00_data_6phases %>% 
+summary_dbp_study_arm_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(study_arm) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "6 phases",
-            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise("Data" = "6 Phases",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/633*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use_phase2_no, digits = 1)
+            "%" = n()/678*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_study_arm_6phases, digits = 1)
 
-summary_cpp_stove_use_5phases <- r00_data_5phases %>% 
+summary_dbp_study_arm_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  group_by(study_arm) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "<6 phases",
-            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise("Data" = "5 Phases",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/531*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use_phase2_yes, digits = 1)
+            "%" = n()/493*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_study_arm_5phases, digits = 1)
 
-cpp_summary_all_study_arm <- rbind(summary_cpp_stove_use, summary_cpp_stove_use_6phases,
-                     summary_cpp_stove_use_5phases) 
-kable(cpp_summary_all_study_arm, digits = 1)
+dbp_summary_all_study_arm <- rbind(summary_dbp_study_arm, summary_dbp_study_arm_6phases,
+                     summary_dbp_study_arm_5phases) 
+kable(dbp_summary_all_study_arm, digits = 1)
 
 
 ## Ungrouped
 
-summary_cpp <- data_outliers_removed %>% 
+summary_dbp <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "All",
-            "Mean" = mean(pulse_pressure_central),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(phase) %>% 
+  summarise("Data" = "all",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/1164*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp, digits = 1)
+            "%" = n()/1168*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp, digits = 1)
 
-summary_cpp_6phases <- r00_data_6phases %>% 
+summary_dbp_6phases <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "6 phases",
-            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(phase) %>% 
+  summarise("Data" = "6 Phases",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/633*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use_phase2_no, digits = 1)
+            "%" = n()/678*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_phase2_no, digits = 1)
 
-summary_cpp_5phases <- r00_data_5phases %>% 
+summary_dbp_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(pulse_pressure_central)) %>% 
-  select(stove_use_3, assigned_stove, pulse_pressure_central, phase, study_arm) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Data" = "<6 phases",
-            "Mean" = mean(pulse_pressure_central, na.rm = TRUE),
-            "SD" = sd(pulse_pressure_central), 
+  filter(!is.na(dia_bp_periph)) %>% 
+  select(stove_use_3, assigned_stove, dia_bp_periph, phase, study_arm,
+         a_twa, p_twa, age_cat_40, waist_cat, ses_cat_2, salt) %>% 
+  mutate(salt = as.numeric(salt)) %>% 
+  group_by(phase) %>% 
+  summarise("Data" = "5 Phases",
+            "Mean SBP" = mean(dia_bp_periph, na.rm = TRUE),
+            "SD" = sd(dia_bp_periph), 
             "n" = n(),
-            "%" = n()/531*100,
-            "25th" = quantile(pulse_pressure_central, c(.25)),
-            "75th" = quantile(pulse_pressure_central, c(.75)),
-            "Median" = median(pulse_pressure_central),
-            "Min" = min(pulse_pressure_central), 
-            "Max" = max(pulse_pressure_central),
-            "IQR" = IQR(pulse_pressure_central))
-#kable(summary_cpp_stove_use_phase2_yes, digits = 1)
+            "%" = n()/493*100,
+            "25th" = quantile(dia_bp_periph, c(.25)),
+            "75th" = quantile(dia_bp_periph, c(.75)),
+            "Median" = median(dia_bp_periph),
+            "Min" = min(dia_bp_periph), 
+            "Max" = max(dia_bp_periph),
+            "IQR" = IQR(dia_bp_periph))
+kable(summary_dbp_5phases, digits = 1)
 
-cpp_summary_all <- rbind(summary_cpp, summary_cpp_6phases,
-                     summary_cpp_5phases) 
-kable(cpp_summary_all, digits = 1)
-```
-
-# AIx grouped by study arm - all phases
-```{r}
-summary_aix_study_arm <- data_outliers_removed %>% 
-  filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>% 
-  select(stove_use_3, assigned_stove, aug_index, phase, study_arm) %>% 
-  group_by(study_arm) %>% 
-  #group_by(stove_use_3, phase, study_arm) %>% 
-  summarise("Mean" = mean(aug_index),
-            "SD" = sd(aug_index), 
-            "n" = n(),
-            "%" = n()/1164*100,
-            "25th" = quantile(aug_index, c(.25)),
-            "75th" = quantile(aug_index, c(.75)),
-            "Median" = median(aug_index),
-            "Min" = min(aug_index), 
-            "Max" = max(aug_index),
-            "IQR" = IQR(aug_index))
-kable(summary_aix_study_arm, digits = 1)
+dbp_summary_all <- rbind(summary_dbp, summary_dbp_6phases,
+                     summary_dbp_5phases) 
+kable(dbp_summary_all, digits = 1)
 ```
 
 \pagebreak  
@@ -923,7 +890,7 @@ kable(summary_aix_study_arm, digits = 1)
 # Variables grouped by study arm
 ### Data from phase 3 and 4
 ```{r}
-summary_stats_study_arm <- data_outliers_removed %>%
+summary_stats_study_arm <- r00_data %>%
   select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
@@ -931,7 +898,7 @@ summary_stats_study_arm <- data_outliers_removed %>%
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
          "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  na.exclude("Augmentation Index") %>% 
+  na.exclude("Systolic BP Peripheral") %>% 
   filter(phase == 3 | phase == 4) %>% 
   select(-phase) %>% 
   group_by(study_arm) %>% 
@@ -951,7 +918,7 @@ kable(summary_stats_study_arm, digits = 2)
 # Variables grouped by study arm and BMI category
 ### Data from phase 3 and 4
 ```{r}
-summary_stats_study_arm <- data_outliers_removed %>% 
+summary_stats_study_arm <- r00_data %>% 
   #split age at 40; >40 = 1, <=40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
   #split bmi at 26; >26 = 1, <=26 = 0
@@ -963,7 +930,7 @@ summary_stats_study_arm <- data_outliers_removed %>%
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
          "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  na.exclude("Augmentation Index") %>% 
+  na.exclude("Systolic BP Peripheral") %>% 
   filter(phase == 3 | phase == 4) %>% 
   select(-phase) %>% 
   group_by(bmi_cat, study_arm) %>% 
@@ -983,7 +950,7 @@ kable(summary_stats_study_arm, digits = 2)
 # Variables grouped by age category
 ### Data from phase 1 and 2
 ```{r}
-summary_stats_age_cat <- data_outliers_removed %>% 
+summary_stats_age_cat <- r00_data %>% 
   select(phase, study_arm, age_baseline, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
@@ -991,7 +958,7 @@ summary_stats_age_cat <- data_outliers_removed %>%
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
          "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  na.exclude("Augmentation Index") %>% 
+  na.exclude("Systolic BP Peripheral") %>% 
   #split age at 40; >40 = 1, <40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">= 40", "< 40")) %>%
   filter(phase == 1 | phase == 2) %>% 
@@ -1013,7 +980,7 @@ kable(summary_stats_age_cat, digits = 2)
 # Variables grouped by bmi category
 ### Data from phase 1 and 2
 ```{r}
-summary_stats_bmi_cat <- data_outliers_removed %>% 
+summary_stats_bmi_cat <- r00_data %>% 
   select(phase, study_arm, age_baseline, bmi, "Augmentation Index" = aug_index, 
          "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
@@ -1022,7 +989,7 @@ summary_stats_bmi_cat <- data_outliers_removed %>%
          "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
          "Pulse Pressure Peripheral" = pulse_pressure_periph, 
          "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  na.exclude("Augmentation Index") %>% 
+  na.exclude("Systolic BP Peripheral") %>% 
   #split age at 40; >40 = 1, <40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">= 40", "< 40")) %>%
   #split bmi at 26; >26 = 1, <=26 = 0
@@ -1045,47 +1012,47 @@ kable(summary_stats_bmi_cat, digits = 2)
 
 # Line plots across phases
 ```{r}
-line_plot_data <- data_outliers_removed %>% 
+line_plot_data <- r00_data %>% 
   arrange(house_id, date_sphygmo) %>% 
   group_by(house_id) %>% 
-  mutate(increase = if_else(aug_index < lead(aug_index), "TRUE", "FALSE")) 
+  mutate(increase = if_else(sys_bp_periph < lead(sys_bp_periph), "TRUE", "FALSE")) 
 
-aix_line_plot <- ggplot(line_plot_data) +
-  geom_line(aes(phase, aug_index, color = increase, group = house_id)) +
+sbp_line_plot <- ggplot(line_plot_data) +
+  geom_line(aes(phase, sys_bp_periph, color = increase, group = house_id)) +
   theme_minimal() +
   theme(legend.position = "none")
-aix_line_plot
+sbp_line_plot
 
 line_plot_data <- r00_data_5phases %>% 
   arrange(house_id, date_sphygmo) %>% 
   group_by(house_id) %>% 
-  mutate(increase = if_else(aug_index < lead(aug_index), "TRUE", "FALSE")) 
+  mutate(increase = if_else(sys_bp_periph < lead(sys_bp_periph), "TRUE", "FALSE")) 
 
-aix_line_plot <- ggplot(line_plot_data, aes(group = house_id)) +
-  geom_line(aes(phase, aug_index, color = increase)) +
+sbp_line_plot <- ggplot(line_plot_data) +
+  geom_line(aes(phase, sys_bp_periph, color = increase, group = house_id)) +
   theme_minimal() +
   theme(legend.position = "none")
-aix_line_plot
+sbp_line_plot
 
 line_plot_data <- r00_data_6phases %>% 
   arrange(house_id, date_sphygmo) %>% 
   group_by(house_id) %>% 
-  mutate(increase = if_else(aug_index < lead(aug_index), "TRUE", "FALSE")) 
+  mutate(increase = if_else(sys_bp_periph < lead(sys_bp_periph), "TRUE", "FALSE")) 
 
-aix_line_plot <- ggplot(line_plot_data) +
-  geom_line(aes(phase, aug_index, color = increase, group = house_id)) +
+sbp_line_plot <- ggplot(line_plot_data) +
+  geom_line(aes(phase, sys_bp_periph, color = increase, group = house_id)) +
   theme_minimal() +
   theme(legend.position = "none")
-aix_line_plot
+sbp_line_plot
 ```
 
 \pagebreak  
 
 # Variables grouped by phase
 ```{r}
-summary_stats_phase <- data_outliers_removed %>% 
+summary_stats_phase <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>%
+  filter(!is.na(sys_bp_periph)) %>%
   select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
@@ -1106,7 +1073,7 @@ kable(summary_stats_phase, digits = 2)
 
 summary_stats_phase6 <- r00_data_6phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>%
+  filter(!is.na(sys_bp_periph)) %>%
   select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
@@ -1127,7 +1094,7 @@ kable(summary_stats_phase6, digits = 2)
 
 summary_stats_phase5 <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
-  filter(!is.na(aug_index)) %>%
+  filter(!is.na(sys_bp_periph)) %>%
   select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
          "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
@@ -1152,11 +1119,11 @@ kable(summary_stats_phase5, digits = 2)
 # Correlation Matrix
 ### Data from all 6 phases
 ```{r}
-summary_correlation <- data_outliers_removed %>% 
+summary_correlation <- r00_data %>% 
   select(aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
          sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>% 
-  na.exclude(aug_index)
+  na.exclude(sys_bp_periph)
 cor(summary_correlation)
 ```
 
@@ -1164,11 +1131,11 @@ cor(summary_correlation)
 
 ```{r}
 ## summary to include in plots below (geom_text)
-sphygmocor_means <- data_outliers_removed %>% 
+sphygmocor_means <- r00_data %>% 
   select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
          sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
-  na.exclude(aug_index) %>%  
+  na.exclude(sys_bp_periph) %>%  
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
   group_by(phase, study_arm) %>%
   summarise(mean(aug_index), sd(aug_index), 
@@ -1188,29 +1155,29 @@ sphygmocor_means <- data_outliers_removed %>%
 ### Means marked and labeled in red  
 ### Data from all 6 phases
 ```{r}
-## AIx
+## SBP
 # boxplots by phase, faceted by study arm
 # means plotted in red
-sphygmocor_boxplot <- data_outliers_removed %>% 
+sphygmocor_boxplot <- r00_data %>% 
   select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
          sys_bp_central, dia_bp_central, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
-  na.exclude(aug_index) %>% 
+  na.exclude(sys_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
-  ggplot(aes(phase, aug_index)) +
-  geom_boxplot(aes(phase, aug_index)) +
-  geom_text(data = sphygmocor_means, aes(phase, `mean(aug_index)`, 
-                                    label = round(`mean(aug_index)`, digits = 1)),
+  ggplot(aes(phase, sys_bp_periph)) +
+  geom_boxplot(aes(phase, sys_bp_periph)) +
+  geom_text(data = sphygmocor_means, aes(phase, `mean(sys_bp_periph)`, 
+                                    label = round(`mean(sys_bp_periph)`, digits = 1)),
                                     size = 4, vjust = -2.5, color = "red") +
-  geom_line(data = sphygmocor_means, aes(phase, `mean(aug_index)`, group = study_arm), 
+  geom_line(data = sphygmocor_means, aes(phase, `mean(sys_bp_periph)`, group = study_arm), 
             color = "red") +
-  geom_point(data = sphygmocor_means, aes(phase, `mean(aug_index)`), 
+  geom_point(data = sphygmocor_means, aes(phase, `mean(sys_bp_periph)`), 
             size = 2, color = "red") +
-  ggtitle("AIx by Phase and Study Arm", 
+  ggtitle("SBP by Phase and Study Arm", 
           subtitle = "means in red; 4 outliers >75 and <-25 removed") +
   facet_wrap(~study_arm) +
   xlab("Study Phase") +
-  ylab("AIx (%)") +
+  ylab("SBP (mmHg)") +
   theme_bw()
 sphygmocor_boxplot
 ```
@@ -1218,58 +1185,28 @@ sphygmocor_boxplot
 \pagebreak  
 
 ```{r}
-## AIx75
+## DBP
 # boxplots by phase, faceted by study arm
 # means plotted in red
-sphygmocor_boxplot <- data_outliers_removed %>% 
+sphygmocor_boxplot <- r00_data %>% 
   select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
          sys_bp_central, dia_bp_central, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
-  na.exclude(aug_index) %>% 
+  na.exclude(dia_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
-  ggplot(aes(phase, aug_index_75)) +
-  geom_boxplot(aes(phase, aug_index_75)) +
-  geom_text(data = sphygmocor_means, aes(phase, `mean(aug_index_75)`, 
-                                    label = round(`mean(aug_index_75)`, digits = 1)),
+  ggplot(aes(phase, dia_bp_periph)) +
+  geom_boxplot(aes(phase, dia_bp_periph)) +
+  geom_text(data = sphygmocor_means, aes(phase, `mean(dia_bp_periph)`, 
+                                    label = round(`mean(dia_bp_periph)`, digits = 1)),
                                     size = 4, vjust = -2.5, color = "red") +
-  geom_line(data = sphygmocor_means, aes(phase, `mean(aug_index_75)`, group = study_arm), 
+  geom_line(data = sphygmocor_means, aes(phase, `mean(dia_bp_periph)`, group = study_arm), 
             color = "red") +
-  geom_point(data = sphygmocor_means, aes(phase, `mean(aug_index_75)`), 
+  geom_point(data = sphygmocor_means, aes(phase, `mean(dia_bp_periph)`), 
             size = 2, color = "red") +
-  ggtitle("AIx75 by Phase and Study Arm", subtitle = "means in red") +
+  ggtitle("DBP by Phase and Study Arm", subtitle = "means in red") +
   facet_wrap(~study_arm) +
   xlab("Study Phase") +
-  ylab("AIx75 (%)") +
-  theme_bw()
-sphygmocor_boxplot
-```
-
-\pagebreak  
-
-```{r}
-## Central Pulse Pressure
-# boxplots by phase, faceted by study arm
-# means plotted in red
-sphygmocor_boxplot <- data_outliers_removed %>% 
-  select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
-         sys_bp_central, dia_bp_central, aug_index_75,
-         pulse_pressure_periph, pulse_pressure_central) %>%
-  na.exclude(aug_index) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>% 
-  ggplot(aes(phase, pulse_pressure_central)) +
-  geom_boxplot(aes(phase, pulse_pressure_central)) +
-  geom_text(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_central)`, 
-                                    label = round(`mean(pulse_pressure_central)`, digits = 1)),
-                                    size = 4, vjust = -2.5, color = "red") +
-  geom_line(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_central)`, group = study_arm), 
-            color = "red") +
-  geom_point(data = sphygmocor_means, aes(phase, `mean(pulse_pressure_central)`), 
-            size = 2, color = "red") +
-  ggtitle("Central Pulse Pressure by Phase and Study Arm", 
-          subtitle = "means in red; 4 outliers >75 removed") +
-  facet_wrap(~study_arm) +
-  xlab("Study Phase") +
-  ylab("Central Pulse Pressure (mmHg)") +
+  ylab("DBP (mmHg)") +
   theme_bw()
 sphygmocor_boxplot
 ```
@@ -1280,7 +1217,7 @@ sphygmocor_boxplot
 ## Peripheral Pulse Pressure
 # boxplots by phase, faceted by study arm
 # means plotted in red
-sphygmocor_boxplot <- data_outliers_removed %>% 
+sphygmocor_boxplot <- r00_data %>% 
   select(phase, study_arm, aug_index, hr, sys_bp_periph, dia_bp_periph,
          sys_bp_central, dia_bp_central, aug_index_75,
          pulse_pressure_periph, pulse_pressure_central) %>%
@@ -1308,10 +1245,10 @@ sphygmocor_boxplot
 # Bar charts for phases completed
 ```{r}
 # Summary data to include in plot below
-phases_completed_sphygmocor <- data_outliers_removed %>%
-  select(phase, study_arm, aug_index) %>% 
+phases_completed_sphygmocor <- r00_data %>%
+  select(phase, study_arm, sys_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(aug_index) %>% 
+  na.exclude(sys_bp_periph) %>% 
   group_by(phase, study_arm) %>%
   summarise(number = n()) %>%
   ungroup()
@@ -1331,7 +1268,7 @@ ggplot(phases_completed_sphygmocor, aes(x= phase, y = number, fill = study_arm))
                                "#330099")) +
     xlab("Study Phase") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    ylab("# Women with AIx Data") +
+    ylab("# Women with SBP Data") +
     ggtitle("Sphygmocor measurements completed")
 ```
 
@@ -1339,11 +1276,11 @@ ggplot(phases_completed_sphygmocor, aes(x= phase, y = number, fill = study_arm))
 
 # Number of visits completed with Sphygmocor data
 ```{r}
-all_6_phases <- data_outliers_removed %>% 
+all_6_phases <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
-  select(house_id, phase, study_arm, aug_index) %>% 
+  select(house_id, phase, study_arm, sys_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  filter(!is.na(aug_index)) %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
   group_by(house_id, study_arm) %>% 
   summarize("# Visits" = n()) %>% 
   group_by(`# Visits`, study_arm) %>% 
@@ -1353,34 +1290,17 @@ kable(all_6_phases)
 
 \pagebreak  
 
-# Check that values pulled from sphygmocor match those entered into ODK in the field
-## AIx
-### aix = ODK variable
-### aug_index = Sphygmocor variable
-```{r}
-data_aix_check <- r00_full_joined_sphygmocor %>% 
-  select(house_id, phase, study_arm, aix, aug_index) %>% 
-  mutate(aix_check = if_else(aix == round(aug_index, digits = 0), 0, 1)) %>% 
-  filter(aix_check == 1)
-kable(data_aix_check)
-# 16 instances where AIx value entered in field doesn't match the value pulled from database
-# Most are rounding errors or explained by mis-entering the value by hand
-# Confident that values from database are correct and will use aug_index for analysis
-```
-
-\pagebreak  
-
 ## Systolic BP
 ### sysbp = ODK variable
 ### sys_bp_periph = Sphygmocor variable
 ```{r}
-data_sbp_check <- data_outliers_removed %>% 
+data_sbp_check <- r00_data %>% 
   select(house_id, phase, study_arm, sysbp, diabp, sys_bp_periph, dia_bp_periph) %>%
   mutate(sys_bp_check = if_else(sysbp == round(sys_bp_periph, digits = 0), 0, 1)) %>% 
   filter(sys_bp_check == 1) %>% 
   select(-dia_bp_periph, -diabp)
 kable(data_sbp_check)
-# 6 instances where AIx value entered in field doesn't match the value pulled from database
+# 6 instances where SBP value entered in field doesn't match the value pulled from database
 ```
 
 \pagebreak  
@@ -1389,89 +1309,64 @@ kable(data_sbp_check)
 ### diabp = ODK variable
 ### dia_bp_periph = Sphygmocor variable
 ```{r}
-data_dbp_check <- data_outliers_removed %>% 
+data_dbp_check <- r00_data %>% 
   select(house_id, phase, study_arm, sysbp, diabp, sys_bp_periph, dia_bp_periph) %>% 
   mutate(dia_bp_check = if_else(diabp == round(dia_bp_periph, digits = 0), 0, 1)) %>% 
   filter(dia_bp_check == 1) %>% 
   select(-sys_bp_periph, -sysbp)
 kable(data_dbp_check)
-# 8 instances where AIx value entered in field doesn't match the value pulled from database
+# 8 instances where DBP value entered in field doesn't match the value pulled from database
 ```
 
 \pagebreak   
 
 # Histograms for distribution of measurements
 ```{r}
-# AIx
-aix_histogram <- data_outliers_removed %>%
-  select(phase, study_arm, aug_index) %>% 
+# SBP
+sbp_histogram <- r00_data %>%
+  select(phase, study_arm, sys_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(aug_index) %>% 
+  na.exclude(sys_bp_periph) %>% 
     ggplot()+
-    geom_histogram(aes(x = aug_index), bins = 30) +
+    geom_histogram(aes(x = sys_bp_periph), bins = 30) +
     facet_wrap(~phase, ncol = 2) +
     theme_bw() +
     scale_fill_manual(values=c("#33CC99",
                                "#339999",
                                "#FF9900",
                                "#330099")) +
-   xlab("AIx (%)") +
+   xlab("SBP (mmHg)") +
    ylab("Number of measurements") +
    theme(text = element_text(size = 16),
           legend.position= "none",
           plot.title = element_text(hjust = 0.5)) +
-   ggtitle("AIx by Phase") 
-aix_histogram
+   ggtitle("SBP by Phase") 
+sbp_histogram
 ```
 
 \pagebreak  
 
 ```{r}
 # AIx75
-aix75_histogram <- data_outliers_removed %>%
-  select(phase, study_arm, aug_index_75) %>% 
+dbp_histogram <- r00_data %>%
+  select(phase, study_arm, dia_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(aug_index) %>% 
+  na.exclude(dia_bp_periph) %>% 
     ggplot()+
-    geom_histogram(aes(x = aug_index_75), bins = 30) +
+    geom_histogram(aes(x = dia_bp_periph), bins = 30) +
     facet_wrap(~phase, ncol = 2) +
     theme_bw() +
     scale_fill_manual(values=c("#33CC99",
                                "#339999",
                                "#FF9900",
                                "#330099")) +
-   xlab("AIx75 (%)") +
+   xlab("DBP (mmHg)") +
    ylab("Number of measurements") +
    theme(text = element_text(size = 16),
           legend.position= "none",
           plot.title = element_text(hjust = 0.5)) +
-   ggtitle("AIx75 by Phase") 
-aix75_histogram
-```
-
-\pagebreak  
-
-```{r}
-# pulse_pressure_central
-pulse_pressure_central_histogram <- data_outliers_removed %>%
-  select(phase, study_arm, pulse_pressure_central) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(pulse_pressure_central) %>% 
-    ggplot()+
-    geom_histogram(aes(x = pulse_pressure_central), bins = 30) +
-    facet_wrap(~phase, ncol = 2) +
-    theme_bw() +
-    scale_fill_manual(values=c("#33CC99",
-                               "#339999",
-                               "#FF9900",
-                               "#330099")) +
-   xlab("Central Pulse Pressure (mmHg)") +
-   ylab("Number of measurements") +
-   theme(text = element_text(size = 16),
-          legend.position= "none",
-          plot.title = element_text(hjust = 0.5)) +
-   ggtitle("Central Pulse Pressure by Phase") 
-pulse_pressure_central_histogram
+   ggtitle("DBP by Phase") 
+dbp_histogram
 ```
 
 \pagebreak  
@@ -1568,19 +1463,18 @@ dia_bp_central_histogram <- data_outliers_removed %>%
 ### Blue = increase from phase to phase for a participant
 ### Red = decrease from phase to phase for a participant
 ```{r}
-# AIx
-line_plots <- data_outliers_removed %>% 
-  select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 
+# SBP
+line_plots <- r00_data %>% 
+  select(house_id, phase, study_arm, sys_bp_periph, dia_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(aug_index) %>% 
-  filter(aug_index < 75) %>% 
+  na.exclude(sys_bp_periph) %>% 
   arrange(house_id, phase) %>% 
   group_by(house_id) %>% 
-  mutate(increase = if_else(aug_index < lead(aug_index), "TRUE", "FALSE")) %>% 
+  mutate(increase = if_else(sys_bp_periph < lead(sys_bp_periph), "TRUE", "FALSE")) %>% 
   ggplot() +
-  geom_line(aes(phase, aug_index, color = increase, group = house_id)) +
+  geom_line(aes(phase, sys_bp_periph, color = increase, group = house_id)) +
   theme_bw() +
-  ggtitle("AIx Line plots by participant") +
+  ggtitle("SBP Line plots by participant") +
   theme(legend.position = "none") +
   facet_wrap(~study_arm)
 line_plots
@@ -1589,41 +1483,18 @@ line_plots
 \pagebreak  
 
 ```{r}
-# AIx 75
-line_plots <- data_outliers_removed %>% 
-  select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 
+# DBP
+line_plots <- r00_data %>% 
+  select(house_id, phase, study_arm, sys_bp_periph, dia_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(aug_index) %>% 
-  filter(aug_index < 75) %>% 
+  na.exclude(dia_bp_periph) %>% 
   arrange(house_id, phase) %>% 
   group_by(house_id) %>% 
-  mutate(increase = if_else(aug_index_75 < lead(aug_index_75), "TRUE", "FALSE")) %>% 
+  mutate(increase = if_else(dia_bp_periph < lead(dia_bp_periph), "TRUE", "FALSE")) %>% 
   ggplot() +
-  geom_line(aes(phase, aug_index_75, color = increase, group = house_id)) +
+  geom_line(aes(phase, dia_bp_periph, color = increase, group = house_id)) +
   theme_bw() +
-  ggtitle("AIx75 Line plots by participant") +
-  theme(legend.position = "none") +
-  facet_wrap(~study_arm)
-line_plots
-```
-
-\pagebreak  
-
-```{r}
-# Central Pulse Pressure
-line_plots <- data_outliers_removed %>% 
-  select(house_id, phase, study_arm, aug_index, aug_index_75, pulse_pressure_central) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(aug_index) %>% 
-  filter(aug_index < 75) %>% 
-  arrange(house_id, phase) %>% 
-  group_by(house_id) %>% 
-  mutate(increase = if_else(pulse_pressure_central < lead(pulse_pressure_central), 
-                            "TRUE", "FALSE")) %>% 
-  ggplot() +
-  geom_line(aes(phase, pulse_pressure_central, color = increase, group = house_id)) +
-  theme_bw() +
-  ggtitle("Central Pulse Pressure line plots by participant") +
+  ggtitle("DBP Line plots by participant") +
   theme(legend.position = "none") +
   facet_wrap(~study_arm)
 line_plots
