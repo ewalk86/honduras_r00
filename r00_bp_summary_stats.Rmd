@@ -27,14 +27,14 @@ library(knitr)
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 #load dataset with AIx/CPP outliers removed (10 total)
-# r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 r00_data <- r00_full_long %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) 
-  # further removes 196 observations (n=1162)
+  # further removes 190 observations (n=1168)
   # filter(!is.na(sys_bp_periph))
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)

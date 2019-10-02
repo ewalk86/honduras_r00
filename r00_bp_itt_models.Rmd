@@ -1,0 +1,298 @@
+---
+title: "Honduras R00 BP ITT Models"
+author: "Ethan Walker"
+date: "2 October 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+library(sjstats)
+library(rptR)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+# Intent-to-treat models
+
+# Creating datasets for various analyses
+## Analyses for outcomes: sys_bp_periph, dia_bp_periph
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+#load dataset with AIx/CPP outliers removed (10 total)
+# r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+
+r00_model_data <- r00_full_long %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0) %>%
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) 
+  # further removes 190 observations (n=1168)
+  # filter(!is.na(outcome))
+
+# Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
+r00_data_6phases <- r00_full_long %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  ungroup() %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph)
+  
+# Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
+r00_data_5phases <- r00_full_long %>%
+  filter(!is.na(sys_bp_periph)) %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed < 6 phases
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  ungroup() %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph)
+
+# Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_full_long %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) %>% 
+  filter(!is.na(outcome))  # 955 obs from 184 participants  
+
+
+# Filtering out medication users (n=59 obs)
+r00_model_data_meds <- r00_model_data %>% 
+  #filtering out bp med users
+  filter(is.na(med_bp)) 
+
+
+# Filtering data for each specific phase
+r00_model_data_baseline <- r00_model_data %>% 
+  filter(phase == 1)
+r00_model_data_p2 <- r00_model_data %>% 
+  filter(phase == 2)
+r00_model_data_p3 <- r00_model_data %>% 
+  filter(phase == 3)
+r00_model_data_p4 <- r00_model_data %>% 
+  filter(phase == 4)
+r00_model_data_p5 <- r00_model_data %>% 
+  filter(phase == 5)
+r00_model_data_p6 <- r00_model_data %>% 
+  filter(phase == 6)
+```
+
+
+```{r, eval=FALSE}
+# Simple linear models between AIx and age/bmi
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_baseline)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p2)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p3)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p4)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p5)
+tidy(aix_age)
+aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_p6)
+tidy(aix_age)
+
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_baseline)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p2)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p3)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p4)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p5)
+tidy(aix_bmi)
+aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p6)
+tidy(aix_bmi)
+```
+
+# Run ITT models
+```{r, echo=TRUE}
+##### ITT primary model - spline with 6 df
+# run and save model
+model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                  (1 | house_id), r00_model_data)
+
+## 2 methods to calculate ICC for models
+# ICC using sjstats package
+#icc(model_itt)
+# ICC using rptR package
+#rptGaussian(outcome ~ (1 | house_id), 
+ #           grname = "house_id", data = r00_model_data)
+#icc_model <- lmer(as.numeric(outcome) ~ (1 | house_id), r00_model_data)
+#icc(icc_model)
+
+# summary(model_itt)
+# format model output for plotting
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "all data", "na")) 
+
+############################################################
+##### ITT model - participants who completed all 6 phases
+model_6phases <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_data_6phases)
+# summary(model_6phases)
+tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "complete case", "na")) 
+
+############################################################
+##### ITT model - participants who missed a visit
+model_5phases <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_data_5phases)
+# summary(model_5phases)
+tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "missed visit", "na")) 
+
+############################################################
+##### ITT model - participants who missed visit 2 - sphygmo malfunction filtered out
+model_p2_sphygmo <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_data_sphygmo_p2)
+# summary(model_p2_sphygmo)
+tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "missed visit 2", "na")) 
+
+############################################################
+##### ITT model - spline with 12 df
+model_itt_12df <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=12) + 
+                  (1 | house_id), r00_model_data)
+#summary(model_itt_12df)
+tidy_model_12df <- tidy(model_itt_12df, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "spline 12 df", "na")) 
+
+############################################################
+##### ITT model - bp meds removed (57 obs)
+model_no_bp_meds <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                         (1 | house_id), r00_model_data_meds)
+#summary(model_no_bp_meds)
+tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no bp meds", "na")) 
+
+############################################################
+##### ITT model - visit instead of spline
+model_phase <- lmer(outcome ~ assigned_stove + phase + 
+                    (1 | house_id), r00_model_data)
+#summary(model_phase)
+tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "visit", "na")) 
+
+############################################################
+##### ITT model - season instead of spline
+model_season <- lmer(outcome ~ assigned_stove + season + 
+                     (1 | house_id), r00_model_data)
+#summary(model_season)
+tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
+
+############################################################
+# Combine prepped data for plotting
+results <- rbind(tidy_model_itt,
+                     tidy_model_6phases,
+                     tidy_model_5phases,
+                     tidy_model_p2_sphygmo,
+                     tidy_model_no_bp_meds,
+                     tidy_model_phase,
+                     tidy_model_season,
+                     tidy_model_12df)
+#kable(results)
+```
+
+# Plot model results 
+```{r}
+plot_estimates <- results %>%
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit",
+                                          "missed visit 2", "no bp meds", "visit", 
+                                          "season", "spline 12 df"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "Intent-to-treat models") +
+  labs(y = "Justa vs traditional (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3, 4, 5), 
+                     labels = c(-3, -2, -1, 0, 1, 2, 3, 4, 5)) 
+plot_estimates
+```
+
+
+\pagebreak  
+
+# ITT primary model diagnostic plots
+```{r}
+plot(model_itt, main = "Primary model", 
+     xlab = "fitted values", ylab = "residuals")
+
+qqnorm(residuals(model_itt), main = "Primary model QQ Plot")
+
+#influential <- influence(model_itt, obs = TRUE)
+
+#cooks <- cooks.distance.estex(influential, sort = TRUE)
+
+#plot.estex(influential, which = "cook")
+```

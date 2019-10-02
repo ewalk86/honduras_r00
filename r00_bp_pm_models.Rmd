@@ -1,0 +1,601 @@
+---
+title: "Honduras R00 BP PM Models and Plots"
+author: "Ethan Walker"
+date: "2 October 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+library(gamm4)
+library(sjstats)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+# Exposure-response models
+
+# Creating datasets for various analyses
+## Analyses for outcomes: sys_bp_periph, dia_bp_periph
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+#load dataset with AIx/CPP outliers removed (10 total)
+# r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+
+r00_model_data <- r00_full_long %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0) %>%
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) 
+  # further removes 190 observations (n=1168)
+  # filter(!is.na(outcome))
+
+# Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
+r00_data_6phases <- r00_full_long %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  ungroup() %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph)
+  
+# Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
+r00_data_5phases <- r00_full_long %>%
+  filter(!is.na(sys_bp_periph)) %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed < 6 phases
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  ungroup() %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph)
+
+# Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_full_long %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) %>% 
+  filter(!is.na(outcome))  # 955 obs from 184 participants  
+
+
+# Filtering out medication users (n=59 obs)
+r00_model_data_meds <- r00_model_data %>% 
+  #filtering out bp med users
+  filter(is.na(med_bp)) 
+```
+
+
+# Analyses with a priori confounders
+## use log transformed pm
+## use splines initially, but try phase and season
+## age_baseline and school_bi have strong associations with outcomes 
+### use in primary model
+## waist, whr, and bmi have similar assocations with outcomes
+### start with waist but try bmi and whr
+## beds_new and ses_materials have weaker associations with outcomes
+### add them to model one at a time and see if they make a difference
+## phys_act and dds_total have weaker associations with outcomes
+### add them to model one at a time and see if they make a difference
+
+\pagebreak  
+
+# Kitchen PM
+```{r, echo=TRUE}
+##### Kitchen PM all data
+# run and save model
+model_apm <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_apm)
+# format model output for plotting
+tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "all data", "na")) 
+
+############################################################
+##### Kitchen PM complete case
+model_apm_6phases <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_data_6phases)
+#summary(model_apm_6phases)
+tidy_model_apm_6phases <- tidy(model_apm_6phases, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "complete case", "na")) 
+
+############################################################
+##### Kitchen PM missed visit
+model_apm_5phases <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_data_5phases)
+#summary(model_apm_5phases)
+tidy_model_apm_5phases <- tidy(model_apm_5phases, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "missed visit", "na")) 
+
+############################################################
+##### Kitchen PM - participants who missed visit 2 - sphygmo malfunction filtered out
+model_p2_sphygmo <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) +
+                           age_baseline + waist_cm + school_bi +
+                      (1 | house_id), r00_data_sphygmo_p2)
+# summary(model_p2_sphygmo)
+tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "missed visit 2", "na")) 
+
+############################################################
+##### Kitchen PM initial model - bp meds removed (59 obs)
+model_apm_no_bp_meds <- lmer(outcome ~ log_a_twa + 
+                             ns(date_sphygmo, df=6) + age_baseline +
+                             waist_cm + school_bi + (1 | house_id), 
+                             r00_model_data_meds)
+#summary(model_apm_no_bp_meds)
+tidy_model_apm_no_bp_meds <- tidy(model_apm_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "no bp meds", "na")) 
+
+############################################################
+##### Kitchen PM initial model - dichotomous confounders
+model_apm_di_conf <- lmer(outcome ~ log_a_twa + 
+                          ns(date_sphygmo, df=6) + age_cat_40 +
+                          waist_cat + school_bi + (1 | house_id), 
+                          r00_model_data)
+#summary(model_apm_di_conf)
+tidy_model_apm_di_conf <- tidy(model_apm_di_conf, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "di confdrs", "na"))
+
+############################################################
+##### Kitchen PM initial model - date spline with 12 df
+model_apm_spline12 <- lmer(outcome ~ log_a_twa + 
+                           ns(date_sphygmo, df=12) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_apm_spline12)
+tidy_model_apm_spline12 <- tidy(model_apm_spline12, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "spline 12 df", "na")) 
+
+############################################################
+##### Kitchen PM reduced model 
+model_apm_reduced <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) +
+                         (1 | house_id), r00_model_data)
+#summary(model_apm_reduced)
+tidy_model_apm_reduced <- tidy(model_apm_reduced, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "reduced", "na")) 
+
+############################################################
+##### Kitchen PM initial model - visit instead of spline
+model_apm_phase <- lmer(outcome ~ log_a_twa + phase + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_apm_phase)
+tidy_model_apm_phase <- tidy(model_apm_phase, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "visit", "na"))
+
+############################################################
+##### Kitchen PM initial model - season instead of spline
+model_apm_season <- lmer(outcome ~ log_a_twa + season + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_apm_season)
+tidy_model_apm_season <- tidy(model_apm_season, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "season", "na"))
+
+############################################################
+##### Kitchen PM initial model - bmi instead of waist_cm
+model_apm_bmi <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      bmi + school_bi + (1 | house_id), r00_model_data)
+#summary(model_apm_bmi)
+tidy_model_apm_bmi <- tidy(model_apm_bmi, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "bmi", "na"))
+
+############################################################
+##### Kitchen PM initial model - whr instead of waist_cm
+model_apm_whr <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      whr + school_bi + (1 | house_id), r00_model_data)
+#summary(model_apm_whr)
+tidy_model_apm_whr <- tidy(model_apm_whr, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "whr", "na"))
+
+############################################################
+##### Kitchen PM initial model - adding beds_new
+model_apm_beds <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + beds_new + (1 | house_id), 
+                       r00_model_data)
+#summary(model_apm_beds)
+tidy_model_apm_beds <- tidy(model_apm_beds, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "beds", "na"))
+
+############################################################
+##### Kitchen PM initial model - adding ses_materials
+model_apm_ses <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + ses_materials + (1 | house_id),
+                      r00_model_data)
+#summary(model_apm_ses)
+tidy_model_apm_ses <- tidy(model_apm_ses, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "ses assets", "na"))
+
+############################################################
+##### Kitchen PM initial model - adding phys_act
+model_apm_pa <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                     waist_cm + school_bi + phys_act + (1 | house_id), 
+                     r00_model_data)
+#summary(model_apm_pa)
+tidy_model_apm_pa <- tidy(model_apm_pa, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "phys act", "na"))
+
+############################################################
+##### Kitchen PM initial model - adding dds_total
+model_apm_dds <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + dds_total + (1 | house_id), 
+                      r00_model_data)
+#summary(model_apm_dds)
+tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "dds", "na"))
+
+############################################################
+##### Kitchen PM initial model - full model with all potential confounders
+model_apm_full <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + dds_total + phys_act +
+                       ses_materials + beds_new + 
+                       (1 | house_id), r00_model_data)
+#summary(model_apm_full)
+tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "full", "na"))
+
+
+############################################################
+# Combine formatted results for plotting
+results <- rbind(tidy_model_apm,
+                     tidy_model_apm_6phases,
+                     tidy_model_apm_5phases,
+                     tidy_model_p2_sphygmo,
+                     tidy_model_apm_no_bp_meds,
+                     tidy_model_apm_phase,
+                     tidy_model_apm_season,
+                     tidy_model_apm_spline12,
+                     tidy_model_apm_bmi,
+                     tidy_model_apm_whr,
+                     tidy_model_apm_beds,
+                     tidy_model_apm_ses,
+                     tidy_model_apm_pa,
+                     tidy_model_apm_dds)
+#kable(results)
+```
+
+
+## Plot model estimates - Kitchen PM
+```{r}
+plot_estimates <- results %>%
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2",
+                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "bmi", "whr", "beds", "ses assets", "dds",
+                                          "phys act"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "Kitchen PM model") +
+  labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
+                     labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
+plot_estimates
+```
+
+# Primary model diagnostic plots - Kitchen PM
+```{r}
+plot(model_apm, main = "Kitchen PM primary model", 
+     xlab = "fitted values", ylab = "residuals")
+
+qqnorm(residuals(model_apm), main = "Kitchen PM primary model")
+
+
+#influential <- influence(model_apm, obs = TRUE)
+
+#cooks <- cooks.distance.estex(influential, sort = TRUE)
+
+#plot.estex(influential, which = "cook")
+```
+
+---------------------------------
+
+# Personal PM
+```{r, echo=TRUE}
+##### personal PM all data
+model_ppm <- lmer(outcome ~ log_p_twa + 
+                    ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm)
+tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "all data", "na")) 
+
+############################################################
+##### personal PM complete case
+model_ppm_6phases <- lmer(outcome ~ log_p_twa + 
+                            ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_data_6phases)
+#summary(model_ppm_6phases)
+tidy_model_ppm_6phases <- tidy(model_ppm_6phases, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "complete case", "na")) 
+
+############################################################
+##### personal PM missed phase
+model_ppm_5phases <- lmer(outcome ~ log_p_twa + 
+                            ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + (1 | house_id), r00_data_5phases)
+#summary(model_ppm_5phases)
+tidy_model_ppm_5phases <- tidy(model_ppm_5phases, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "missed visit", "na"))
+
+############################################################
+##### personal PM - participants who missed phase 2 - sphygmo malfunction filtered out
+model_p2_sphygmo <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) +
+                           age_baseline + waist_cm + school_bi +
+                      (1 | house_id), r00_data_sphygmo_p2)
+# summary(model_p2_sphygmo)
+tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "missed visit 2", "na")) 
+
+############################################################
+##### personal PM initial model - bp meds removed (57 obs)
+model_ppm_no_bp_meds <- lmer(outcome ~ log_p_twa + 
+                             ns(date_sphygmo, df=6) + age_baseline +
+                             waist_cm + school_bi + (1 | house_id), 
+                             r00_model_data_meds)
+#summary(model_ppm_no_bp_meds)
+tidy_model_ppm_no_bp_meds <- tidy(model_ppm_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "no bp meds", "na")) 
+
+############################################################
+##### personal PM initial model - dichotomous confounders
+model_ppm_di_conf <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_cat_40 +
+                          waist_cat + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm_di_conf)
+tidy_model_ppm_di_conf <- tidy(model_ppm_di_conf, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "di confdrs", "na"))
+
+############################################################
+##### personal PM initial model - spline with 12 df
+model_ppm_spline12 <- lmer(outcome ~ log_p_twa + 
+                           ns(date_sphygmo, df=12) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_ppm_spline12)
+tidy_model_ppm_spline12 <- tidy(model_ppm_spline12, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "spline 12 df", "na")) 
+
+############################################################
+##### personal PM reduced model 
+model_ppm_reduced <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) +
+                         (1 | house_id), r00_model_data)
+#summary(model_ppm_reduced)
+tidy_model_ppm_reduced <- tidy(model_ppm_reduced, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "reduced", "na")) 
+
+############################################################
+##### personal PM initial model - phase instead of spline
+model_ppm_phase <- lmer(outcome ~ log_p_twa + phase + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), 
+                        r00_model_data)
+#summary(model_ppm_phase)
+tidy_model_ppm_phase <- tidy(model_ppm_phase, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "visit", "na"))
+
+############################################################
+##### personal PM initial model - season instead of spline
+model_ppm_season <- lmer(outcome ~ log_p_twa + season + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), 
+                         r00_model_data)
+#summary(model_ppm_season)
+tidy_model_ppm_season <- tidy(model_ppm_season, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "season", "na"))
+
+############################################################
+##### personal PM initial model - bmi instead of waist_cm
+model_ppm_bmi <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      bmi + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm_bmi)
+tidy_model_ppm_bmi <- tidy(model_ppm_bmi, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "bmi", "na"))
+
+############################################################
+##### personal PM initial model - whr instead of waist_cm
+model_ppm_whr <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      whr + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm_whr)
+tidy_model_ppm_whr <- tidy(model_ppm_whr, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "whr", "na"))
+
+############################################################
+##### personal PM initial model - adding beds_new
+model_ppm_beds <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + beds_new + (1 | house_id), 
+                       r00_model_data)
+#summary(model_ppm_beds)
+tidy_model_ppm_beds <- tidy(model_ppm_beds, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "beds", "na"))
+
+############################################################
+##### personal PM initial model - adding ses_materials
+model_ppm_ses <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + ses_materials + (1 | house_id), 
+                      r00_model_data)
+#summary(model_ppm_ses)
+tidy_model_ppm_ses <- tidy(model_ppm_ses, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "ses assets", "na"))
+
+############################################################
+##### personal PM initial model - adding phys_act
+model_ppm_pa <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                     waist_cm + school_bi + phys_act + (1 | house_id), 
+                     r00_model_data)
+#summary(model_ppm_pa)
+tidy_model_ppm_pa <- tidy(model_ppm_pa, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "phys act", "na"))
+
+############################################################
+##### personal PM initial model - adding dds_total
+model_ppm_dds <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + dds_total + (1 | house_id), 
+                      r00_model_data)
+#summary(model_ppm_dds)
+tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "dds", "na"))
+
+############################################################
+##### personal PM initial model - full model with all potential confounders
+model_ppm_full <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + dds_total + phys_act +
+                       ses_materials + beds_new + 
+                       (1 | house_id), r00_model_data)
+#summary(model_ppm_full)
+tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "full", "na"))
+
+
+############################################################
+results <- rbind(tidy_model_ppm,
+                     tidy_model_ppm_6phases,
+                     tidy_model_ppm_5phases,
+                     tidy_model_p2_sphygmo,
+                     tidy_model_ppm_no_bp_meds,
+                     tidy_model_ppm_phase,
+                     tidy_model_ppm_season,
+                     tidy_model_ppm_spline12,
+                     tidy_model_ppm_bmi,
+                     tidy_model_ppm_whr,
+                     tidy_model_ppm_beds,
+                     tidy_model_ppm_ses,
+                     tidy_model_ppm_pa,
+                     tidy_model_ppm_dds)
+#kable(results)
+```
+
+## Plot model estimates - Personal PM
+```{r}
+plot_estimates <- results %>%
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2",
+                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "bmi", "whr", "beds", "ses assets", "dds",
+                                          "phys act"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "Personal PM model") +
+  labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
+                     labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
+plot_estimates
+```
+
+# Primary model diagnostic plots - Personal PM
+```{r}
+plot(model_ppm, main = "Personal PM primary model", 
+     xlab = "fitted values", ylab = "residuals")
+
+qqnorm(residuals(model_ppm), main = "Personal PM primary model")
+
+
+#influential <- influence(model_ppm, obs = TRUE)
+
+#cooks <- cooks.distance.estex(influential, sort = TRUE)
+
+#plot.estex(influential, which = "cook")
+```
