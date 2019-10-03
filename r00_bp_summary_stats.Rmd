@@ -1347,7 +1347,7 @@ sbp_histogram
 \pagebreak  
 
 ```{r}
-# AIx75
+# DBP
 dbp_histogram <- r00_data %>%
   select(phase, study_arm, dia_bp_periph) %>% 
   mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%

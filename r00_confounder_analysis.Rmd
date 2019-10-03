@@ -40,7 +40,7 @@ r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
 ```{r}
-## Data prep for AIx and CPP - primary model dataset
+## Data prep for AIx and CPP
 r00_data <- r00_model_data_outliers_removed %>% 
   # filter for baseline (phase 1)
   filter(phase == 1) %>%
@@ -50,6 +50,7 @@ r00_data <- r00_model_data_outliers_removed %>%
   filter(pregnant_new == 0) %>% 
   mutate(outcome = aug_index) 
 
+## Data prep for BP
 r00_data <- r00_full_long %>% 
   # filter for baseline (phase 1)
   filter(phase == 1) %>%

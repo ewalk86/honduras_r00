@@ -1,0 +1,1100 @@
+---
+title: "R00 BP Stove Use Models"
+author: "Ethan Walker"
+date: "3 October 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+library(gamm4)
+library(sjstats)
+library(rptR)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+
+# Stove-use models
+
+# Creating datasets for various analyses
+## Analyses for outcomes: sys_bp_periph, dia_bp_periph
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+#load dataset with AIx/CPP outliers removed (10 total)
+# r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+
+r00_model_data <- r00_full_long %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0) %>%
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) 
+  # further removes 190 observations (n=1168)
+  # filter(!is.na(outcome))
+
+# Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
+r00_data_6phases <- r00_full_long %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  ungroup() %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph)
+  
+# Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
+r00_data_5phases <- r00_full_long %>%
+  filter(!is.na(sys_bp_periph)) %>% 
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed < 6 phases
+  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  ungroup() %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph)
+
+# Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_full_long %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
+         sphygmo_missing_phase2 = if_else(sphygmo_missing_phase2 > 1, 1, 0),
+         sphygmo_missing_phase2 = if_else(is.na(sphygmo_missing_phase2),
+                                          0, sphygmo_missing_phase2)) %>%
+  group_by(house_id) %>%
+  filter(sum(sphygmo_missing_phase2) == 0) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) %>% 
+  filter(!is.na(outcome))  # 955 obs from 184 participants  
+
+
+# Filtering out medication users (n=59 obs)
+r00_model_data_meds <- r00_model_data %>% 
+  #filtering out bp med users
+  filter(is.na(med_bp))
+
+stove_use_compliance <- r00_full_long %>% 
+  #select(house_id, study_arm, phase, stove_use_3) %>% 
+  mutate(dummy_var = factor(stove_use_3, 
+                            levels = c("trad", "justa+trad", "justa/imprvd"),
+                            labels = c(1, 2, 3))) %>% 
+  mutate(dummy_var = as.numeric(dummy_var),
+         dummy_var = if_else(is.na(dummy_var), 0, dummy_var),
+         dummy_var = if_else(dummy_var == 1, 1, dummy_var),
+         dummy_var = if_else(dummy_var == 2, 10, dummy_var),
+         dummy_var = if_else(dummy_var == 3, 100, dummy_var)) %>% 
+  group_by(house_id) %>% 
+  # code below designates participants into 3 groups: compliers, stackers, and inconsistent
+  # compliers used the assigned stove based on their study arm assignment
+  # stackers used the assigned stove based on study arm, but stacked with traditional
+  # inconsistent meant they switched groups, didn't follow stove assignment, or missed 2+ visits
+  # stackers/compliers were allowed to miss 1 pre-intervention visit 
+    # or 1 post-intervention visit and still meet the above definitions
+  mutate(stove_use_label = if_else(study_arm == 1 & 
+                                         (sum(dummy_var) == 42 | sum(dummy_var) == 32 |
+                                          sum(dummy_var) == 41),
+                                         "stacker", "inconsistent"),
+         stove_use_label = if_else(study_arm == 1 & 
+                                         (sum(dummy_var) == 402 | sum(dummy_var) == 302 |
+                                          sum(dummy_var) == 401),
+                                         "complier", stove_use_label),
+         stove_use_label = if_else(study_arm == 2 & 
+                                         (sum(dummy_var) == 24 | sum(dummy_var) == 14 |
+                                          sum(dummy_var) == 23),
+                                         "stacker", stove_use_label),
+         stove_use_label = if_else(study_arm == 2 & 
+                                         (sum(dummy_var) == 204 | sum(dummy_var) == 104 |
+                                          sum(dummy_var) == 203),
+                                         "complier", stove_use_label)) %>% 
+  ungroup() %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0) %>%
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph)
+```
+
+
+# Other "test" datasets when assessing missing data and selection bias
+## Saving in case I need it for future analyses
+## DO NOT USE THIS CHUNK OF CODE ##
+```{r}
+# load full dataset
+#r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+# USE THIS DATASET FOR ANALYSES!!!
+## Removes values >75 for AIx and CPP, and <-25 for AIx (10 total)
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS") 
+
+stove_use_data <- r00_model_data_outliers_removed %>% 
+  # removed MOM054 who moved and wasn't assigned to a study arm
+  filter(!is.na(assigned_stove)) %>% 
+  # filter out 22 instances of pregnancy
+  filter(pregnant_new == 0) %>% 
+  filter(!is.na(aug_index)) %>% 
+  mutate(age_multicat = cut(age_baseline, seq(20, 60, 10)),
+         age_multicat = factor(age_multicat,
+                               levels = c("(20,30]", "(30,40]", "(40,50]", "(50,60]"),
+                               labels = c("20-30", "30-40", "40-50", "50-60")))
+
+
+test_data <- r00_56_combined %>% 
+  mutate(test = if_else(all_phases == "no" & stove_use_3 == "trad" & phase == 2 
+                        & study_arm == 2, 1, 0)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(test) == 0) %>% 
+  ungroup() 
+
+
+
+# Dataset for participants who have AIx data for all 6 Phases (107 participants)
+r00_data_6phases <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) == 6) %>% 
+  mutate(all_phases = "yes") %>% 
+  ungroup() 
+
+# Dataset for participants who have AIx data for all <6 Phases
+r00_data_5phases <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>% 
+  mutate(all_phases = "no") %>% 
+  ungroup() 
+
+# combine 6 phases and <6 phases datasets with indicator variable to group by
+r00_56_combined <- rbind(r00_data_6phases, r00_data_5phases)
+
+# Creating datasets for sensitivity analysis
+## based on odd high/low values seen in participants who missed at least one phase
+## seen when assessing mean AIx grouped by stove_use_3 and phase
+r00_data_phase2 <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_2 = if_else(stove_use_3 == "trad" & phase==2,
+                            1, 0),
+         phase_2 = if_else(phase==3, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==4, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==5, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==6, lag(phase_2), phase_2),
+         phase_2 = if_else(phase==1, lead(phase_2), phase_2)) %>% 
+  select(house_id, phase, phase_2) %>% 
+  filter(phase_2 == 1) %>%    # filtered down to 244 obs from 56 participants
+  #summarise(n())
+  ungroup()
+
+r00_data_phase3low <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_3low = if_else(stove_use_3 == "trad" 
+                            & phase==3, 1, 0),
+         phase_3low = if_else(phase==4, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==5, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==6, lag(phase_3low), phase_3low),
+         phase_3low = if_else(phase==2, lead(phase_3low), phase_3low),
+         phase_3low = if_else(phase==1, lead(phase_3low), phase_3low)) %>% 
+  select(house_id, phase, phase_3low) %>% 
+  filter(phase_3low == 1) %>%     # filtered down to 226 obs from 49 participants
+  ungroup()
+
+r00_data_phase3hi <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_3hi = if_else(stove_use_3 == "justa/imprvd" 
+                            & phase==3, 1, 0),
+         phase_3hi = if_else(phase==4, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==5, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==6, lag(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==2, lead(phase_3hi), phase_3hi),
+         phase_3hi = if_else(phase==1, lead(phase_3hi), phase_3hi)) %>% 
+  select(house_id, phase, phase_3hi) %>% 
+  filter(phase_3hi == 1) %>%     # filtered down to 81 obs from 17 participants
+  ungroup()
+  
+r00_data_phase4 <- stove_use_data %>%
+  group_by(house_id) %>% 
+  #create new var to be able to filter for participants that completed 6 phases
+  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
+  filter(sum(phase_complete) < 6) %>%
+  mutate(phase_4 = if_else(stove_use_3 == "justa/imprvd" 
+                            & phase==4, 1, 0),
+         phase_4 = if_else(phase==5, lag(phase_4), phase_4),
+         phase_4 = if_else(phase==6, lag(phase_4), phase_4),
+         phase_4 = if_else(phase==3, lead(phase_4), phase_4),
+         phase_4 = if_else(phase==2, lead(phase_4), phase_4),
+         phase_4 = if_else(phase==1, lead(phase_4), phase_4)) %>% 
+  select(house_id, phase, phase_4) %>% 
+  filter(phase_4 == 1) %>%      # filtered down to 77 obs from 16 participants
+  ungroup()
+
+r00_phase34_filter_data <- r00_data_phase3low %>% 
+  full_join(r00_data_phase3hi, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase4, by = c("house_id", "phase")) %>% 
+  mutate(filter_phase34 = as.numeric(1)) %>% 
+  full_join(stove_use_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_phase34 = if_else(is.na(filter_phase34), 0, 1)) %>% 
+  filter(filter_phase34 == 0)
+  
+r00_highlow_data <- r00_data_phase2 %>% 
+  full_join(r00_data_phase3low, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase3hi, by = c("house_id", "phase")) %>% 
+  full_join(r00_data_phase4, by = c("house_id", "phase")) %>%
+  mutate(filter_highlow = as.numeric(1))      # 440 obs from 97 participants
+
+highlow_filter_data <- stove_use_data %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_highlow = if_else(is.na(filter_highlow), 0, 1)) %>% 
+  filter(filter_highlow == 0)   # filtered to 722 obs from 133 participants
+
+low_filter_data <- stove_use_data %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_low = if_else(phase_2==1 | phase_3low==1, 1, 0),
+         filter_low = if_else(is.na(filter_low), 0, filter_low)) %>% 
+  #select(house_id, phase, phase_2, phase_3low, filter_low)
+  filter(filter_low == 0)   # filtered to  795 obs from 148 participants
+
+hi_filter_data <- stove_use_data %>% 
+  full_join(r00_highlow_data, by = c("house_id", "phase")) %>% 
+  mutate(filter_hi = if_else(phase_4==1 | phase_3hi==1, 1, 0),
+         filter_hi = if_else(is.na(filter_hi), 0, filter_hi)) %>% 
+  #select(house_id, phase, phase_2, phase_3low, filter_low)
+  filter(filter_hi == 0)    # filtered to  1047 obs from 206 participants
+
+
+# Dataset filtering out 46 participants with no sphygmocor data from phase 2
+sphygmo_p2_data <- r00_model_data_outliers_removed %>% 
+  # removed MOM054 who moved and wasn't assigned to a study arm
+  filter(!is.na(assigned_stove)) %>% 
+  mutate(sys_bp_final_nurse = as.numeric(sys_bp_final_nurse)) %>% 
+  mutate(phase2_sphygmo = 1) %>% 
+  mutate(phase2_sphygmo = if_else(!is.na(sys_bp_final_nurse), 0, phase2_sphygmo),
+         phase2_sphygmo = if_else(phase == 2 & pregnant_new == 1, 0, phase2_sphygmo)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(phase2_sphygmo) == 6) %>% 
+  ungroup() %>% 
+  filter(pregnant_new == 0)
+
+# Dataset filtering out 16 participants who were pregnant during any phase
+no_pregnant_data <- r00_model_data_outliers_removed %>%
+  mutate(p1_preg = if_else(phase == 1 & ((date_sphygmo - child_born_date) < 365), 1, 0)) %>% 
+  mutate(p1_preg = as.numeric(p1_preg)) %>%
+  mutate(pregnant_ever = 0) %>% 
+  mutate(pregnant_ever = if_else(pregnant_new == 1 | p1_preg == 1, 1, pregnant_ever)) %>% 
+  group_by(house_id) %>% 
+  filter(sum(pregnant_ever) == 0) %>% 
+  ungroup()
+
+# Missed sessions due to pregnancy, refusal, etc
+house_id <- c("ANT011", "ANT020", "ANT039", "ANT042", "CAC034", "CAC042",
+                     "CAC060", "CAC062", "CAC063", "CER010", "CER021", "CER023",
+                     "CER036", "CER042", "CER065", "CER068", "HOR041", "HOR071",
+                     "MOM001", "MOM026", "MOM031", "MOM043", "MOM051", "MOM054",
+                     "MOM061", "MOM062", "OLO053", "OLO078", "OLO102", "PER002",
+                     "PER015", "PER018", "PER028", "PER035", "PER037", "PER046",
+                     "PER057", "PER058", "PER059", "PER067", "PER068", "QDL017",
+                     "QDL018", "QDL019", "QDL024", "QDL025", "QDL026", "QDL027",
+                     "ZAC003", "ZAC004", "ZAC006", "ZAC014", "ZAC016", "ZAC022",
+                     "ZAC027", "ZAC090", "ZAC095", "ZAC097", "OLO093", "ZAC098")
+missed_sessions <- as.data.frame(house_id) %>% 
+  mutate(missed = 1)
+
+# database filtering out participants who missed a session (n=171)
+missed_sessions_data <- r00_model_data_outliers_removed %>% 
+  # removed MOM054 who moved and wasn't assigned to a study arm
+  filter(!is.na(assigned_stove)) %>% 
+  full_join(missed_sessions, by = "house_id") %>% 
+  mutate(missed = as.numeric(missed)) %>% 
+  filter(is.na(missed)) 
+  
+# Dataset for participants who did not miss phase 2
+r00_model_data_phase2 <- stove_use_data %>% 
+  mutate(phase2 = 1) %>% 
+  mutate(phase2 = if_else(phase == 2 & is.na(aug_index), 0, phase2)) %>%  
+  group_by(house_id) %>% 
+  filter(sum(phase2) == 6) %>% 
+  ungroup() 
+```
+
+# Analysis plan
+## New variables here are already incorporated into the full database
+## DO NOT USE THIS CHUNK OF CODE ##
+```{r}
+# stratify assigned stove and stove-use variables
+table(stove_use_data$assigned_stove, stove_use_data$stove_use_3)
+
+test_data <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  # mutating so NAs are reported as 0
+  # days_sec is self-reported use of secondary stove in days/month
+  mutate(days_sec = as.numeric(days_sec),
+         days_sec = if_else(days_sec == 0 | is.na(days_sec), 0, days_sec)) %>% 
+  # days_sec is self-reported use of secondary stove in days/month
+  mutate(hours_primary = as.numeric(hours_primary),
+         hours_primary = if_else(hours_primary == 0 | is.na(hours_primary), 
+                                 0, hours_primary))
+
+median(test_data$days_sec) # 1 day
+hist(test_data$days_sec, breaks = 30)
+median(test_data$hours_primary) # 3 hours
+hist(test_data$hours_primary)
+# Could dichotomize days_sec at 0 days or 1+ days
+table(test_data$days_sec)
+# However, the group of interest (justa+trad) only reported 0 days/month 14 times
+# Consider dichotomizing days_sec at < 4 or 4+ days per month
+table(test_data$days_sec, test_data$stove_use_3)
+# Could dichotomize hours_primary at median of 3 (<3.5, 3.5+)
+table(test_data$hours_primary)
+table(test_data$hours_primary, test_data$stove_use_3)
+
+# dataset with new variables for analysis
+stove_use_data <- test_data %>% 
+  # splitting days_sec at <4 and 4+
+  mutate(days_sec_4 = if_else(days_sec < 4, 0, 1)) %>%
+  mutate(days_sec_4 = factor(days_sec_4, levels = c(0,1), labels = c("<4", "4+"))) %>%
+  # splitting hours_primary at <3.5 and 3.5+
+  mutate(hours_primary_3.5 = if_else(hours_primary < 3.5, 0, 1)) %>%
+  mutate(hours_primary_3.5 = factor(hours_primary_3.5, 
+                                    levels = c(0,1), labels = c("<3.5", "3.5+"))) %>%
+  # mutating stove_use_3 to character for use in if_else statement
+  mutate(stove_use_3 = as.character(stove_use_3)) %>% 
+  # new variable incorporating days/month of secondary stove use (<4 vs 4+) 
+  # only doing this for justa+trad levels
+  ## because only 24 people reported 4+ days improved secondary stove use with Justa
+  ## and this data wasn't available in phase 1
+  mutate(stove_use_days_stack = 
+         if_else(stove_use_3 == "justa+trad" & days_sec_4 == "4+",
+                 "justa+trad, 4+", stove_use_3)) %>% 
+  mutate(stove_use_days_stack = 
+           factor(stove_use_days_stack,
+                  levels = c("justa/imprvd", "justa+trad", 
+                             "justa+trad, 4+", "trad"),
+                  labels = c("justa/imprvd", "justa+trad, <4", 
+                             "justa+trad, 4+", "trad"))) %>%
+  # reorder new var so traditional is reference
+  mutate(stove_use_days_stack = 
+           factor(stove_use_days_stack,
+                  levels = c("trad", "justa+trad, 4+", 
+                             "justa+trad, <4", "justa/imprvd"))) %>%
+  # new variable incorporating hours/day of primary stove use (<3.5 vs 3.5+) 
+  mutate(stove_use_hours = 
+         if_else(stove_use_3 == "justa+trad" & hours_primary_3.5 == "3.5+",
+                 "justa+trad, 3.5+", stove_use_3)) %>% 
+  mutate(stove_use_hours = 
+         if_else(stove_use_hours == "trad" & hours_primary_3.5 == "3.5+",
+                 "trad, 3.5+", stove_use_hours)) %>% 
+  mutate(stove_use_hours = 
+         if_else(stove_use_hours == "justa/imprvd" & hours_primary_3.5 == "3.5+",
+                 "justa/imprvd, 3.5+", stove_use_hours)) %>% 
+  mutate(stove_use_hours = 
+           factor(stove_use_hours,
+                  levels = c("justa/imprvd", "justa/imprvd, 3.5+", "justa+trad", 
+                             "justa+trad, 3.5+", "trad", "trad, 3.5+"),
+                  labels = c("justa/imprvd, <3.5", "justa/imprvd, 3.5+", "justa+trad, <3.5", 
+                             "justa+trad, 3.5+", "trad, <3.5", "trad, 3.5+"))) %>%
+  # reorder new var so traditional 3.5+ hours is reference
+  mutate(stove_use_hours = 
+           factor(stove_use_hours,
+                  levels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+", 
+                             "justa+trad, <3.5", "justa/imprvd, 3.5+", 
+                             "justa/imprvd, <3.5"))) %>%
+  mutate(stove_use_3 = factor(stove_use_3, 
+                            levels = c("trad", "justa+trad", "justa/imprvd")))
+
+table(stove_use_data$days_sec_4, stove_use_data$stove_use_3)
+table(stove_use_data$days_sec_4, stove_use_data$stove_use_days_stack)
+table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_3)
+table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
+```
+
+# Describe actual stove use over course of study, by assigned study arm
+## DO NOT USE THIS CHUNK OF CODE ##
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  filter(pregnant_new == 0)
+
+stove_use <- r00_full_long %>% 
+  select(house_id, study_arm, phase, stove_use_3) %>% 
+  spread(phase, stove_use_3) %>%  # new columns for phase, filled in by stove use
+  unite(stove, c("1":"6"), sep = ", ") %>%  # unite new columns into one new column
+  arrange(study_arm)
+
+# create new dataframe from a frequency table of stove use options by study arm
+stove_use_options <- as.data.frame(table(stove_use$stove, stove_use$study_arm)) %>% 
+  rename(stove_use_combination = Var1) %>% 
+  rename(study_arm = Var2) %>% 
+  rename(freq = Freq) %>% 
+  arrange(study_arm, desc(freq)) %>% 
+  filter(freq != 0)
+
+#write_csv(stove_use_options, "output/stove_use_options.csv")
+
+##### assign stove-use var to participants based on above table
+
+stove_use_2 <- r00_full_long %>% 
+  #select(house_id, study_arm, phase, stove_use_3) %>% 
+  mutate(dummy_var = factor(stove_use_3, 
+                            levels = c("trad", "justa+trad", "justa/imprvd"),
+                            labels = c(1, 2, 3))) %>% 
+  mutate(dummy_var = as.numeric(dummy_var),
+         dummy_var = if_else(is.na(dummy_var), 0, dummy_var),
+         dummy_var = if_else(dummy_var == 1, 1, dummy_var),
+         dummy_var = if_else(dummy_var == 2, 10, dummy_var),
+         dummy_var = if_else(dummy_var == 3, 100, dummy_var)) %>% 
+  group_by(house_id) %>% 
+  # code below designates participants into 3 groups: compliers, stackers, and inconsistent
+  # compliers used the assigned stove based on their study arm assignment
+  # stackers used the assigned stove based on study arm, but stacked with traditional
+  # inconsistent meant they switched groups, didn't follow stove assignment, or missed 2+ visits
+  # stackers/compliers were allowed to miss 1 pre-intervention visit 
+    # or 1 post-intervention visit and still meet the above definitions
+  mutate(stove_use_label = if_else(study_arm == 1 & 
+                                         (sum(dummy_var) == 42 | sum(dummy_var) == 32 |
+                                          sum(dummy_var) == 41),
+                                         "stacker", "inconsistent"),
+         stove_use_label = if_else(study_arm == 1 & 
+                                         (sum(dummy_var) == 402 | sum(dummy_var) == 302 |
+                                          sum(dummy_var) == 401),
+                                         "complier", stove_use_label),
+         stove_use_label = if_else(study_arm == 2 & 
+                                         (sum(dummy_var) == 24 | sum(dummy_var) == 14 |
+                                          sum(dummy_var) == 23),
+                                         "stacker", stove_use_label),
+         stove_use_label = if_else(study_arm == 2 & 
+                                         (sum(dummy_var) == 204 | sum(dummy_var) == 104 |
+                                          sum(dummy_var) == 203),
+                                         "complier", stove_use_label)) %>% 
+  ungroup() %>% 
+   ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) 
+  #filter(phase == 1) %>% 
+  #group_by(stove_use_label, phase) %>% 
+  #summarise(mean(aug_index, na.rm = TRUE), n())
+
+table(stove_use_2$stove_use_label, stove_use_2$study_arm)
+
+stove_use_3 <- stove_use_2 %>% 
+  select(house_id, study_arm, phase, stove_use_3, stove_use_label) %>% 
+  spread(phase, stove_use_3) %>%  # new columns for phase, filled in by stove use
+  unite(stove, c("1":"6"), sep = ", ") %>%  # unite new columns into one new column
+  arrange(study_arm)
+
+# merge datasets to capture new stove-use designations
+stove_use_options_2 <- stove_use_3 %>% 
+  rename(stove_use_combination = stove) %>% 
+  right_join(stove_use_options, by = c("stove_use_combination", "study_arm")) %>% 
+  select(-house_id) %>% 
+  unique()
+
+#write_csv(stove_use_options_2, "output/stove_use_options_2.csv")
+```
+
+# Stove use analyses with a priori confounders
+```{r}
+# BP and Stove use variables
+## tried: prim_sum_temp_percent_50 (and other SUMs vars), prim_stove_loc, hours_primary,
+## hours_primary_3.5, community (random and fixed), days_sec, times_cook,
+## dds_total, ses_materials, beds_new, salt_cat, sugar_cat, manteca_cat, elevation,
+## haptrash_freq, hapsmoke_freq, mean_hum, mean_dew, mean_temp, max_temp, max_hum, max_dew,
+## sec_stove, sums, hours_secondary, SES_weighted_sum, ses_weighted_cat, enclosure, 
+## condition
+
+
+##### Complete-case model 
+model_6phases <- lmer(outcome ~ stove_use_3 + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_6phases)
+#summary(model_6phases)
+tidy_model_6phases <- tidy(model_6phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "complete case")
+#icc(model_6phases)
+
+################################################################
+##### Missed phases model 
+model_5phases <- lmer(outcome ~ stove_use_3 + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_5phases)
+#summary(model_5phases)
+tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "missed visit")
+#icc(model_5phases)
+
+################################################################
+model_stove_use_3 <- lmer(outcome ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_stove_use_3)
+#icc(model_stove_use_3)
+tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "all data") 
+
+################################################################
+model_p2_sphygmo <- lmer(outcome ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_data_sphygmo_p2)
+#summary(model_p2_sphygmo)
+#icc(model_p2_sphygmo)
+tidy_model_p2_sphygmo <- tidy(model_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "missed visit 2") 
+
+################################################################
+model_compliance <- lmer(outcome ~ stove_use_label + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), stove_use_compliance)
+#summary(model_compliance)
+#icc(model_compliance)
+tidy_model_compliance <- tidy(model_compliance, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_label', term)) %>% 
+    mutate(model = "compliance") 
+
+################################################################
+##### bp meds removed
+model_no_bp_meds <- lmer(outcome ~ stove_use_3 + 
+                             ns(date_sphygmo, df=6) + age_baseline +
+                             waist_cm + school_bi + (1 | house_id), 
+                             r00_model_data_meds)
+#summary(model_no_bp_meds)
+tidy_model_no_bp_meds <- tidy(model_no_bp_meds, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "no bp meds")
+
+################################################################
+##### date spline with 12 df
+model_spline12 <- lmer(outcome ~ stove_use_3 + 
+                           ns(date_sphygmo, df=12) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_spline12)
+tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "spline 12 df")
+
+################################################################
+##### phase instead of spline
+model_phase <- lmer(outcome ~ stove_use_3 + phase + age_baseline +
+                        waist_cm + school_bi + (1 | house_id), 
+                    r00_model_data)
+#summary(model_phase)
+tidy_model_phase <- tidy(model_phase, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "visit")
+
+################################################################
+##### season instead of spline
+model_season <- lmer(outcome ~ stove_use_3 + season + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), 
+                     r00_model_data)
+#summary(model_season)
+tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "season")
+
+################################################################
+##### bmi instead of waist_cm
+model_bmi <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      bmi + school_bi + (1 | house_id), 
+                  r00_model_data)
+#summary(model_bmi)
+tidy_model_bmi <- tidy(model_bmi, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "bmi")
+
+################################################################
+##### whr instead of waist_cm
+model_whr <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      whr + school_bi + (1 | house_id), 
+                  r00_model_data)
+#summary(model_whr)
+tidy_model_whr <- tidy(model_whr, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "whr")
+
+################################################################
+##### adding beds_new
+model_beds <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + beds_new + (1 | house_id), 
+                   r00_model_data)
+#summary(model_beds)
+tidy_model_beds <- tidy(model_beds, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "beds")
+
+################################################################
+##### adding ses_materials
+model_ses <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + ses_materials + (1 | house_id), 
+                  r00_model_data)
+#summary(model_ses)
+tidy_model_ses <- tidy(model_ses, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "ses assets")
+
+################################################################
+##### adding phys_act
+model_pa <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                     waist_cm + school_bi + phys_act + (1 | house_id), 
+                 r00_model_data)
+#summary(model_pa)
+tidy_model_pa <- tidy(model_pa, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "phys act")
+
+################################################################
+##### adding dds_total
+model_dds <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                      waist_cm + school_bi + dds_total + (1 | house_id), 
+                  r00_model_data)
+#summary(model_dds)
+tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "dds")
+
+################################################################
+##### full model with all potential confounders
+model_full <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + dds_total + phys_act +
+                       ses_materials + beds_new + 
+                       (1 | house_id), r00_model_data)
+#summary(model_full)
+tidy_model_full <- tidy(model_full, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "full")
+
+################################################################
+######################################### stove_use_4
+##### Complete-case model 
+model_4level_6phases <- lmer(outcome ~ stove_use_4 + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_6phases)
+#summary(model_4level_6phases)
+tidy_model_4level_6phases <- tidy(model_4level_6phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_4', term)) %>% 
+    mutate(model = "complete case")
+#icc(model_4level_6phases)
+
+################################################################
+##### Missed phases model 
+model_4level_5phases <- lmer(outcome ~ stove_use_4 + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_5phases)
+#summary(model_4level_5phases)
+tidy_model_4level_5phases <- tidy(model_4level_5phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_4', term)) %>% 
+    mutate(model = "missed visit")
+#icc(model_4level_5phases)
+
+################################################################
+model_4level <- lmer(outcome ~ stove_use_4 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_4level)
+#icc(model_4level)
+tidy_model_4level <- tidy(model_4level, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_4', term)) %>% 
+    mutate(model = "all data") 
+
+################################################################
+model_4level_p2_sphygmo <- lmer(outcome ~ stove_use_4 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_data_sphygmo_p2)
+#summary(model_4level_p2_sphygmo)
+#icc(model_4level_p2_sphygmo)
+tidy_model_4level_p2_sphygmo <- tidy(model_4level_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_4', term)) %>% 
+    mutate(model = "missed visit 2") 
+
+################################################################
+######################################### stove_use_days_stack
+##### Complete-case model 
+model_days_6phases <- lmer(outcome ~ stove_use_days_stack + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_6phases)
+#summary(model_days_6phases)
+tidy_model_days_6phases <- tidy(model_days_6phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_days_stack', term)) %>% 
+    mutate(model = "complete case")
+#icc(model_days_6phases)
+
+################################################################
+##### Missed phases model 
+model_days_5phases <- lmer(outcome ~ stove_use_days_stack + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_5phases)
+#summary(model_days_5phases)
+tidy_model_days_5phases <- tidy(model_days_5phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_days_stack', term)) %>% 
+    mutate(model = "missed visit")
+#icc(model_days_5phases)
+
+################################################################
+model_days <- lmer(outcome ~ stove_use_days_stack + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_days)
+#icc(model_days)
+tidy_model_days <- tidy(model_days, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_days_stack', term)) %>% 
+    mutate(model = "all data") 
+
+################################################################
+model_days_p2_sphygmo <- lmer(outcome ~ stove_use_days_stack + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_data_sphygmo_p2)
+#summary(model_days_p2_sphygmo)
+#icc(model_days_p2_sphygmo)
+tidy_model_days_p2_sphygmo <- tidy(model_days_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_days_stack', term)) %>% 
+    mutate(model = "missed visit 2") 
+
+################################################################
+######################################### stove_use_hours
+##### Complete-case model 
+model_hours_6phases <- lmer(outcome ~ stove_use_hours + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_6phases)
+#summary(model_hours_6phases)
+tidy_model_hours_6phases <- tidy(model_hours_6phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_hours', term)) %>% 
+    mutate(model = "complete case")
+#icc(model_hours_6phases)
+
+################################################################
+##### Missed phases model 
+model_hours_5phases <- lmer(outcome ~ stove_use_hours + 
+                          ns(date_sphygmo, df=6) + age_baseline +
+                          waist_cm + school_bi + (1 | house_id), 
+                          r00_data_5phases)
+#summary(model_hours_5phases)
+tidy_model_hours_5phases <- tidy(model_hours_5phases, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_hours', term)) %>% 
+    mutate(model = "missed visit")
+#icc(model_hours_5phases)
+
+################################################################
+model_hours <- lmer(outcome ~ stove_use_hours + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_hours)
+#icc(model_hours)
+tidy_model_hours <- tidy(model_hours, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_hours', term)) %>% 
+    mutate(model = "all data") 
+
+################################################################
+model_hours_p2_sphygmo <- lmer(outcome ~ stove_use_hours + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_data_sphygmo_p2)
+#summary(model_hours_p2_sphygmo)
+#icc(model_hours_p2_sphygmo)
+tidy_model_hours_p2_sphygmo <- tidy(model_hours_p2_sphygmo, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_hours', term)) %>% 
+    mutate(model = "missed visit 2") 
+
+################################################################
+results_3level <- rbind(tidy_model_6phases,
+                     tidy_model_5phases,
+                     tidy_model_stove_use_3,
+                     tidy_model_p2_sphygmo,
+                     tidy_model_no_bp_meds,
+                     tidy_model_phase,
+                     tidy_model_season,
+                     tidy_model_spline12,
+                     tidy_model_bmi,
+                     tidy_model_whr,
+                     tidy_model_beds,
+                     tidy_model_ses,
+                     tidy_model_pa,
+                     tidy_model_dds,
+                     tidy_model_full)
+
+results_4level <- rbind(tidy_model_4level_6phases,
+                     tidy_model_4level_5phases,
+                     tidy_model_4level,
+                     tidy_model_4level_p2_sphygmo)
+
+results_days <- rbind(tidy_model_days_6phases,
+                     tidy_model_days_5phases,
+                     tidy_model_days,
+                     tidy_model_days_p2_sphygmo)
+
+results_hours <- rbind(tidy_model_hours_6phases,
+                     tidy_model_hours_5phases,
+                     tidy_model_hours,
+                     tidy_model_hours_p2_sphygmo)
+```
+
+## Plot model estimates - Stove-Use
+```{r}
+# primary stove-use model with sensitivity analyses
+plot_estimates <- results_3level %>%
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2", 
+                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "bmi", "whr", "beds", "ses assets", "phys act",
+                                          "dds", "full"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
+                        labels = c("justa+trad", "justa/imprvd"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "top",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8)) 
+
+plot_estimates
+
+
+# stove use 4-level
+plot_estimates <- results_4level %>%
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_4justa+trad",
+                                   "stove_use_4justa+imp",
+                                   "stove_use_4justa"),
+                        labels = c("justa+trad", "justa+imp", "justa"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)) 
+plot_estimates
+
+
+# stove use days/month model
+plot_estimates <- results_days %>%
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_days_stackjusta+trad, 4+",
+                                   "stove_use_days_stackjusta+trad, <4",
+                                   "stove_use_days_stackjusta/imprvd"),
+                        labels = c("justa+trad 4+ days/month", "justa+trad <4 days/month",
+                                   "justa/imprvd"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)) 
+plot_estimates
+
+
+# stove use hours/day model
+plot_estimates <- results_hours %>%
+  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+                                          "missed visit 2"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_hourstrad, <3.5",
+                                   "stove_use_hoursjusta+trad, 3.5+",
+                                   "stove_use_hoursjusta+trad, <3.5",
+                                   "stove_use_hoursjusta/imprvd, 3.5+",
+                                   "stove_use_hoursjusta/imprvd, <3.5"),
+                        labels = c("trad <3.5 hours", "justa+trad 3.5+ hours",
+                                   "justa+trad <3.5 hours", "justa/imprvd 3.5+ hours",
+                                   "justa/imprvd <3.5 hours"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.75), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate vs traditional stove \n use 3.5+ hours/day (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 
+                     labels = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)) 
+plot_estimates
+
+
+# stove use - compliance
+plot_estimates <- tidy_model_compliance %>%
+  mutate(level = factor(term, 
+                        levels = c("stove_use_labelinconsistent",
+                                   "stove_use_labelstacker"),
+                        labels = c("inconsistent", "stacker"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.75), size = 4) +
+  scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  labs(y = "Estimate vs compliant \n stove users (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "right",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 
+                     labels = c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)) 
+plot_estimates
+```
+
+# Primary model diagnostic plots - stove use
+```{r}
+plot(model_stove_use_3, main = "Stove-use model", 
+     xlab = "fitted values", ylab = "residuals")
+
+qqnorm(residuals(model_stove_use_3), main = "Stove-use model")
+
+
+#influential <- influence(model_stove_use_3, obs = TRUE)
+
+#cooks <- cooks.distance.estex(influential, sort = TRUE)
+
+#plot.estex(influential, which = "cook")
+```

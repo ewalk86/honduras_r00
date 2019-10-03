@@ -66,7 +66,8 @@ r00_data_6phases <- r00_full_long %>%
   ungroup() %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = sys_bp_periph) 
+
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
@@ -78,7 +79,8 @@ r00_data_5phases <- r00_full_long %>%
   ungroup() %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = sys_bp_periph) 
+
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
 r00_data_sphygmo_p2 <- r00_full_long %>%
@@ -95,7 +97,7 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
   mutate(outcome = sys_bp_periph) %>% 
-  filter(!is.na(outcome))  # 955 obs from 184 participants  
+  filter(!is.na(outcome))  # 955 obs from 184 participants   
 
 
 # Filtering out medication users (n=59 obs)
@@ -304,7 +306,8 @@ results <- rbind(tidy_model_apm,
                      tidy_model_apm_beds,
                      tidy_model_apm_ses,
                      tidy_model_apm_pa,
-                     tidy_model_apm_dds)
+                     tidy_model_apm_dds,
+                     tidy_model_apm_full)
 #kable(results)
 ```
 
@@ -315,8 +318,8 @@ plot_estimates <- results %>%
   mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
                                           "missed visit 2",
                                           "no bp meds", "visit", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+                                          "bmi", "whr", "beds", "ses assets", "phys act",
+                                          "dds", "full"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
@@ -546,7 +549,8 @@ results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_beds,
                      tidy_model_ppm_ses,
                      tidy_model_ppm_pa,
-                     tidy_model_ppm_dds)
+                     tidy_model_ppm_dds,
+                     tidy_model_apm_full)
 #kable(results)
 ```
 
@@ -556,8 +560,8 @@ plot_estimates <- results %>%
   mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
                                           "missed visit 2",
                                           "no bp meds", "visit", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+                                          "bmi", "whr", "beds", "ses assets", "phys act",
+                                          "dds", "full"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
