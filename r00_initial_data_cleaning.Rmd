@@ -386,20 +386,44 @@ r00_final_long <- r00_joined_3 %>%
   ungroup()
 ```
 
+# Join inflammatory markers with full dataset
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+# load inflammatory dataset
+inflammatory_data <- read_xlsx("input/r00_dbs_data_20191004.xlsx")
+
+inflammatory_data_clean <- inflammatory_data %>% 
+  separate(dbs_A_phase, c("p", "phase"), sep = "p") %>% 
+  mutate(il1b_dbs_a = as.numeric(DBS_A_IL1b),
+         il6_dbs_a = as.numeric(DBS_A_IL6),
+         il8_dbs_a = as.numeric(DBS_A_IL8),
+         tnfa_dbs_a = as.numeric(DBS_A_TNFa),
+         tnfa_2_dbs_a = as.numeric(DBS_A_TNFa_2),
+         crp_dbs_a = as.numeric(DBS_A_CRP)) %>% 
+  select(-p, -DBS_A_IL1b, -DBS_A_IL6, -DBS_A_IL8, -DBS_A_TNFa, -DBS_A_TNFa_2, -DBS_A_CRP)
+
+full_inflammatory_joined <- r00_full_long %>% 
+  left_join(inflammatory_data_clean, by = c("house_id", "phase")) %>% 
+  select(-il1b, -il6, -il8, -tnfa, -tnfa_2, -crp)
+```
 
 # Save final, combined dataset
 ```{r}
-write_rds(r00_final_long, "output/r00_full_repeated_by_phase.rds")
+write_rds(full_inflammatory_joined, "output/r00_full_repeated_by_phase.rds")
 
-write_csv(r00_final_long, "output/r00_full_repeated_by_phase.csv", na = " ")
+write_csv(full_inflammatory_joined, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```
 
 # Remove AIx/CPP outliers and save dataset
 ```{r}
-# USE THIS DATASET FOR ANALYSES!!!
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+# USE THIS DATASET FOR AIx/CPP ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
 ## This dataset is already saved -- use code above to load
-r00_model_data_outliers_removed <- r00_final_long %>% 
+r00_model_data_outliers_removed <- r00_full_long %>% 
   # removes 6 potential "outliers" with high or low AIx
   # removes 4 potential "outliers" > 75mmHg CPP
   mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 

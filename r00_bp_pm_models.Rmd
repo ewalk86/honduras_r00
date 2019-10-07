@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP PM Models and Plots"
 author: "Ethan Walker"
-date: "2 October 2019"
+date: "7 October 2019"
 output: pdf_document
 ---
 
@@ -37,9 +37,9 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 # Exposure-response models
 
+```{r}
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
-```{r}
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
@@ -122,7 +122,7 @@ r00_model_data_meds <- r00_model_data %>%
 \pagebreak  
 
 # Kitchen PM
-```{r, echo=TRUE}
+```{r}
 ##### Kitchen PM all data
 # run and save model
 model_apm <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
@@ -365,7 +365,7 @@ qqnorm(residuals(model_apm), main = "Kitchen PM primary model")
 ---------------------------------
 
 # Personal PM
-```{r, echo=TRUE}
+```{r}
 ##### personal PM all data
 model_ppm <- lmer(outcome ~ log_p_twa + 
                     ns(date_sphygmo, df=6) + age_baseline +

@@ -1,7 +1,7 @@
 ---
 title: "R00 BP Stove Use Models"
 author: "Ethan Walker"
-date: "3 October 2019"
+date: "7 October 2019"
 output: pdf_document
 ---
 
@@ -39,9 +39,9 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 # Stove-use models
 
+```{r}
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
-```{r}
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
@@ -148,11 +148,10 @@ stove_use_compliance <- r00_full_long %>%
   mutate(outcome = sys_bp_periph)
 ```
 
-
+```{r, eval=FALSE}
 # Other "test" datasets when assessing missing data and selection bias
 ## Saving in case I need it for future analyses
 ## DO NOT USE THIS CHUNK OF CODE ##
-```{r}
 # load full dataset
 #r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
@@ -358,10 +357,10 @@ r00_model_data_phase2 <- stove_use_data %>%
   ungroup() 
 ```
 
+```{r, eval=FALSE}
 # Analysis plan
 ## New variables here are already incorporated into the full database
 ## DO NOT USE THIS CHUNK OF CODE ##
-```{r}
 # stratify assigned stove and stove-use variables
 table(stove_use_data$assigned_stove, stove_use_data$stove_use_3)
 
@@ -449,9 +448,9 @@ table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_3)
 table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
 ```
 
+```{r, eval=FALSE}
 # Describe actual stove use over course of study, by assigned study arm
 ## DO NOT USE THIS CHUNK OF CODE ##
-```{r}
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm

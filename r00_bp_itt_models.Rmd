@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP ITT Models"
 author: "Ethan Walker"
-date: "2 October 2019"
+date: "7 October 2019"
 output: pdf_document
 ---
 
@@ -37,9 +37,9 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 # Intent-to-treat models
 
+```{r}
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
-```{r}
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
@@ -119,7 +119,6 @@ r00_model_data_p6 <- r00_model_data %>%
   filter(phase == 6)
 ```
 
-
 ```{r, eval=FALSE}
 # Simple linear models between AIx and age/bmi
 aix_age <- lm(aug_index ~ age_baseline, data = r00_model_data_baseline)
@@ -149,8 +148,8 @@ aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p6)
 tidy(aix_bmi)
 ```
 
+```{r}
 # Run ITT models
-```{r, echo=TRUE}
 ##### ITT primary model - spline with 6 df
 # run and save model
 model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 

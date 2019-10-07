@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP Summary Stats"
 author: "Ethan Walker"
-date: "1 Oct 2019"
+date: "7 Oct 2019"
 output: pdf_document
 ---
 
@@ -69,11 +69,11 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   filter(!is.na(sys_bp_periph))  # 955 obs from 184 participants  
 ```
 
-
+```{r, eval=FALSE}
 # Other "test" datasets when assessing missing data and selection bias
 ## Saving in case I need it for future analyses
 ## DO NOT USE THIS CHUNK OF CODE ##
-```{r}
+
 #load dataset
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
@@ -289,10 +289,11 @@ r00_data_phase2_yes <- r00_model_data_outliers_removed %>%
   filter(!is.na(aug_index)) 
 ```
 
+```{r, eval=FALSE}
 # Testing subgroups of data for missing data/selection bias
 ## Saving in case I need it for future analyses
 ## DO NOT USE THIS CHUNK OF CODE ##
-```{r}
+
 aix_justatrad_diff <- r00_56_combined %>% 
   select(house_id, phase, aug_index, pulse_pressure_central,
          study_arm, assigned_stove, stove_use_3, stove_use_4, all_phases,
@@ -361,8 +362,9 @@ filter(house_id == "ANT011" | house_id == "MOM026" | house_id == "OLO050" |
 ```
 
 
+```{r, eval=FALSE}
 # Overall and within subject standard deviations for outcomes
-```{r}
+
 bp_sd <- r00_data %>% 
   select(study_arm, sys_bp_periph, house_id, dia_bp_periph) %>% 
   filter(!is.na(study_arm)) %>% 
@@ -413,17 +415,31 @@ bp_sd_within_person <- r00_data %>%
   summarize(sqrt(mean(varsbp, na.rm = TRUE)))
 ```
 
-# Grouped by assigned stove, all phases
+# Variables grouped by assigned stove
 ```{r}
-summary_stats_stove <- r00_data %>% 
-  filter(!is.na(assigned_stove)) %>% 
+summary_stats <- r00_data %>% 
   filter(!is.na(sys_bp_periph)) %>% 
-  select(assigned_stove, sys_bp_periph, dia_bp_periph) %>% 
+  select(assigned_stove, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+         "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
+         "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
+         "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
+         "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
+         "Pulse Pressure Peripheral" = pulse_pressure_periph, 
+         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+  #filter(phase == 1) %>% 
   group_by(assigned_stove) %>% 
-  summarize(n(), mean(sys_bp_periph), sd(sys_bp_periph), mean(dia_bp_periph),
-            sd(dia_bp_periph))
-summary_stats_stove
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+  gather(var, value, -assigned_stove) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, assigned_stove) %>% 
+  select(var, assigned_stove, n, mean, sd, min, median, max) %>% 
+  rename("Variable" = var, "Assigned Stove" = assigned_stove) 
+kable(summary_stats, digits = 2)
 ```
+
+\pagebreak  
 
 # Variables grouped by study arm
 ### Data from phase 1
@@ -479,8 +495,8 @@ kable(summary_stats_all, digits = 2)
 
 \pagebreak 
 
+```{r, eval=FALSE}
 # SBP grouped by stove use and study arm - all phases
-```{r}
 ## Grouped by stove use
 
 summary_sbp_stove_use <- r00_data %>% 
@@ -655,7 +671,7 @@ summary_sbp_6phases <- r00_data_6phases %>%
             "Min" = min(sys_bp_periph), 
             "Max" = max(sys_bp_periph),
             "IQR" = IQR(sys_bp_periph))
-kable(summary_sbp_phase2_no, digits = 1)
+kable(summary_sbp_6phases, digits = 1)
 
 summary_sbp_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
@@ -682,8 +698,9 @@ sbp_summary_all <- rbind(summary_sbp, summary_sbp_6phases,
 kable(sbp_summary_all, digits = 1)
 ```
 
+
+```{r, eval=FALSE}
 # DBP grouped by stove use and study arm - all phases
-```{r}
 ## Grouped by stove use
 
 summary_dbp_stove_use <- r00_data %>% 
@@ -858,7 +875,7 @@ summary_dbp_6phases <- r00_data_6phases %>%
             "Min" = min(dia_bp_periph), 
             "Max" = max(dia_bp_periph),
             "IQR" = IQR(dia_bp_periph))
-kable(summary_dbp_phase2_no, digits = 1)
+kable(summary_dbp_6phases, digits = 1)
 
 summary_dbp_5phases <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
@@ -915,9 +932,10 @@ kable(summary_stats_study_arm, digits = 2)
 
 \pagebreak  
 
+```{r, eval=FALSE}
 # Variables grouped by study arm and BMI category
 ### Data from phase 3 and 4
-```{r}
+
 summary_stats_study_arm <- r00_data %>% 
   #split age at 40; >40 = 1, <=40 = 0
   mutate(age_cat = if_else(age_baseline >= 40, ">=40", "<40")) %>% 
@@ -947,9 +965,10 @@ kable(summary_stats_study_arm, digits = 2)
 
 \pagebreak  
 
+```{r, eval=FALSE}
 # Variables grouped by age category
 ### Data from phase 1 and 2
-```{r}
+
 summary_stats_age_cat <- r00_data %>% 
   select(phase, study_arm, age_baseline, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
          "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
@@ -977,9 +996,10 @@ kable(summary_stats_age_cat, digits = 2)
 
 \pagebreak  
 
+```{r, eval=FALSE}
 # Variables grouped by bmi category
 ### Data from phase 1 and 2
-```{r}
+
 summary_stats_bmi_cat <- r00_data %>% 
   select(phase, study_arm, age_baseline, bmi, "Augmentation Index" = aug_index, 
          "Heart Rate" = hr, 
@@ -1006,44 +1026,6 @@ summary_stats_bmi_cat <- r00_data %>%
   select(var, phase, bmi_cat, n, mean, sd, median, max, min) %>% 
   rename("Variable" = var, "BMI Category" = bmi_cat) 
 kable(summary_stats_bmi_cat, digits = 2)
-```
-
-\pagebreak  
-
-# Line plots across phases
-```{r}
-line_plot_data <- r00_data %>% 
-  arrange(house_id, date_sphygmo) %>% 
-  group_by(house_id) %>% 
-  mutate(increase = if_else(sys_bp_periph < lead(sys_bp_periph), "TRUE", "FALSE")) 
-
-sbp_line_plot <- ggplot(line_plot_data) +
-  geom_line(aes(phase, sys_bp_periph, color = increase, group = house_id)) +
-  theme_minimal() +
-  theme(legend.position = "none")
-sbp_line_plot
-
-line_plot_data <- r00_data_5phases %>% 
-  arrange(house_id, date_sphygmo) %>% 
-  group_by(house_id) %>% 
-  mutate(increase = if_else(sys_bp_periph < lead(sys_bp_periph), "TRUE", "FALSE")) 
-
-sbp_line_plot <- ggplot(line_plot_data) +
-  geom_line(aes(phase, sys_bp_periph, color = increase, group = house_id)) +
-  theme_minimal() +
-  theme(legend.position = "none")
-sbp_line_plot
-
-line_plot_data <- r00_data_6phases %>% 
-  arrange(house_id, date_sphygmo) %>% 
-  group_by(house_id) %>% 
-  mutate(increase = if_else(sys_bp_periph < lead(sys_bp_periph), "TRUE", "FALSE")) 
-
-sbp_line_plot <- ggplot(line_plot_data) +
-  geom_line(aes(phase, sys_bp_periph, color = increase, group = house_id)) +
-  theme_minimal() +
-  theme(legend.position = "none")
-sbp_line_plot
 ```
 
 \pagebreak  
@@ -1090,7 +1072,7 @@ summary_stats_phase6 <- r00_data_6phases %>%
   arrange(var, phase, study_arm) %>% 
   select(var, phase, study_arm, n, mean, sd, median, max, min) %>% 
   rename("Variable" = var, "Phase" = phase, "Arm" = study_arm) 
-kable(summary_stats_phase6, digits = 2)
+#kable(summary_stats_phase6, digits = 2)
 
 summary_stats_phase5 <- r00_data_5phases %>% 
   filter(!is.na(assigned_stove)) %>% 
@@ -1111,7 +1093,7 @@ summary_stats_phase5 <- r00_data_5phases %>%
   arrange(var, phase, study_arm) %>% 
   select(var, phase, study_arm, n, mean, sd, median, max, min) %>% 
   rename("Variable" = var, "Phase" = phase, "Arm" = study_arm) 
-kable(summary_stats_phase5, digits = 2)
+#kable(summary_stats_phase5, digits = 2)
 ```
 
 \pagebreak
@@ -1367,94 +1349,6 @@ dbp_histogram <- r00_data %>%
           plot.title = element_text(hjust = 0.5)) +
    ggtitle("DBP by Phase") 
 dbp_histogram
-```
-
-\pagebreak  
-
-```{r}
-# HR
-hr_histogram <- data_outliers_removed %>%
-  select(phase, study_arm, hr) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(hr) %>% 
-    ggplot()+
-    geom_histogram(aes(x = hr), bins = 30) +
-    facet_wrap(~phase, ncol = 2) +
-    theme_bw() +
-    scale_fill_manual(values=c("#33CC99",
-                               "#339999",
-                               "#FF9900",
-                               "#330099")) +
-   xlab("HR (bpm)") +
-   ylab("Number of measurements") +
-   theme(text = element_text(size = 16),
-          legend.position= "none",
-          plot.title = element_text(hjust = 0.5)) +
-   ggtitle("HR by Phase") 
-#hr_histogram
-
-# pulse_pressure_periph
-pulse_pressure_peripheral_histogram <- data_outliers_removed %>%
-  select(phase, study_arm, pulse_pressure_periph) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(pulse_pressure_periph) %>% 
-    ggplot()+
-    geom_histogram(aes(x = pulse_pressure_periph), bins = 30) +
-    facet_wrap(~phase, ncol = 2) +
-    theme_bw() +
-    scale_fill_manual(values=c("#33CC99",
-                               "#339999",
-                               "#FF9900",
-                               "#330099")) +
-   xlab("Peripheral Pulse Pressure (mmHg)") +
-   ylab("Number of measurements") +
-   theme(text = element_text(size = 16),
-          legend.position= "none",
-          plot.title = element_text(hjust = 0.5)) +
-   ggtitle("Peripheral Pulse Pressure by Phase") 
-pulse_pressure_peripheral_histogram
-
-# sys_bp_central
-sys_bp_central_histogram <- data_outliers_removed %>%
-  select(phase, study_arm, sys_bp_central) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(sys_bp_central) %>% 
-    ggplot()+
-    geom_histogram(aes(x = sys_bp_central), bins = 30) +
-    facet_wrap(~phase, ncol = 2) +
-    theme_bw() +
-    scale_fill_manual(values=c("#33CC99",
-                               "#339999",
-                               "#FF9900",
-                               "#330099")) +
-   xlab("Central Systolic BP (mmHg)") +
-   ylab("Number of measurements") +
-   theme(text = element_text(size = 16),
-          legend.position= "none",
-          plot.title = element_text(hjust = 0.5)) +
-   ggtitle("Central Systolic BP by Phase") 
-#sys_bp_central_histogram
-
-# dia_bp_central
-dia_bp_central_histogram <- data_outliers_removed %>%
-  select(phase, study_arm, dia_bp_central) %>% 
-  mutate(study_arm = factor(study_arm, levels = c(1, 2), labels = c("Arm 1", "Arm 2"))) %>%
-  na.exclude(dia_bp_central) %>% 
-    ggplot()+
-    geom_histogram(aes(x = dia_bp_central), bins = 30) +
-    facet_wrap(~phase, ncol = 2) +
-    theme_bw() +
-    scale_fill_manual(values=c("#33CC99",
-                               "#339999",
-                               "#FF9900",
-                               "#330099")) +
-   xlab("Central Diastolic BP (mmHg)") +
-   ylab("Number of measurements") +
-   theme(text = element_text(size = 16),
-          legend.position= "none",
-          plot.title = element_text(hjust = 0.5)) +
-   ggtitle("Central Diastolic BP by Phase") 
-#dia_bp_central_histogram
 ```
 
 \pagebreak  
