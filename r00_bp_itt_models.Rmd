@@ -53,7 +53,8 @@ r00_model_data <- r00_full_long %>%
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = sys_bp_periph) %>% 
+  filter(outcome < 160)
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -66,7 +67,8 @@ r00_data_6phases <- r00_full_long %>%
   ungroup() %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = sys_bp_periph) %>% 
+  filter(outcome < 160)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
@@ -78,7 +80,8 @@ r00_data_5phases <- r00_full_long %>%
   ungroup() %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = sys_bp_periph) %>% 
+  filter(outcome < 160)
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
 r00_data_sphygmo_p2 <- r00_full_long %>%
@@ -95,6 +98,7 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
   mutate(outcome = sys_bp_periph) %>% 
+  filter(outcome < 160) %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -164,7 +168,7 @@ model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
 #icc_model <- lmer(as.numeric(outcome) ~ (1 | house_id), r00_model_data)
 #icc(icc_model)
 
-# summary(model_itt)
+ summary(model_itt)
 # format model output for plotting
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
@@ -259,7 +263,7 @@ plot_estimates <- results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "Intent-to-treat models") +
+  ggtitle(label = "Systolic BP <160 ITT models") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 

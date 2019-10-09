@@ -39,20 +39,11 @@ r00_data <- r00_full_long %>%
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_full_long %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  ungroup()
+  filter(complete_case_sbp == 1)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
-  filter(!is.na(sys_bp_periph)) %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed < 6 phases
-  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>% 
-  ungroup() 
+  filter(complete_case_sbp == 0)  
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
 r00_data_sphygmo_p2 <- r00_full_long %>%
@@ -415,59 +406,6 @@ bp_sd_within_person <- r00_data %>%
   summarize(sqrt(mean(varsbp, na.rm = TRUE)))
 ```
 
-# Variables grouped by assigned stove
-```{r}
-summary_stats <- r00_data %>% 
-  filter(!is.na(sys_bp_periph)) %>% 
-  select(assigned_stove, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
-         "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
-         "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
-         "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
-         "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
-         "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  #filter(phase == 1) %>% 
-  group_by(assigned_stove) %>% 
-  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
-                     "_min" = min, "_max" = max, "_n" = n())) %>% 
-  gather(var, value, -assigned_stove) %>% 
-  separate(var, into = c("var", "stat"), sep = "__") %>% 
-  spread(stat, value) %>% 
-  arrange(var, assigned_stove) %>% 
-  select(var, assigned_stove, n, mean, sd, min, median, max) %>% 
-  rename("Variable" = var, "Assigned Stove" = assigned_stove) 
-kable(summary_stats, digits = 2)
-```
-
-\pagebreak  
-
-# Variables grouped by study arm
-### Data from phase 1
-```{r}
-summary_stats <- r00_data %>% 
-  filter(!is.na(sys_bp_periph)) %>% 
-  select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
-         "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
-         "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
-         "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
-         "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
-         "Pulse Pressure Peripheral" = pulse_pressure_periph, 
-         "Pulse Pressure Central" = pulse_pressure_central) %>% 
-  filter(phase == 1) %>% 
-  group_by(study_arm, phase) %>% 
-  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
-                     "_min" = min, "_max" = max, "_n" = n())) %>% 
-  gather(var, value, -study_arm, -phase) %>% 
-  separate(var, into = c("var", "stat"), sep = "__") %>% 
-  spread(stat, value) %>% 
-  arrange(var, phase, study_arm) %>% 
-  select(var, phase, study_arm, n, mean, sd, min, median, max) %>% 
-  rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm) 
-kable(summary_stats, digits = 2)
-```
-
-\pagebreak  
-
 # All households
 ### Data from phase 1
 ```{r}
@@ -494,6 +432,59 @@ kable(summary_stats_all, digits = 2)
 ```
 
 \pagebreak 
+
+# Variables grouped by study arm
+### Data from phase 1
+```{r}
+summary_stats <- r00_data %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(phase, study_arm, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+         "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
+         "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
+         "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
+         "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
+         "Pulse Pressure Peripheral" = pulse_pressure_periph, 
+         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+  filter(phase == 1) %>% 
+  group_by(study_arm, phase) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+  gather(var, value, -study_arm, -phase) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, phase, study_arm) %>% 
+  select(var, phase, study_arm, n, mean, sd, min, median, max) %>% 
+  rename("Variable" = var, "Phase" = phase, "Study Arm" = study_arm) 
+kable(summary_stats, digits = 2)
+```
+
+\pagebreak 
+
+# Variables grouped by assigned stove
+```{r}
+summary_stats <- r00_data %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
+  select(assigned_stove, "Augmentation Index" = aug_index, "Heart Rate" = hr, 
+         "Systolic BP Peripheral" = sys_bp_periph, "Diastolic BP Peripheral" = dia_bp_periph, 
+         "MAP Peripheral" = map_periph, "Systolic BP Central" = sys_bp_central, 
+         "Diastolic BP Central" = dia_bp_central, "MAP Central" = map_central, 
+         "Augmentation Pressure" = aug_pressure, "Augmentation Index 75" = aug_index_75,
+         "Pulse Pressure Peripheral" = pulse_pressure_periph, 
+         "Pulse Pressure Central" = pulse_pressure_central) %>% 
+  #filter(phase == 1) %>% 
+  group_by(assigned_stove) %>% 
+  summarise_all(funs("_mean" = mean, "_sd" = sd, "_median" = median, 
+                     "_min" = min, "_max" = max, "_n" = n())) %>% 
+  gather(var, value, -assigned_stove) %>% 
+  separate(var, into = c("var", "stat"), sep = "__") %>% 
+  spread(stat, value) %>% 
+  arrange(var, assigned_stove) %>% 
+  select(var, assigned_stove, n, mean, sd, min, median, max) %>% 
+  rename("Variable" = var, "Assigned Stove" = assigned_stove) 
+kable(summary_stats, digits = 2)
+```
+
+\pagebreak  
 
 ```{r, eval=FALSE}
 # SBP grouped by stove use and study arm - all phases
@@ -963,8 +954,6 @@ summary_stats_study_arm <- r00_data %>%
 kable(summary_stats_study_arm, digits = 2)
 ```
 
-\pagebreak  
-
 ```{r, eval=FALSE}
 # Variables grouped by age category
 ### Data from phase 1 and 2
@@ -993,8 +982,6 @@ summary_stats_age_cat <- r00_data %>%
   rename("Variable" = var, "Age Category" = age_cat) 
 kable(summary_stats_age_cat, digits = 2)
 ```
-
-\pagebreak  
 
 ```{r, eval=FALSE}
 # Variables grouped by bmi category
@@ -1028,10 +1015,9 @@ summary_stats_bmi_cat <- r00_data %>%
 kable(summary_stats_bmi_cat, digits = 2)
 ```
 
-\pagebreak  
-
+```{r, eval=FALSE}
 # Variables grouped by phase
-```{r}
+
 summary_stats_phase <- r00_data %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(sys_bp_periph)) %>%
@@ -1096,17 +1082,16 @@ summary_stats_phase5 <- r00_data_5phases %>%
 #kable(summary_stats_phase5, digits = 2)
 ```
 
-\pagebreak
-
 # Correlation Matrix
 ### Data from all 6 phases
 ```{r}
 summary_correlation <- r00_data %>% 
   select(aug_index, hr, sys_bp_periph, dia_bp_periph, map_periph,
          sys_bp_central, dia_bp_central, map_central, aug_pressure, aug_index_75,
-         pulse_pressure_periph, pulse_pressure_central) %>% 
-  na.exclude(sys_bp_periph)
-cor(summary_correlation)
+         pulse_pressure_periph, pulse_pressure_central) 
+
+bp_cor <- round(cor(summary_correlation, method = c("spearman"), use = "complete.obs"), 2)
+bp_cor
 ```
 
 \pagebreak
@@ -1155,8 +1140,7 @@ sphygmocor_boxplot <- r00_data %>%
             color = "red") +
   geom_point(data = sphygmocor_means, aes(phase, `mean(sys_bp_periph)`), 
             size = 2, color = "red") +
-  ggtitle("SBP by Phase and Study Arm", 
-          subtitle = "means in red; 4 outliers >75 and <-25 removed") +
+  ggtitle("SBP by Phase and Study Arm", subtitle = "means in red") +
   facet_wrap(~study_arm) +
   xlab("Study Phase") +
   ylab("SBP (mmHg)") +
@@ -1193,9 +1177,7 @@ sphygmocor_boxplot <- r00_data %>%
 sphygmocor_boxplot
 ```
 
-\pagebreak  
-
-```{r}
+```{r, eval=FALSE}
 ## Peripheral Pulse Pressure
 # boxplots by phase, faceted by study arm
 # means plotted in red

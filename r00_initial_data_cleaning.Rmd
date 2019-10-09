@@ -1,7 +1,7 @@
 ---
 title: "Data Cleaning"
 author: "Ethan Walker"
-date: "29 July 2019"
+date: "Updated 9 Oct 2019"
 output: pdf_document
 ---
 
@@ -389,33 +389,100 @@ r00_final_long <- r00_joined_3 %>%
 # Join inflammatory markers with full dataset
 ```{r}
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") 
 # load inflammatory dataset
-inflammatory_data <- read_xlsx("input/r00_dbs_data_20191004.xlsx")
+inflammatory_data <- read_xlsx("input/r00_dbs_data_20191009.xlsx")
 
 inflammatory_data_clean <- inflammatory_data %>% 
-  separate(dbs_A_phase, c("p", "phase"), sep = "p") %>% 
-  mutate(il1b_dbs_a = as.numeric(DBS_A_IL1b),
-         il6_dbs_a = as.numeric(DBS_A_IL6),
-         il8_dbs_a = as.numeric(DBS_A_IL8),
-         tnfa_dbs_a = as.numeric(DBS_A_TNFa),
-         tnfa_2_dbs_a = as.numeric(DBS_A_TNFa_2),
-         crp_dbs_a = as.numeric(DBS_A_CRP)) %>% 
-  select(-p, -DBS_A_IL1b, -DBS_A_IL6, -DBS_A_IL8, -DBS_A_TNFa, -DBS_A_TNFa_2, -DBS_A_CRP)
+  # rename variables
+  mutate(house_id = as.factor(X__1),
+         phase = as.factor(X__2),
+         il1b_dbs_a = as.numeric(X__3),
+         il6_dbs_a = as.numeric(X__4),
+         il8_dbs_a = as.numeric(X__5),
+         tnfa_dbs_a = as.numeric(X__6),
+         tnfa_2_dbs_a = as.numeric(Repeated),
+         crp_dbs_a = as.numeric(X__7)) %>% 
+  # separate phase to remove "p"
+  separate(phase, c("p", "phase"), sep = "p") %>% 
+  # select new variables/discard old variables
+  select(house_id, phase, il1b_dbs_a, il6_dbs_a, il8_dbs_a, tnfa_dbs_a, 
+         tnfa_2_dbs_a, crp_dbs_a) %>% 
+  # filter out invalid rows for "house_id"
+  filter(house_id != "ID") %>% 
+  # fix phases that had more than just phase number
+  separate(phase, c("phase", "trash"), sep = " ") %>%
+  mutate(phase = if_else(phase == "5****", "5", phase)) %>% 
+  select(-trash) %>% 
+  # replace "NaN" with "NA" throughout dataset
+  replace_with_na(replace = list(il1b_dbs_a = "NaN")) %>% 
+  replace_with_na(replace = list(il6_dbs_a = "NaN")) %>%
+  replace_with_na(replace = list(il8_dbs_a = "NaN")) %>%
+  replace_with_na(replace = list(tnfa_dbs_a = "NaN")) %>%
+  replace_with_na(replace = list(tnfa_2_dbs_a = "NaN")) %>%
+  replace_with_na(replace = list(crp_dbs_a = "NaN"))
+  
 
 full_inflammatory_joined <- r00_full_long %>% 
-  left_join(inflammatory_data_clean, by = c("house_id", "phase")) %>% 
-  select(-il1b, -il6, -il8, -tnfa, -tnfa_2, -crp)
+  left_join(inflammatory_data_clean, by = c("house_id", "phase"))
+##### Save as final combined dataset in chunk below #####
+```
+
+# Create new variables for existing database
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+new_vars <- r00_full_long %>% 
+  # new BP vars that join Sphygmo and Nurse BP values
+  mutate(sys_bp_periph = as.character(sys_bp_periph)) %>% 
+  mutate(sys_bp_joined = if_else(is.na(sys_bp_periph), sys_bp_final_nurse, sys_bp_periph)) %>% 
+  mutate(sys_bp_periph = as.numeric(sys_bp_periph),
+         sys_bp_final_nurse = as.numeric(sys_bp_final_nurse),
+         sys_bp_joined = as.numeric(sys_bp_joined)) %>% 
+  mutate(dia_bp_periph = as.character(dia_bp_periph)) %>% 
+  mutate(dia_bp_joined = if_else(is.na(dia_bp_periph), dia_bp_final_nurse, dia_bp_periph)) %>% 
+  mutate(dia_bp_periph = as.numeric(dia_bp_periph),
+         dia_bp_final_nurse = as.numeric(dia_bp_final_nurse),
+         dia_bp_joined = as.numeric(dia_bp_joined)) %>% 
+  #create new indicator vars to be able to filter for participants who completed 6 phases
+  group_by(house_id) %>% 
+  mutate(phase_complete_aix = if_else(!is.na(aug_index), 1, 0),
+         complete_case_aix = if_else(sum(phase_complete_aix) == 6, 1, 0),
+         phase_complete_cpp = if_else(!is.na(pulse_pressure_central), 1, 0),
+         complete_case_cpp = if_else(sum(phase_complete_cpp) == 6, 1, 0),
+         phase_complete_sbp = if_else(!is.na(sys_bp_periph), 1, 0),
+         complete_case_sbp = if_else(sum(phase_complete_sbp) == 6, 1, 0),
+         phase_complete_dbp = if_else(!is.na(dia_bp_periph), 1, 0),
+         complete_case_dbp = if_else(sum(phase_complete_dbp) == 6, 1, 0),
+         phase_complete_a1c = if_else(!is.na(hba1c), 1, 0),
+         complete_case_a1c = if_else(sum(phase_complete_a1c) == 6, 1, 0),
+         phase_complete_il1b = if_else(!is.na(il1b_dbs_a), 1, 0),
+         complete_case_il1b = if_else(sum(phase_complete_il1b) == 6, 1, 0),
+         phase_complete_il6 = if_else(!is.na(il6_dbs_a), 1, 0),
+         complete_case_il6 = if_else(sum(phase_complete_il6) == 6, 1, 0),
+         phase_complete_il8 = if_else(!is.na(il8_dbs_a), 1, 0),
+         complete_case_il8 = if_else(sum(phase_complete_il8) == 6, 1, 0),
+         phase_complete_tnfa = if_else(!is.na(tnfa_dbs_a), 1, 0),
+         complete_case_tnfa = if_else(sum(phase_complete_tnfa) == 6, 1, 0),
+         phase_complete_crp = if_else(!is.na(crp_dbs_a), 1, 0),
+         complete_case_crp = if_else(sum(phase_complete_crp) == 6, 1, 0)) %>% 
+  ungroup() %>% 
+  select(-phase_complete_aix, -phase_complete_cpp, -phase_complete_sbp, -phase_complete_dbp,
+         -phase_complete_a1c, -phase_complete_il1b, -phase_complete_il6, -phase_complete_il8,
+         -phase_complete_tnfa, -phase_complete_crp)
+  
+##### Save as final combined dataset in chunk below #####
 ```
 
 # Save final, combined dataset
 ```{r}
-write_rds(full_inflammatory_joined, "output/r00_full_repeated_by_phase.rds")
+write_rds(new_vars, "output/r00_full_repeated_by_phase.rds")
 
-write_csv(full_inflammatory_joined, "output/r00_full_repeated_by_phase.csv", na = " ")
+write_csv(new_vars, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```
 
-# Remove AIx/CPP outliers and save dataset
+# Change AIx/CPP outliers to NA and save dataset
 ```{r}
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
