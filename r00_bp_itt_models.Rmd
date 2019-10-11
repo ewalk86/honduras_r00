@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP ITT Models"
 author: "Ethan Walker"
-date: "7 October 2019"
+date: "Updated 11 October 2019"
 output: pdf_document
 ---
 
@@ -52,36 +52,25 @@ r00_model_data <- r00_full_long %>%
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) %>% 
-  filter(outcome < 160)
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_full_long %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  ungroup() %>% 
+  filter(complete_case_sbp == 1) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) %>% 
-  filter(outcome < 160)
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = sys_bp_periph)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
-  filter(!is.na(sys_bp_periph)) %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed < 6 phases
-  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>% 
-  ungroup() %>% 
+  filter(complete_case_sbp == 0) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) %>% 
-  filter(outcome < 160)
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = sys_bp_periph)
+  
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
 r00_data_sphygmo_p2 <- r00_full_long %>%
@@ -96,9 +85,8 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   ungroup() %>% 
   filter(pregnant_new == 0) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
   mutate(outcome = sys_bp_periph) %>% 
-  filter(outcome < 160) %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -106,21 +94,6 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
 r00_model_data_meds <- r00_model_data %>% 
   #filtering out bp med users
   filter(is.na(med_bp)) 
-
-
-# Filtering data for each specific phase
-r00_model_data_baseline <- r00_model_data %>% 
-  filter(phase == 1)
-r00_model_data_p2 <- r00_model_data %>% 
-  filter(phase == 2)
-r00_model_data_p3 <- r00_model_data %>% 
-  filter(phase == 3)
-r00_model_data_p4 <- r00_model_data %>% 
-  filter(phase == 4)
-r00_model_data_p5 <- r00_model_data %>% 
-  filter(phase == 5)
-r00_model_data_p6 <- r00_model_data %>% 
-  filter(phase == 6)
 ```
 
 ```{r, eval=FALSE}
@@ -168,11 +141,20 @@ model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
 #icc_model <- lmer(as.numeric(outcome) ~ (1 | house_id), r00_model_data)
 #icc(icc_model)
 
- summary(model_itt)
+ # summary(model_itt)
 # format model output for plotting
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "all data", "na")) 
+
+############################################################
+##### ITT model - using joined bp data (sphygmo and manual during visit 2)
+model_bpjoined <- lmer(sys_bp_joined ~ assigned_stove + ns(date_sphygmo, df=6) +
+                      (1 | house_id), r00_model_data)
+# summary(model_bpjoined)
+tidy_model_bpjoined <- tidy(model_bpjoined, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "bp joined", "na")) 
 
 ############################################################
 ##### ITT model - participants who completed all 6 phases
@@ -235,27 +217,41 @@ model_season <- lmer(outcome ~ assigned_stove + season +
 #summary(model_season)
 tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "season", "na"))
+
+############################################################
+##### ITT model - checking for impact of potential confounders
+model_confounders <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                          age_baseline + waist_cm + school_bi + 
+                          ses_materials + as.numeric(mean_temp) +
+                          (1 | house_id), r00_model_data)
+#summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
 
 ############################################################
 # Combine prepped data for plotting
 results <- rbind(tidy_model_itt,
+                     tidy_model_bpjoined,
                      tidy_model_6phases,
                      tidy_model_5phases,
                      tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
                      tidy_model_season,
-                     tidy_model_12df)
+                     tidy_model_12df,
+                     tidy_model_confounders)
 #kable(results)
 ```
 
 # Plot model results 
 ```{r}
 plot_estimates <- results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit",
+  mutate(model = factor(model, levels = c("all data", "bp joined",
+                                          "complete case", "missed visit",
                                           "missed visit 2", "no bp meds", "visit", 
-                                          "season", "spline 12 df"))) %>% 
+                                          "season", "spline 12 df", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
@@ -263,7 +259,7 @@ plot_estimates <- results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Systolic BP <160 ITT models") +
+  ggtitle(label = "Systolic BP ITT models") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 

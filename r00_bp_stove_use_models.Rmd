@@ -1,7 +1,7 @@
 ---
 title: "R00 BP Stove Use Models"
 author: "Ethan Walker"
-date: "7 October 2019"
+date: "Updated 11 October 2019"
 output: pdf_document
 ---
 
@@ -36,9 +36,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
                   "#FF3366", "#33CC99", "#33999")
 ```
 
-
 # Stove-use models
-
 ```{r}
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
@@ -54,33 +52,24 @@ r00_model_data <- r00_full_long %>%
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_full_long %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  ungroup() %>% 
+  filter(complete_case_sbp == 1) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = dia_bp_periph)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
-  filter(!is.na(sys_bp_periph)) %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed < 6 phases
-  mutate(phase_complete = if_else(!is.na(sys_bp_periph), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>% 
-  ungroup() %>% 
+  filter(complete_case_sbp == 0) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = dia_bp_periph)
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
 r00_data_sphygmo_p2 <- r00_full_long %>%
@@ -95,8 +84,8 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   ungroup() %>% 
   filter(pregnant_new == 0) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) %>% 
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = dia_bp_periph)  %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -145,7 +134,7 @@ stove_use_compliance <- r00_full_long %>%
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = dia_bp_periph)
 ```
 
 ```{r, eval=FALSE}
@@ -534,7 +523,6 @@ stove_use_options_2 <- stove_use_3 %>%
 #write_csv(stove_use_options_2, "output/stove_use_options_2.csv")
 ```
 
-# Stove use analyses with a priori confounders
 ```{r}
 # BP and Stove use variables
 ## tried: prim_sum_temp_percent_50 (and other SUMs vars), prim_stove_loc, hours_primary,
@@ -544,7 +532,28 @@ stove_use_options_2 <- stove_use_3 %>%
 ## sec_stove, sums, hours_secondary, SES_weighted_sum, ses_weighted_cat, enclosure, 
 ## condition
 
+################################################################
+model_stove_use_3 <- lmer(outcome ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_stove_use_3)
+#icc(model_stove_use_3)
+tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "all data") 
 
+################################################################
+model_bpjoined <- lmer(dia_bp_joined ~ stove_use_3 + 
+                         ns(date_sphygmo, df=6) + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_bpjoined)
+tidy_model_bpjoined <- tidy(model_bpjoined, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "bp joined") 
+
+################################################################
 ##### Complete-case model 
 model_6phases <- lmer(outcome ~ stove_use_3 + 
                           ns(date_sphygmo, df=6) + age_baseline +
@@ -567,17 +576,6 @@ tidy_model_5phases <- tidy(model_5phases, conf.int = TRUE) %>%
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "missed visit")
 #icc(model_5phases)
-
-################################################################
-model_stove_use_3 <- lmer(outcome ~ stove_use_3 + 
-                         ns(date_sphygmo, df=6) + 
-                         waist_cm + school_bi + age_baseline +
-                         (1 | house_id), r00_model_data)
-#summary(model_stove_use_3)
-#icc(model_stove_use_3)
-tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
-    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "all data") 
 
 ################################################################
 model_p2_sphygmo <- lmer(outcome ~ stove_use_3 + 
@@ -702,6 +700,16 @@ model_dds <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline 
 tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "dds")
+
+################################################################
+##### model with mean_temp
+model_temp <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + as.numeric(mean_temp) + 
+                       (1 | house_id), r00_model_data)
+#summary(model_temp)
+tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+   filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "temp")
 
 ################################################################
 ##### full model with all potential confounders
@@ -856,9 +864,10 @@ tidy_model_hours_p2_sphygmo <- tidy(model_hours_p2_sphygmo, conf.int = TRUE) %>%
     mutate(model = "missed visit 2") 
 
 ################################################################
-results_3level <- rbind(tidy_model_6phases,
+results_3level <- rbind(tidy_model_stove_use_3,
+                     tidy_model_bpjoined,
+                     tidy_model_6phases,
                      tidy_model_5phases,
-                     tidy_model_stove_use_3,
                      tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
@@ -870,6 +879,7 @@ results_3level <- rbind(tidy_model_6phases,
                      tidy_model_ses,
                      tidy_model_pa,
                      tidy_model_dds,
+                     tidy_model_temp,
                      tidy_model_full)
 
 results_4level <- rbind(tidy_model_4level_6phases,
@@ -892,11 +902,12 @@ results_hours <- rbind(tidy_model_hours_6phases,
 ```{r}
 # primary stove-use model with sensitivity analyses
 plot_estimates <- results_3level %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+  mutate(model = factor(model, levels = c("all data", "bp joined",
+                                          "complete case", "missed visit", 
                                           "missed visit 2", 
                                           "no bp meds", "visit", "season", "spline 12 df", 
                                           "bmi", "whr", "beds", "ses assets", "phys act",
-                                          "dds", "full"))) %>% 
+                                          "dds", "temp", "full"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
                         labels = c("justa+trad", "justa/imprvd"))) %>% 
@@ -908,7 +919,7 @@ plot_estimates <- results_3level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "Diastolic BP - 3 level stove-use models") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -947,7 +958,7 @@ plot_estimates <- results_4level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "Diastolic BP - 4 level stove-use models") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -986,7 +997,7 @@ plot_estimates <- results_days %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "Diastolic BP - stove-use days/month") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1028,7 +1039,7 @@ plot_estimates <- results_hours %>%
                 position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "Diastolic BP - stove-use hours/day") +
   labs(y = "Estimate vs traditional stove \n use 3.5+ hours/day (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1063,7 +1074,7 @@ plot_estimates <- tidy_model_compliance %>%
                 position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "Diastolic BP - stove-use compliance") +
   labs(y = "Estimate vs compliant \n stove users (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
