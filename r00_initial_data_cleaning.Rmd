@@ -473,6 +473,19 @@ new_vars <- r00_full_long %>%
          -phase_complete_tnfa, -phase_complete_crp)
   
 ##### Save as final combined dataset in chunk below #####
+
+new_vars <- r00_full_long %>% 
+  group_by(house_id) %>% 
+  mutate(SES_weighted_sum = if_else(phase == 2, lag(SES_weighted_sum), SES_weighted_sum),
+         SES_weighted_sum = if_else(phase == 3, lag(SES_weighted_sum), SES_weighted_sum),
+         SES_weighted_sum = if_else(phase == 4, lag(SES_weighted_sum), SES_weighted_sum),
+         SES_weighted_sum = if_else(phase == 5, lag(SES_weighted_sum), SES_weighted_sum),
+         SES_weighted_sum = if_else(phase == 6, lag(SES_weighted_sum), SES_weighted_sum)) %>% 
+  mutate(ses_weighted_cat = if_else(phase == 2, lag(ses_weighted_cat), ses_weighted_cat),
+         ses_weighted_cat = if_else(phase == 3, lag(ses_weighted_cat), ses_weighted_cat),
+         ses_weighted_cat = if_else(phase == 4, lag(ses_weighted_cat), ses_weighted_cat),
+         ses_weighted_cat = if_else(phase == 5, lag(ses_weighted_cat), ses_weighted_cat),
+         ses_weighted_cat = if_else(phase == 6, lag(ses_weighted_cat), ses_weighted_cat)) 
 ```
 
 # Save final, combined dataset

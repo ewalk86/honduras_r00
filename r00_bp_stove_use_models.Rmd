@@ -1,7 +1,7 @@
 ---
 title: "R00 BP Stove Use Models"
 author: "Ethan Walker"
-date: "Updated 11 October 2019"
+date: "Updated 15 October 2019"
 output: pdf_document
 ---
 
@@ -47,6 +47,7 @@ r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 r00_model_data <- r00_full_long %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
@@ -541,7 +542,7 @@ model_stove_use_3 <- lmer(outcome ~ stove_use_3 +
 #icc(model_stove_use_3)
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "all data") 
+    mutate(model = "primary") 
 
 ################################################################
 model_bpjoined <- lmer(dia_bp_joined ~ stove_use_3 + 
@@ -622,6 +623,17 @@ tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>%
     mutate(model = "spline 12 df")
 
 ################################################################
+##### date spline with 3 df
+model_spline3 <- lmer(outcome ~ stove_use_3 + 
+                           ns(date_sphygmo, df=3) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_spline3)
+tidy_model_spline3 <- tidy(model_spline3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "spline 3 df")
+
+################################################################
 ##### phase instead of spline
 model_phase <- lmer(outcome ~ stove_use_3 + phase + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
@@ -640,6 +652,16 @@ model_season <- lmer(outcome ~ stove_use_3 + season + age_baseline +
 tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "season")
+
+################################################################
+##### no time variable
+model_no_time <- lmer(outcome ~ stove_use_3 + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), 
+                     r00_model_data)
+#summary(model_no_time)
+tidy_model_no_time <- tidy(model_no_time, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "no time")
 
 ################################################################
 ##### bmi instead of waist_cm
@@ -704,7 +726,7 @@ tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>%
 ################################################################
 ##### model with mean_temp
 model_temp <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + as.numeric(mean_temp) + 
+                       waist_cm + school_bi + kitchen_temp + 
                        (1 | house_id), r00_model_data)
 #summary(model_temp)
 tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
@@ -864,15 +886,19 @@ tidy_model_hours_p2_sphygmo <- tidy(model_hours_p2_sphygmo, conf.int = TRUE) %>%
     mutate(model = "missed visit 2") 
 
 ################################################################
+results_time <- rbind(tidy_model_no_time,
+                      tidy_model_season,
+                      tidy_model_phase,
+                      tidy_model_stove_use_3)
+
+
 results_3level <- rbind(tidy_model_stove_use_3,
                      tidy_model_bpjoined,
                      tidy_model_6phases,
                      tidy_model_5phases,
-                     tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
-                     tidy_model_phase,
-                     tidy_model_season,
                      tidy_model_spline12,
+                     tidy_model_spline3,
                      tidy_model_bmi,
                      tidy_model_whr,
                      tidy_model_beds,
@@ -900,12 +926,48 @@ results_hours <- rbind(tidy_model_hours_6phases,
 
 ## Plot model estimates - Stove-Use
 ```{r}
+# different ways of modeling time
+plot_estimates <- results_time %>%
+  mutate(model = factor(model, levels = c("no time", "season",
+                                          "visit", "primary"))) %>% 
+  mutate(level = factor(term, 
+                        levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
+                        labels = c("justa+trad", "justa/imprvd"))) %>% 
+  ggplot(aes(group = level, shape = level)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  ggtitle(label = "Diastolic BP - 3 level stove-use models") +
+  labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16),
+          legend.position = "top",
+          legend.text = element_text(size = 14, colour = "black"),
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .9),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank()) +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8)) 
+
+plot_estimates
+
+
 # primary stove-use model with sensitivity analyses
 plot_estimates <- results_3level %>%
-  mutate(model = factor(model, levels = c("all data", "bp joined",
-                                          "complete case", "missed visit", 
-                                          "missed visit 2", 
-                                          "no bp meds", "visit", "season", "spline 12 df", 
+  mutate(model = factor(model, levels = c("primary", "bp joined",
+                                          "complete case", "missed visit",
+                                          "no bp meds", "spline 12 df", "spline 3 df",
                                           "bmi", "whr", "beds", "ses assets", "phys act",
                                           "dds", "temp", "full"))) %>% 
   mutate(level = factor(term, 

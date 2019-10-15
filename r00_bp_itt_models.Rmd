@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP ITT Models"
 author: "Ethan Walker"
-date: "Updated 11 October 2019"
+date: "Updated 15 October 2019"
 output: pdf_document
 ---
 
@@ -30,6 +30,7 @@ library(influence.ME)
 library(boxcoxmix)
 library(sjstats)
 library(rptR)
+library(gamm4)
 jvPalette <- c("#330099","#CC0066","#FF6633", 
                  "#0099CC", "#FF9900","#CC6633",
                   "#FF3366", "#33CC99", "#33999")
@@ -47,29 +48,33 @@ r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 r00_model_data <- r00_full_long %>% 
+  mutate(date_sphygmo = ymd(date_sphygmo),
+         date_days = (as.numeric(date_sphygmo)-16667)) %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
-  # filter(!is.na(outcome))
+  # filter(!is.na(outcome)) 
+
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_full_long %>%
   filter(complete_case_sbp == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = dia_bp_periph)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
   filter(complete_case_sbp == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = dia_bp_periph)
   
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
@@ -86,7 +91,7 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   filter(pregnant_new == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph) %>% 
+  mutate(outcome = dia_bp_periph) %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -125,6 +130,36 @@ aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p6)
 tidy(aix_bmi)
 ```
 
+```{r, eval=FALSE}
+# testing a different method for spline/date, and grouping kitchen temp by season/study arm
+
+r00_test <- r00_full_long %>% 
+  filter(!is.na(season)) %>% 
+  filter(!is.na(study_arm)) %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp),
+         season = factor(season, levels = c(1, 2), labels = c("rainy", "dry"))) %>% 
+  group_by(study_arm) %>% 
+  summarise(mean(kitchen_temp, na.rm = TRUE))
+
+
+model_itt_spline <- gamm4(outcome ~ assigned_stove + kitchen_temp +
+                          s(date_days, fx = TRUE, bs = "cr", k = 7), 
+                          data = r00_model_data,
+                          random = ~(1 | house_id))
+plot(model_itt_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
+     xlab = expression(paste("Date")),
+     ylab = expression(paste("Estimate, spline trend for Date")))
+summary(model_itt_spline$gam)
+summary(model_itt_spline$mer)
+
+model_itt_spline <- gamm4(outcome ~ assigned_stove + 
+                          s(date_days, fx = TRUE, bs = "cr", k = 7), 
+                          data = r00_model_data,
+                          random = ~(1 | house_id))
+plot(model_itt_spline$gam, seWithMean = TRUE)
+```
+
+
 ```{r}
 # Run ITT models
 ##### ITT primary model - spline with 6 df
@@ -145,11 +180,11 @@ model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
 # format model output for plotting
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "all data", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "primary", "na")) 
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
-model_bpjoined <- lmer(sys_bp_joined ~ assigned_stove + ns(date_sphygmo, df=6) +
+model_bpjoined <- lmer(dia_bp_joined ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_model_data)
 # summary(model_bpjoined)
 tidy_model_bpjoined <- tidy(model_bpjoined, conf.int = TRUE) %>% 
@@ -193,6 +228,15 @@ tidy_model_12df <- tidy(model_itt_12df, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "spline 12 df", "na")) 
 
 ############################################################
+##### ITT model - spline with 3 df
+model_itt_3df <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=3) + 
+                  (1 | house_id), r00_model_data)
+#summary(model_itt_3df)
+tidy_model_itt_3df <- tidy(model_itt_3df, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "spline 3 df", "na")) 
+
+############################################################
 ##### ITT model - bp meds removed (57 obs)
 model_no_bp_meds <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
                          (1 | house_id), r00_model_data_meds)
@@ -220,10 +264,19 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "season", "na"))
 
 ############################################################
+##### ITT model - no date or season
+model_no_time <- lmer(outcome ~ assigned_stove + 
+                     (1 | house_id), r00_model_data)
+#summary(model_no_time)
+tidy_model_no_time <- tidy(model_no_time, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "no time", "na"))
+
+############################################################
 ##### ITT model - checking for impact of potential confounders
 model_confounders <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
                           age_baseline + waist_cm + school_bi + 
-                          ses_materials + as.numeric(mean_temp) +
+                          ses_materials + 
                           (1 | house_id), r00_model_data)
 #summary(model_confounders)
 tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
@@ -231,27 +284,38 @@ tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
 
 ############################################################
+##### ITT model - checking for impact of kitchen temp
+model_temp <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                          kitchen_temp +
+                          (1 | house_id), r00_model_data)
+#summary(model_temp)
+tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "kitchen temp", "na"))
+
+############################################################
 # Combine prepped data for plotting
+results_time <- rbind(tidy_model_no_time,
+                      tidy_model_season,
+                      tidy_model_phase,
+                      tidy_model_itt)
+
 results <- rbind(tidy_model_itt,
                      tidy_model_bpjoined,
                      tidy_model_6phases,
                      tidy_model_5phases,
-                     tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
-                     tidy_model_phase,
-                     tidy_model_season,
+                     tidy_model_itt_3df,
                      tidy_model_12df,
+                     tidy_model_temp,
                      tidy_model_confounders)
 #kable(results)
 ```
 
 # Plot model results 
 ```{r}
-plot_estimates <- results %>%
-  mutate(model = factor(model, levels = c("all data", "bp joined",
-                                          "complete case", "missed visit",
-                                          "missed visit 2", "no bp meds", "visit", 
-                                          "season", "spline 12 df", "confounders"))) %>% 
+plot_estimates <- results_time %>%
+  mutate(model = factor(model, levels = c("no time", "season", "visit", "primary"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
@@ -259,7 +323,38 @@ plot_estimates <- results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Systolic BP ITT models") +
+  ggtitle(label = "Diastolic BP ITT models") +
+  labs(y = "Justa vs traditional (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = .8, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3, 4, 5), 
+                     labels = c(-3, -2, -1, 0, 1, 2, 3, 4, 5)) 
+plot_estimates
+
+plot_estimates <- results %>%
+  mutate(model = factor(model, levels = c("primary", "bp joined",
+                                          "complete case", "missed visit",
+                                          "no bp meds", "spline 12 df", 
+                                          "spline 3 df", "kitchen temp", "confounders"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  ggtitle(label = "Diastolic BP ITT models") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 

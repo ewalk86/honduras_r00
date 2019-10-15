@@ -1,7 +1,7 @@
 ---
 title: "R00 Interaction Analyses"
 author: "Ethan Walker"
-date: "27 July 2019"
+date: "Updated 13 October 2019"
 output: pdf_document
 ---
 
@@ -37,38 +37,43 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 # Creating datasets for various analyses
 ```{r}
-# USE THIS DATASET FOR ANALYSES!!!
-## Removes values >75 for AIx and CPP, and <-25 for AIx
+# Creating datasets for various analyses
+## Analyses for outcomes: sys_bp_periph, dia_bp_periph
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+#load dataset with AIx/CPP outliers removed (10 total)
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
-r00_model_data <- r00_model_data_outliers_removed %>% 
+r00_model_data <- r00_full_long %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
-  filter(pregnant_new == 0)  
-  # further removes 196 observations (n=1162)
-  # filter(!is.na(aug_index)) 
+  filter(pregnant_new == 0) %>%
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
+  mutate(outcome = sys_bp_periph) 
+  # further removes 190 observations (n=1168)
+  # filter(!is.na(outcome))
 
-# Dataset for participants who have AIx data for all 6 Phases (107 participants)
-r00_data_6phases <- r00_model_data %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  ungroup()
+# Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
+r00_data_6phases <- r00_full_long %>%
+  filter(complete_case_sbp == 1) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = sys_bp_periph)
   
-
-# Dataset for participants who have AIx data for all <6 Phases
-r00_data_5phases <- r00_model_data %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>% 
-  ungroup() 
+# Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
+r00_data_5phases <- r00_full_long %>%
+  filter(complete_case_sbp == 0) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = sys_bp_periph)
 
 
-# Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
-r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
+# Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
+r00_data_sphygmo_p2 <- r00_full_long %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
@@ -79,10 +84,13 @@ r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
   ungroup() %>% 
   filter(pregnant_new == 0) %>% 
-  filter(!is.na(aug_index))  # 949 obs from 184 participants  
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) %>% 
+  filter(!is.na(outcome))  # 955 obs from 184 participants   
 
 
-# Filtering out medication users (n=34 obs)
+# Filtering out medication users (n=59 obs)
 r00_model_data_meds <- r00_model_data %>% 
   #filtering out bp med users
   filter(is.na(med_bp)) 
@@ -90,34 +98,23 @@ r00_model_data_meds <- r00_model_data %>%
 
 ### ITT interaction analysis
 ```{r}
+## Use these vars as interaction terms
 # Age split at 40: age_cat_40
 # Waist split at 80: waist_cat
 # Blood pressure: bp_cat
 # Hba1c: hba1c_cat
 # Metabolic Syndrome: met_syn
-
-# AIx
-sphygmo_model_int <- lmer(aug_index ~ assigned_stove*met_syn + 
-                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-# Use this summary to get p-value for interaction term
-summary(sphygmo_model_int)
-int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
-#summary(int_emmeans)
-# Use this summary for estimates and confidence intervals
-confint(int_emmeans)
-# This line will plot the interaction term
-#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+# Season: season
 
 ############################################################
-# CPP
-sphygmo_model_int <- lmer(pulse_pressure_central ~ assigned_stove*met_syn + 
+model_int <- lmer(outcome ~ assigned_stove*season + kitchen_temp +
                           ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-summary(sphygmo_model_int)
-int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ assigned_stove | met_syn)
+summary(model_int)
+int_emmeans <- emmeans(model_int, pairwise ~ assigned_stove | season)
 #summary(int_emmeans, conf.int = TRUE)
 confint(int_emmeans)
 # This line will plot the interaction term
-#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+#emmip(model_int, season ~ assigned_stove, cov.reduce = range)
 ```
 
 ### PM interaction analysis
@@ -128,82 +125,49 @@ confint(int_emmeans)
 # Blood pressure: bp_cat
 # Hba1c: hba1c_cat
 # Metabolic Syndrome: met_syn
-
-# AIx and personal pm
-model_ppm_int <- lmer(aug_index ~ log_p_twa*met_syn + ns(date_sphygmo, df=6) +
-                      waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data)
-   #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
-summary(int_emtrends, conf.int = TRUE)
-#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
+# Season: season
 
 ############################################################
-# CPP and personal pm
-model_ppm_int <- lmer(pulse_pressure_central ~ log_p_twa*met_syn + 
+# Personal pm
+model_ppm_int <- lmer(outcome ~ log_p_twa*season + kitchen_temp +
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
                       school_bi + (1 | house_id), r00_model_data)
    #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ met_syn, var = "log_p_twa")
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ season, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
-#emmip(model_ppm_int, waist_cat ~ log_p_twa, cov.reduce = range)
+#emmip(model_ppm_int, season ~ log_p_twa, cov.reduce = range)
 
 ############################################################
-
-# AIx and area pm
-model_apm_int <- lmer(aug_index ~ log_a_twa*met_syn + ns(date_sphygmo, df=6) +
-                      waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data)
-   #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
-# This summary gives estimates, confidence intervals, and p-values
-summary(int_emtrends, conf.int = TRUE)
-# This line will plot the interaction term
-# emmip(model_apm_int, age_cat_40 ~ log_a_twa, cov.reduce = range)
-
-############################################################
-
-# CPP and area pm
-model_apm_int <- lmer(pulse_pressure_central ~ log_a_twa*met_syn + 
+# Kitchen pm
+model_apm_int <- lmer(outcome ~ log_a_twa*season + kitchen_temp +
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
                       school_bi + (1 | house_id), r00_model_data)
-   #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ met_syn, var = "log_a_twa")
+ #summary(model_apm_int)
+int_emtrends <- emtrends(model_apm_int, pairwise ~ season, var = "log_a_twa")
 summary(int_emtrends, conf.int = TRUE)
-# emmip(model_apm_int, waist_cat ~ log_a_twa, cov.reduce = range)
+#emmip(model_apm_int, season ~ log_a_twa, cov.reduce = range)
 ```
 
 ### Stove-use interaction analysis
 ```{r}
+## Use these vars as interaction terms
 # Age split at 40: age_cat_40
 # Waist split at 80: waist_cat
 # Blood pressure: bp_cat
 # Hba1c: hba1c_cat
 # Metabolic Syndrome: met_syn
+# Season: season
 
-# AIx
-sphygmo_model_int <- lmer(aug_index ~ stove_use_3*met_syn + ns(date_sphygmo, df=6) +
-                      waist_cm + school_bi + age_baseline + 
+############################################################
+model_int <- lmer(outcome ~ stove_use_3*season + ns(date_sphygmo, df=6) +
+                      waist_cm + school_bi + age_baseline + kitchen_temp +
                       (1 | house_id), r00_model_data)
 # Use this summary to get p-value for interaction term
-summary(sphygmo_model_int)
-int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ stove_use_3 | met_syn)
+summary(model_int)
+int_emmeans <- emmeans(model_int, pairwise ~ stove_use_3 | season)
 #summary(int_emmeans)
 # Use this summary for estimates and confidence intervals
 confint(int_emmeans)
 # This line will plot the interaction term
-#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
-
-############################################################
-# CPP
-sphygmo_model_int <- lmer(pulse_pressure_central ~ stove_use_3*met_syn + 
-                            ns(date_sphygmo, df=6) +
-                      waist_cm + school_bi + age_baseline + 
-                      (1 | house_id), r00_model_data)
-summary(sphygmo_model_int)
-int_emmeans <- emmeans(sphygmo_model_int, pairwise ~ stove_use_3 | met_syn)
-#summary(int_emmeans, conf.int = TRUE)
-confint(int_emmeans)
-# This line will plot the interaction term
-#emmip(sphygmo_model_int, age_cat_40 ~ assigned_stove, cov.reduce = range)
+#emmip(model_int, season ~ assigned_stove, cov.reduce = range)
 ```
