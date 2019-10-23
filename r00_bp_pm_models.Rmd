@@ -54,7 +54,7 @@ r00_model_data <- r00_full_long %>%
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = dia_bp_periph) 
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -95,6 +95,26 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
 r00_model_data_meds <- r00_model_data %>% 
   #filtering out bp med users
   filter(is.na(med_bp)) 
+
+
+# Filter data for each phase/visit and season
+phase_1 <- r00_model_data %>% 
+  filter(phase == 1)
+phase_2 <- r00_model_data %>% 
+  filter(phase == 2)
+phase_3 <- r00_model_data %>% 
+  filter(phase == 3)
+phase_4 <- r00_model_data %>% 
+  filter(phase == 4)
+phase_5 <- r00_model_data %>% 
+  filter(phase == 5)
+phase_6 <- r00_model_data %>% 
+  filter(phase == 6)
+
+season_rainy <- r00_model_data %>% 
+  filter(season == 1)
+season_dry <- r00_model_data %>% 
+  filter(season == 2)
 ```
 
 # Kitchen PM
@@ -305,6 +325,67 @@ tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>%
     filter(grepl('log_a_twa', term)) %>% 
     mutate(model = if_else(term == "log_a_twa", "full", "na"))
 
+############################################################
+##### Kitchen PM models by individual phase/visit and season
+model_p1 <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , phase_1)
+# summary(model_p1)
+tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "visit 1", "na"))
+
+model_p2 <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , phase_2)
+# summary(model_p2)
+tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "visit 2", "na"))
+
+model_p3 <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , phase_3)
+# summary(model_p3)
+tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "visit 3", "na"))
+
+model_p4 <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , phase_4)
+# summary(model_p4)
+tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "visit 4", "na"))
+
+model_p5 <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , phase_5)
+# summary(model_p5)
+tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "visit 5", "na"))
+
+model_p6 <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , phase_6)
+# summary(model_p6)
+tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "visit 6", "na"))
+
+
+
+
+model_rainy <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , season_rainy)
+# summary(model_rainy)
+tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "rainy season", "na"))
+
+model_dry <- lm(outcome ~ log_a_twa + 
+                   age_baseline + waist_cm + school_bi , season_dry)
+# summary(model_dry)
+tidy_model_dry <- tidy(model_dry, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "dry season", "na"))
+
 
 ############################################################
 # Combine formatted results for plotting
@@ -329,6 +410,16 @@ results <- rbind(tidy_model_apm,
                      tidy_model_apm_dds,
                      tidy_model_apm_temp,
                      tidy_model_apm_full)
+
+
+results_phase_season <- rbind(tidy_model_p1,
+                              tidy_model_p2,
+                              tidy_model_p3,
+                              tidy_model_p4,
+                              tidy_model_p5,
+                              tidy_model_p6,
+                              tidy_model_rainy,
+                              tidy_model_dry)
 #kable(results)
 ```
 
@@ -395,6 +486,38 @@ plot_estimates <- results %>%
           legend.position = "none") +
   scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
                      labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
+plot_estimates
+
+
+plot_estimates <- results_phase_season %>%
+  mutate(model = factor(model, levels = c("visit 1", "visit 2",
+                                          "visit 3", "visit 4",
+                                          "visit 5", "visit 6", 
+                                          "rainy season", "dry season"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  ggtitle(label = "Systolic BP - Kitchen PM model") +
+  labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4)) 
 plot_estimates
 ```
 
@@ -627,6 +750,70 @@ tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>%
 
 
 ############################################################
+##### Personal PM models by individual phase/visit and season
+model_p1 <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , phase_1)
+# summary(model_p1)
+tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "visit 1", "na"))
+
+model_p2 <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , phase_2)
+# summary(model_p2)
+tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "visit 2", "na"))
+
+model_p3 <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , phase_3)
+# summary(model_p3)
+tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "visit 3", "na"))
+
+model_p4 <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , phase_4)
+# summary(model_p4)
+tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "visit 4", "na"))
+
+model_p5 <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , phase_5)
+# summary(model_p5)
+tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "visit 5", "na"))
+
+model_p6 <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , phase_6)
+# summary(model_p6)
+tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "visit 6", "na"))
+
+
+
+
+model_rainy <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , season_rainy)
+# summary(model_rainy)
+tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "rainy season", "na"))
+
+model_dry <- lm(outcome ~ log_p_twa + 
+                   age_baseline + waist_cm + school_bi , season_dry)
+# summary(model_dry)
+tidy_model_dry <- tidy(model_dry, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "dry season", "na"))
+
+
+
+
+############################################################
 results_time <- rbind(tidy_model_ppm_no_time,
                       tidy_model_ppm_season,
                       tidy_model_ppm_phase,
@@ -648,6 +835,16 @@ results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_dds,
                      tidy_model_ppm_temp,
                      tidy_model_ppm_full)
+
+
+results_phase_season <- rbind(tidy_model_p1,
+                              tidy_model_p2,
+                              tidy_model_p3,
+                              tidy_model_p4,
+                              tidy_model_p5,
+                              tidy_model_p6,
+                              tidy_model_rainy,
+                              tidy_model_dry)
 #kable(results)
 ```
 
@@ -713,6 +910,38 @@ plot_estimates <- results %>%
           legend.position = "none") +
   scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
                      labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
+plot_estimates
+
+
+plot_estimates <- results_phase_season %>%
+  mutate(model = factor(model, levels = c("visit 1", "visit 2",
+                                          "visit 3", "visit 4",
+                                          "visit 5", "visit 6", 
+                                          "rainy season", "dry season"))) %>% 
+  ggplot() +
+  geom_point(aes(x=model, y=estimate), size = 4) +
+  #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+                size = 1.2, width = 0.5) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +  
+  ggtitle(label = "Systolic BP - Personal PM model") +
+  labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
+  labs(x = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 25,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4)) 
 plot_estimates
 ```
 

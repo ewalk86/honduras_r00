@@ -18,7 +18,9 @@ library(knitr)
 
 ```{r, message=FALSE}
 # load full database
-r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds")  
+r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds") %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+  mutate(kitchen_hum = as.numeric())
 
 #r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
@@ -45,9 +47,11 @@ r00_model_data_phase2 <- r00_full_repeated_by_phase %>%
 ```{r}
 # also try adding: mean_temp, prim_sum_temp_percent_50, 
 exposure_cor <- r00_full_repeated_by_phase %>% 
-  select(a_twa, p_twa) %>% 
+  select(a_twa, p_twa, kitchen_temp, sys_bp_periph) %>% 
   filter(!is.na(a_twa)) %>% 
-  filter(!is.na(p_twa))
+  filter(!is.na(p_twa)) %>% 
+  filter(!is.na(kitchen_temp)) %>% 
+  filter(!is.na(sys_bp_periph))
 
 cor(exposure_cor, method = "spearman")
 ```
@@ -276,6 +280,48 @@ kable(summary_personal_pm_stove, digits = 0)
 
 \pagebreak 
 
+# Area PM grouped by assigned stove type and season
+```{r}
+summary_area_pm_stove <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, a_twa, season) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(a_twa)) %>% 
+  filter(!is.na(season)) %>% 
+  group_by(season, assigned_stove) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(a_twa),
+            "SD" = sd(a_twa), 
+            "Min" = min(a_twa), 
+            "25th" = quantile(a_twa, c(.25)),
+            "Median" = median(a_twa),
+            "75th" = quantile(a_twa, c(.75)),
+            "Max" = max(a_twa),
+            "IQR" = IQR(a_twa))
+kable(summary_area_pm_stove, digits = 0)
+```
+
+# Personal PM grouped by assigned stove type and season
+```{r}
+summary_personal_pm_stove <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, p_twa, season) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(p_twa)) %>%  
+  filter(!is.na(season)) %>% 
+  group_by(season, assigned_stove) %>% 
+  summarise("n" = n(),
+            "Mean" = mean(p_twa),
+            "SD" = sd(p_twa), 
+            "Min" = min(p_twa), 
+            "25th" = quantile(p_twa, c(.25)),
+            "Median" = median(p_twa),
+            "75th" = quantile(p_twa, c(.75)),
+            "Max" = max(p_twa),
+            "IQR" = IQR(p_twa))
+kable(summary_personal_pm_stove, digits = 0)
+```
+
+\pagebreak 
+
 # Area PM grouped by stove use
 ```{r}
 summary_area_pm_stove_use <- r00_full_repeated_by_phase %>% 
@@ -373,20 +419,21 @@ area_pm_boxplot <- r00_full_repeated_by_phase %>%
           axis.ticks = element_blank())
 area_pm_boxplot
 
-log_area_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, a_twa) %>% 
-  mutate(log_a_twa = log(a_twa)) %>% 
+season_area_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, a_twa, season) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(a_twa)) %>% 
-  ggplot(aes("all participants", log_a_twa)) +
-    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
+  filter(!is.na(season)) %>%
+  ggplot(aes(assigned_stove, a_twa)) +
+    geom_boxplot(aes(size = 1, fill = season), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
-    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    #stat_summary(aes(group = season), fun.y=mean, geom="point", shape=17, size=3, color="red") +
     theme_minimal() +
-    #ylim(0, 2000) +
-    labs(aes(x = "", 
-             y = paste("24-hour log-transformed kitchen PM  "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_blank(),
+    ylim(0, 1000) +
+    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
+    #labs(y = "Kitchen fine particulate matter (ug/m3)") +
+    labs(aes(x = "", y = paste("24-hour kitchen PM "[2.5], " (", mu, g/m^3, ")"))) +
+    theme(axis.text.x = element_text(size = 16, colour = "black"),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -394,7 +441,7 @@ log_area_pm_boxplot <- r00_full_repeated_by_phase %>%
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank())
-log_area_pm_boxplot
+season_area_pm_boxplot
 ```
 
 \pagebreak  
@@ -423,20 +470,21 @@ personal_pm_boxplot <- r00_full_repeated_by_phase %>%
           axis.ticks = element_blank())
 personal_pm_boxplot
 
-log_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, p_twa) %>% 
-  mutate(log_p_twa = log(p_twa)) %>% 
+season_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
+  select(assigned_stove, study_arm, p_twa, season) %>% 
   filter(!is.na(study_arm)) %>% 
   filter(!is.na(p_twa)) %>% 
-  ggplot(aes("all participants", log_p_twa)) +
-    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
+  filter(!is.na(season)) %>%
+  ggplot(aes(assigned_stove, p_twa)) +
+    geom_boxplot(aes(size = 1, fill = season), lwd = 1.2, colour = "black", 
                fatten = 1, outlier.size = 1.5, width = 0.35) +
-    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    #stat_summary(aes(group = season), fun.y=mean, geom="point", shape=17, size=3, color="red") +
     theme_minimal() +
-    #ylim(0, 2000) +
-    labs(aes(x = "", 
-             y = paste("24-hour log-transformed personal PM  "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_blank(),
+    ylim(0, 500) +
+    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
+    #labs(y = "Kitchen fine particulate matter (ug/m3)") +
+    labs(aes(x = "", y = paste("24-hour personal PM "[2.5], " (", mu, g/m^3, ")"))) +
+    theme(axis.text.x = element_text(size = 16, colour = "black"),
           axis.text.y = element_text(size = 16, colour = "black"),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
@@ -444,7 +492,7 @@ log_personal_pm_boxplot <- r00_full_repeated_by_phase %>%
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
           axis.ticks = element_blank())
-log_personal_pm_boxplot
+season_personal_pm_boxplot
 ```
 
 \pagebreak  
