@@ -1,0 +1,107 @@
+---
+title: "Atmospheric data"
+author: "Ethan Walker"
+date: "October 24, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ncdf4)
+library(reshape2)
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+temp_data <- list.files(path = "C:/R/honduras_r00/input/atmospheric", pattern = ".nc",
+                                                all.files = TRUE, full.names = TRUE)
+temp_data <- list.files(path = "C:/Users/ewalks/wgetdown", pattern = ".nc",
+                                                all.files = TRUE, full.names = TRUE)
+
+
+nc_data_function <- function(path) {
+
+nc_data <- nc_open(path)
+
+temp <- data.frame(ncvar_get(nc_data, varid = "T2M"))
+
+# save for now # names(temp)[1:144] <- format(seq(from = 13.0, to = 15.5, by = 0.5))
+
+temp_new <- data.frame(t(temp))
+
+temp_clean <- temp_new %>%
+  rownames_to_column() %>% 
+  select(-rowname) %>% 
+  mutate(lat = rep(seq(13, 15.5, 0.5), times = 24)) %>% 
+  mutate(time = rep(seq(from = 30, to = 1410, by = 60), each = 6)) %>% 
+  rename("-88.750" = X1,
+         "-88.125" = X2,
+         "-87.500" = X3,
+         "-86.875" = X4,
+         "-86.250" = X5,
+         "-85.625" = X6,
+         "-85.000" = X7) %>% 
+  gather(long, temp_k, -lat, -time) %>% 
+  mutate(file = path) %>% 
+  separate(file, into = c("trash1", "date"), sep = "Nx.") %>% 
+  separate(date, into = c("date", "trash2"), sep = ".SUB") %>% 
+  select(-trash1, -trash2) %>% 
+  mutate(temp_date = ymd(date)) %>% 
+  mutate(temp_time = format(as.POSIXct(Sys.Date()) + time*60,
+        format="%H:%M:%S", tz="UCT")) %>% 
+  mutate(temp_datetime = ymd_hms(paste(temp_date, temp_time))) %>% 
+  select(-date, -time) %>% 
+  mutate(temp_c = temp_k - 273.15) %>% 
+  mutate(temp_lat = as.numeric(lat),
+         temp_long = as.numeric(long)) %>% 
+  select(-lat, -long) %>% 
+  arrange(temp_date, temp_time)
+
+output <<- temp_clean
+}
+
+
+temp_output <- data.frame(do.call("rbind", (lapply(temp_data, nc_data_function))))
+
+saveRDS(temp_output, "output/ambient_temp_data.rds")
+
+ambient_temp_data <- read_rds("output/ambient_temp_data.rds")
+```
+
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+gps_data <- r00_full_long %>% 
+  select(house_id, phase, datetime_sphygmo, gps) %>% 
+  group_by(house_id) %>% 
+  mutate(gps_new = if_else(phase == 2, lag(gps), gps),
+         gps_new = if_else(phase == 3, lag(gps_new), gps_new),
+         gps_new = if_else(phase == 4, lag(gps_new), gps_new),
+         gps_new = if_else(phase == 5, lag(gps_new), gps_new),
+         gps_new = if_else(phase == 6, lag(gps_new), gps_new)) %>% 
+  separate(gps_new, c("test1", "test2"), sep = ",", remove = FALSE) %>% 
+  separate(test1, c("lat", "test3"), sep = " ", remove = FALSE) %>% 
+  mutate(long = if_else(is.na(test2), test3, test2)) %>% 
+  select(-test1, -test2, -test3) %>% 
+  mutate(house_lat = round(as.numeric(lat), digits = 4)) %>% 
+  mutate(long = abs(as.numeric(long)),
+         long = -long,
+         house_long = round(long, digits = 4)) %>% 
+  select(-gps_new, -lat, -long) %>% 
+  mutate(temp_datetime = round_date(datetime_sphygmo, "30 mins"))
+
+data_joined <- gps_data %>% 
+  left_join(temp_output, by = "temp_datetime") %>% 
+  group_by(house_id) %>% 
+  mutate(diff_lat = abs(house_lat - temp_lat),
+         diff_long = abs(house_long - temp_long),
+         diff_total = diff_lat + diff_long) 
+
+# Next, figure out how to filter for smallest diff_total to keep closest lat/long
+```
+

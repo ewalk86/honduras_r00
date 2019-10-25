@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP PM Models and Plots"
 author: "Ethan Walker"
-date: "Updated 15 October 2019"
+date: "Updated 24 October 2019"
 output: pdf_document
 ---
 
@@ -54,7 +54,7 @@ r00_model_data <- r00_full_long %>%
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -327,63 +327,73 @@ tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>%
 
 ############################################################
 ##### Kitchen PM models by individual phase/visit and season
-model_p1 <- lm(outcome ~ log_a_twa + 
+model_p1 <- lm(outcome ~ log_a_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_1)
 # summary(model_p1)
 tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 1", "na"))
 
-model_p2 <- lm(outcome ~ log_a_twa + 
+model_p2 <- lm(outcome ~ log_a_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_2)
 # summary(model_p2)
 tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 2", "na"))
 
-model_p3 <- lm(outcome ~ log_a_twa + 
+model_p3 <- lm(outcome ~ log_a_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_3)
 # summary(model_p3)
 tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 3", "na"))
 
-model_p4 <- lm(outcome ~ log_a_twa + 
+model_p4 <- lm(outcome ~ log_a_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_4)
 # summary(model_p4)
 tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 4", "na"))
 
-model_p5 <- lm(outcome ~ log_a_twa + 
+model_p5 <- lm(outcome ~ log_a_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_5)
 # summary(model_p5)
 tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 5", "na"))
 
-model_p6 <- lm(outcome ~ log_a_twa + 
+model_p6 <- lm(outcome ~ log_a_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_6)
 # summary(model_p6)
 tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 6", "na"))
 
 
 
 
-model_rainy <- lm(outcome ~ log_a_twa + 
-                   age_baseline + waist_cm + school_bi , season_rainy)
+model_rainy <- lmer(outcome ~ log_a_twa + kitchen_temp +
+                   age_baseline + waist_cm + school_bi +
+                   ns(date_sphygmo, df=6) + (1 | house_id), season_rainy)
 # summary(model_rainy)
 tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    select(-group) %>% 
     mutate(model = if_else(term == "log_a_twa", "rainy season", "na"))
 
-model_dry <- lm(outcome ~ log_a_twa + 
-                   age_baseline + waist_cm + school_bi , season_dry)
+model_dry <- lmer(outcome ~ log_a_twa + kitchen_temp +
+                   age_baseline + waist_cm + school_bi +
+                   ns(date_sphygmo, df=6) + (1 | house_id), season_dry)
 # summary(model_dry)
 tidy_model_dry <- tidy(model_dry, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    select(-group) %>% 
     mutate(model = if_else(term == "log_a_twa", "dry season", "na"))
 
 
@@ -501,7 +511,7 @@ plot_estimates <- results_phase_season %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Systolic BP - Kitchen PM model") +
+  ggtitle(label = "Diastolic BP - Kitchen PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -751,63 +761,73 @@ tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>%
 
 ############################################################
 ##### Personal PM models by individual phase/visit and season
-model_p1 <- lm(outcome ~ log_p_twa + 
+model_p1 <- lm(outcome ~ log_p_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_1)
 # summary(model_p1)
 tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 1", "na"))
 
-model_p2 <- lm(outcome ~ log_p_twa + 
+model_p2 <- lm(outcome ~ log_p_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_2)
 # summary(model_p2)
 tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 2", "na"))
 
-model_p3 <- lm(outcome ~ log_p_twa + 
+model_p3 <- lm(outcome ~ log_p_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_3)
 # summary(model_p3)
 tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 3", "na"))
 
-model_p4 <- lm(outcome ~ log_p_twa + 
+model_p4 <- lm(outcome ~ log_p_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_4)
 # summary(model_p4)
 tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 4", "na"))
 
-model_p5 <- lm(outcome ~ log_p_twa + 
+model_p5 <- lm(outcome ~ log_p_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_5)
 # summary(model_p5)
 tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 5", "na"))
 
-model_p6 <- lm(outcome ~ log_p_twa + 
+model_p6 <- lm(outcome ~ log_p_twa + kitchen_temp +
                    age_baseline + waist_cm + school_bi , phase_6)
 # summary(model_p6)
 tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 6", "na"))
 
 
 
 
-model_rainy <- lm(outcome ~ log_p_twa + 
-                   age_baseline + waist_cm + school_bi , season_rainy)
+model_rainy <- lmer(outcome ~ log_p_twa + kitchen_temp +
+                   age_baseline + waist_cm + school_bi +
+                   ns(date_sphygmo, df=6) + (1 | house_id), season_rainy)
 # summary(model_rainy)
 tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-group) %>% 
     mutate(model = if_else(term == "log_p_twa", "rainy season", "na"))
 
-model_dry <- lm(outcome ~ log_p_twa + 
-                   age_baseline + waist_cm + school_bi , season_dry)
+model_dry <- lmer(outcome ~ log_p_twa + kitchen_temp +
+                   age_baseline + waist_cm + school_bi +
+                   ns(date_sphygmo, df=6) + (1 | house_id), season_dry)
 # summary(model_dry)
 tidy_model_dry <- tidy(model_dry, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    select(-group) %>% 
     mutate(model = if_else(term == "log_p_twa", "dry season", "na"))
 
 
@@ -925,7 +945,7 @@ plot_estimates <- results_phase_season %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Systolic BP - Personal PM model") +
+  ggtitle(label = "Diastolic BP - Personal PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
