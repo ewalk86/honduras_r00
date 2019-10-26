@@ -43,18 +43,21 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
+ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
+
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 r00_model_data <- r00_full_long %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+  left_join(ambient_temp_house_phase, by = c("house_id", "phase")) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = dia_bp_periph) 
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -63,14 +66,14 @@ r00_data_6phases <- r00_full_long %>%
   filter(complete_case_sbp == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  mutate(outcome = sys_bp_periph)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
   filter(complete_case_sbp == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  mutate(outcome = sys_bp_periph)
 
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
@@ -87,7 +90,7 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   filter(pregnant_new == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = dia_bp_periph) %>% 
+  mutate(outcome = sys_bp_periph) %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants   
 
 
@@ -307,7 +310,7 @@ tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>%
 ############################################################
 ##### Kitchen PM initial model - model mean kitchen temp
 model_apm_temp <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + kitchen_temp +
+                       waist_cm + school_bi + temp_rolling_24 +
                        (1 | house_id), r00_model_data)
 #summary(model_apm_temp)
 tidy_model_apm_temp <- tidy(model_apm_temp, conf.int = TRUE) %>% 
@@ -740,7 +743,7 @@ tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>%
 ############################################################
 ##### personal PM initial model - model mean kitchen temp
 model_ppm_temp <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + kitchen_temp +
+                       waist_cm + school_bi + temp_rolling_24 +
                        (1 | house_id), r00_model_data)
 #summary(model_ppm_temp)
 tidy_model_ppm_temp <- tidy(model_ppm_temp, conf.int = TRUE) %>% 

@@ -14,8 +14,16 @@ library(ncdf4)
 library(reshape2)
 library(tidyverse)
 library(lubridate)
+library(zoo)
 ```
 
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+ambient_temp_data <- read_rds("output/ambient_temp_data.rds")
+```
+
+# Load and format temp data
 ```{r}
 temp_data <- list.files(path = "C:/R/honduras_r00/input/atmospheric", pattern = ".nc",
                                                 all.files = TRUE, full.names = TRUE)
@@ -67,15 +75,10 @@ output <<- temp_clean
 
 temp_output <- data.frame(do.call("rbind", (lapply(temp_data, nc_data_function))))
 
-saveRDS(temp_output, "output/ambient_temp_data.rds")
-
-ambient_temp_data <- read_rds("output/ambient_temp_data.rds")
+# saveRDS(temp_output, "output/ambient_temp_data.rds")
 ```
 
 ```{r}
-# load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
-
 gps_data <- r00_full_long %>% 
   select(house_id, phase, datetime_sphygmo, gps) %>% 
   group_by(house_id) %>% 
@@ -93,15 +96,25 @@ gps_data <- r00_full_long %>%
          long = -long,
          house_long = round(long, digits = 4)) %>% 
   select(-gps_new, -lat, -long) %>% 
-  mutate(temp_datetime = round_date(datetime_sphygmo, "30 mins"))
+  mutate(temp_datetime = round_date(datetime_sphygmo, "hour")) 
+
+temp_data <- ambient_temp_data %>% 
+  mutate(temp_datetime = round_date(temp_datetime, "hour")) %>% 
+  arrange(temp_lat, temp_long, temp_datetime) %>% 
+  mutate(temp_rolling_24 = rollmean(temp_c, 24, fill="extend", align = "right")) 
 
 data_joined <- gps_data %>% 
-  left_join(temp_output, by = "temp_datetime") %>% 
-  group_by(house_id) %>% 
+  left_join(temp_data, by = "temp_datetime") %>% 
   mutate(diff_lat = abs(house_lat - temp_lat),
          diff_long = abs(house_long - temp_long),
-         diff_total = diff_lat + diff_long) 
+         diff_total = diff_lat + diff_long) %>% 
+  group_by(house_id, phase) %>% 
+  mutate(rank_diff = min_rank(diff_total)) %>% 
+  filter(rank_diff == 1) %>% 
+  select(house_id, phase, house_lat, house_long, temp_datetime, temp_c,
+         temp_lat, temp_long, temp_rolling_24)
+  
 
-# Next, figure out how to filter for smallest diff_total to keep closest lat/long
+# saveRDS(data_joined, "output/ambient_temp_house_phase.rds")
 ```
 
