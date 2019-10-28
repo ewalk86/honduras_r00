@@ -406,6 +406,29 @@ bp_sd_within_person <- r00_data %>%
   summarize(sqrt(mean(varsbp, na.rm = TRUE)))
 ```
 
+# Look at differences in outcomes by who made measurement
+```{r}
+health_admin <- r00_data %>% 
+  ungroup() %>% 
+  select(house_id, phase, admin_health, sys_bp_periph, dia_bp_periph,
+         aug_index, pulse_pressure_central) %>% 
+  mutate(admin = as.numeric(admin_health)) %>% 
+  filter(!is.na(admin)) %>%
+  mutate(admin = if_else(phase == 3 & admin == 5, 3, admin),
+         admin = if_else((phase == 4 | phase == 5 | phase == 6) & admin == 2, 4, admin),
+         health_admin_final = factor(admin, levels = c(1,2,3,4,5), 
+                              labels = c("Bonnie", "Sarah", "Laura", 
+                                         "Mariel", "Gloribel"))) %>% 
+  group_by(health_admin_final) %>% 
+  summarise("n" = n(),"Mean sys BP" = mean(sys_bp_periph, na.rm = TRUE), 
+            "Mean Dia BP" = mean(dia_bp_periph, na.rm = TRUE), 
+            "Mean AIx" = mean(aug_index, na.rm = TRUE), 
+            "Mean CPP" = mean(pulse_pressure_central, na.rm = TRUE))
+
+kable(health_admin, digits = 1)
+```
+
+
 # All households
 ### Data from phase 1
 ```{r}

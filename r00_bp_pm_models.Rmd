@@ -43,7 +43,9 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
+# load ambient temp datasets
 ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
+ground_weather_data <- read_rds("output/ground_weather_data.rds")
 
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
@@ -51,6 +53,7 @@ ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
 r00_model_data <- r00_full_long %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   left_join(ambient_temp_house_phase, by = c("house_id", "phase")) %>% 
+  left_join(ground_weather_data, by = c("date_sphygmo")) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
@@ -134,7 +137,7 @@ tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>%
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
-model_apm_bpjoined <- lmer(dia_bp_joined ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
+model_apm_bpjoined <- lmer(sys_bp_joined ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
 # summary(model_apm_bpjoined)
 tidy_model_apm_bpjoined <- tidy(model_apm_bpjoined, conf.int = TRUE) %>% 
@@ -308,9 +311,10 @@ tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_a_twa", "dds", "na"))
 
 ############################################################
-##### Kitchen PM initial model - model mean kitchen temp
+##### Kitchen PM initial model - model with kitchen or ambient temp
+# Try: temp_c, temp_rolling_24, temp_f, temp_max_previous, kitchen_temp
 model_apm_temp <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_rolling_24 +
+                       waist_cm + school_bi + temp_f +
                        (1 | house_id), r00_model_data)
 #summary(model_apm_temp)
 tidy_model_apm_temp <- tidy(model_apm_temp, conf.int = TRUE) %>% 
@@ -741,9 +745,10 @@ tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_p_twa", "dds", "na"))
 
 ############################################################
-##### personal PM initial model - model mean kitchen temp
+##### personal PM initial model - model with kitchen or ambient temp
+# Try: temp_c, temp_rolling_24, temp_f, temp_max_previous, kitchen_temp
 model_ppm_temp <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_rolling_24 +
+                       waist_cm + school_bi + temp_f +
                        (1 | house_id), r00_model_data)
 #summary(model_ppm_temp)
 tidy_model_ppm_temp <- tidy(model_ppm_temp, conf.int = TRUE) %>% 

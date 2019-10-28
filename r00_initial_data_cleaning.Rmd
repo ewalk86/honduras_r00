@@ -488,6 +488,27 @@ new_vars <- r00_full_long %>%
          ses_weighted_cat = if_else(phase == 6, lag(ses_weighted_cat), ses_weighted_cat)) 
 ```
 
+# Create new variables for existing database
+```{r}
+# load full dataset
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
+ground_weather_data <- read_rds("output/ground_weather_data.rds")
+
+new_vars <- r00_full_long %>% 
+  select(house_id, phase, date_sphygmo, admin_health) %>% 
+  mutate(admin = as.numeric(admin_health)) %>% 
+  mutate(admin = if_else(phase == 3 & admin == 5, 3, admin),
+         admin = if_else((phase == 4 | phase == 5 | phase == 6) & admin == 2, 4, admin),
+         admin_health_new = factor(admin, levels = c(1,2,3,4,5), 
+                              labels = c("Bonnie", "Sarah", "Laura", 
+                                         "Mariel", "Gloribel"))) %>% 
+  select(-admin) %>% 
+  left_join(ambient_temp_house_phase, by = c("house_id", "phase")) %>% 
+  left_join(ground_weather_data, by = "date_sphygmo") %>% 
+  select(-temp_f, -temp_previous)
+```
+
 # Save final, combined dataset
 ```{r}
 write_rds(new_vars, "output/r00_full_repeated_by_phase.rds")

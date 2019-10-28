@@ -15,22 +15,30 @@ library(reshape2)
 library(tidyverse)
 library(lubridate)
 library(zoo)
+library(naniar)
+library(corrplot)
+library(PerformanceAnalytics)
+library(xtable)
 ```
 
 ```{r}
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") 
 ambient_temp_data <- read_rds("output/ambient_temp_data.rds")
+ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
+ground_weather_data <- read_rds("output/ground_weather_data.rds")
 ```
 
-# Load and format temp data
+# Load and format reanalysis temp data
+# Downloaded from: https://disc.gsfc.nasa.gov/datasets?page=1&keywords=MERRA-2
 ```{r}
+# Create list of files to use in function below
 temp_data <- list.files(path = "C:/R/honduras_r00/input/atmospheric", pattern = ".nc",
                                                 all.files = TRUE, full.names = TRUE)
 temp_data <- list.files(path = "C:/Users/ewalks/wgetdown", pattern = ".nc",
                                                 all.files = TRUE, full.names = TRUE)
 
-
+# Create function to load and format files from list above
 nc_data_function <- function(path) {
 
 nc_data <- nc_open(path)
@@ -72,13 +80,14 @@ temp_clean <- temp_new %>%
 output <<- temp_clean
 }
 
-
+# Apply list to function, bind output from each file together, save as dataframe
 temp_output <- data.frame(do.call("rbind", (lapply(temp_data, nc_data_function))))
 
 # saveRDS(temp_output, "output/ambient_temp_data.rds")
 ```
 
 ```{r}
+# Clean up GPS coordinates from main R00 database
 gps_data <- r00_full_long %>% 
   select(house_id, phase, datetime_sphygmo, gps) %>% 
   group_by(house_id) %>% 
@@ -98,11 +107,13 @@ gps_data <- r00_full_long %>%
   select(-gps_new, -lat, -long) %>% 
   mutate(temp_datetime = round_date(datetime_sphygmo, "hour")) 
 
+# Format ambient temp data from above, to be joined with main R00 database
 temp_data <- ambient_temp_data %>% 
   mutate(temp_datetime = round_date(temp_datetime, "hour")) %>% 
   arrange(temp_lat, temp_long, temp_datetime) %>% 
   mutate(temp_rolling_24 = rollmean(temp_c, 24, fill="extend", align = "right")) 
 
+# Join ambient temp data with R00 GPS data
 data_joined <- gps_data %>% 
   left_join(temp_data, by = "temp_datetime") %>% 
   mutate(diff_lat = abs(house_lat - temp_lat),
@@ -116,5 +127,50 @@ data_joined <- gps_data %>%
   
 
 # saveRDS(data_joined, "output/ambient_temp_house_phase.rds")
+```
+
+# Ground-level weather data from:
+# https://www7.ncdc.noaa.gov/CDO/cdoselect.cmd?datasetabbv=GSOD&countryabbv=&georegionabbv=
+# La Esperanza, Honduras station: 787190
+```{r}
+# Load initial temp data (.txt)
+gwd <- read_delim("C:/R/honduras_r00/input/atmospheric/r00_la_esperanza_ambient_weather.txt",
+                  delim = ",")
+
+# Clean/format temp data
+ground_weather_data <- gwd %>% 
+  separate(`   MAX  `, c("max", "trash1"), sep = 7) %>% 
+  separate(`  MIN  `, c("min", "trash2"), sep = 6) %>%
+  mutate(date_sphygmo = ymd(` YEARMODA`),
+         temp_f = as.numeric(`   TEMP`),
+         temp_max = as.numeric(max),
+         temp_min = as.numeric(min)) %>% 
+  select(date_sphygmo, temp_f, temp_max, temp_min) %>% 
+  replace_with_na(replace = list(temp_min = 9999.9)) %>% 
+  mutate(temp_max_previous = lag(temp_max),
+         temp_min_previous = lag(temp_min),
+         temp_previous = lag(temp_f))
+
+# Save La Esperanza ground level temp data
+# saveRDS(ground_weather_data, "output/ground_weather_data.rds")
+```
+
+# Combine full data, reanalysis temp data, and ground-level temp data to look at correlations
+```{r}
+corr_data <- r00_full_long %>% 
+  left_join(ambient_temp_house_phase, by = c("house_id", "phase")) %>% 
+  left_join(ground_weather_data, by = "date_sphygmo") %>% 
+  ungroup() %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+  select(a_twa, p_twa, kitchen_temp, temp_c, temp_f, temp_rolling_24,
+         temp_max_previous)
+
+temp_cor <- round(cor(corr_data, method = c("spearman"), use = "complete.obs"), 2)
+temp_cor
+corrplot(temp_cor, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+chart.Correlation(temp_cor, histogram=TRUE, method = c("spearman"))
+cor_table <- xtable(temp_cor)
+view(cor_table)
 ```
 
