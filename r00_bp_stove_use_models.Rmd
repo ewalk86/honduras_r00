@@ -724,9 +724,10 @@ tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>%
     mutate(model = "dds")
 
 ################################################################
-##### model with mean_temp
+##### Model with kitchen or ambient temp
+# Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
 model_temp <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + kitchen_temp + 
+                       waist_cm + school_bi + temp_c + 
                        (1 | house_id), r00_model_data)
 #summary(model_temp)
 tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
@@ -960,7 +961,7 @@ plot_estimates <- results_time %>%
   scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
                      labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8)) 
 
-plot_estimates
+#plot_estimates
 
 
 # primary stove-use model with sensitivity analyses

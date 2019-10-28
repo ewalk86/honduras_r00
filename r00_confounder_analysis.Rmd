@@ -48,7 +48,7 @@ r00_data <- r00_model_data_outliers_removed %>%
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>% 
-  mutate(outcome = aug_index) 
+  mutate(outcome = pulse_pressure_central) 
 
 ## Data prep for BP
 r00_data <- r00_full_long %>% 
@@ -59,7 +59,7 @@ r00_data <- r00_full_long %>%
   # removes 22 observations for pregnancies
   filter(pregnant_new == 0) %>% 
   ########### use sys_bp_periph or dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(sys_bp_periph))
 ```
@@ -103,6 +103,12 @@ numeric_function(df = r00_data, term_fun = SES_weighted_sum,
                        label_fun = "SES_weighted_sum")
 numeric_function(df = r00_data, term_fun = phys_act,
                        label_fun = "phys_act")
+numeric_function(df = r00_data, term_fun = temp_c,
+                       label_fun = "temp_c")
+numeric_function(df = r00_data, term_fun = temp_rolling_24,
+                       label_fun = "temp_rolling_24")
+numeric_function(df = r00_data, term_fun = temp_max_previous,
+                       label_fun = "temp_max_previous")
 ```
 
 ```{r}

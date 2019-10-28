@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP PM Models and Plots"
 author: "Ethan Walker"
-date: "Updated 24 October 2019"
+date: "Updated 28 October 2019"
 output: pdf_document
 ---
 
@@ -43,17 +43,11 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
-# load ambient temp datasets
-ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
-ground_weather_data <- read_rds("output/ground_weather_data.rds")
-
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 r00_model_data <- r00_full_long %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
-  left_join(ambient_temp_house_phase, by = c("house_id", "phase")) %>% 
-  left_join(ground_weather_data, by = c("date_sphygmo")) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   # removes 22 observations for pregnancies
@@ -312,9 +306,9 @@ tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>%
 
 ############################################################
 ##### Kitchen PM initial model - model with kitchen or ambient temp
-# Try: temp_c, temp_rolling_24, temp_f, temp_max_previous, kitchen_temp
+# Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
 model_apm_temp <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_f +
+                       waist_cm + school_bi + temp_max_previous +
                        (1 | house_id), r00_model_data)
 #summary(model_apm_temp)
 tidy_model_apm_temp <- tidy(model_apm_temp, conf.int = TRUE) %>% 
@@ -334,7 +328,7 @@ tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>%
 
 ############################################################
 ##### Kitchen PM models by individual phase/visit and season
-model_p1 <- lm(outcome ~ log_a_twa + kitchen_temp +
+model_p1 <- lm(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_1)
 # summary(model_p1)
 tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>% 
@@ -342,7 +336,7 @@ tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 1", "na"))
 
-model_p2 <- lm(outcome ~ log_a_twa + kitchen_temp +
+model_p2 <- lm(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_2)
 # summary(model_p2)
 tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>% 
@@ -350,7 +344,7 @@ tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 2", "na"))
 
-model_p3 <- lm(outcome ~ log_a_twa + kitchen_temp +
+model_p3 <- lm(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_3)
 # summary(model_p3)
 tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>% 
@@ -358,7 +352,7 @@ tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 3", "na"))
 
-model_p4 <- lm(outcome ~ log_a_twa + kitchen_temp +
+model_p4 <- lm(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_4)
 # summary(model_p4)
 tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>% 
@@ -366,7 +360,7 @@ tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 4", "na"))
 
-model_p5 <- lm(outcome ~ log_a_twa + kitchen_temp +
+model_p5 <- lm(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_5)
 # summary(model_p5)
 tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>% 
@@ -374,7 +368,7 @@ tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_a_twa", "visit 5", "na"))
 
-model_p6 <- lm(outcome ~ log_a_twa + kitchen_temp +
+model_p6 <- lm(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_6)
 # summary(model_p6)
 tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>% 
@@ -385,7 +379,7 @@ tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>%
 
 
 
-model_rainy <- lmer(outcome ~ log_a_twa + kitchen_temp +
+model_rainy <- lmer(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi +
                    ns(date_sphygmo, df=6) + (1 | house_id), season_rainy)
 # summary(model_rainy)
@@ -394,7 +388,7 @@ tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>%
     select(-group) %>% 
     mutate(model = if_else(term == "log_a_twa", "rainy season", "na"))
 
-model_dry <- lmer(outcome ~ log_a_twa + kitchen_temp +
+model_dry <- lmer(outcome ~ log_a_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi +
                    ns(date_sphygmo, df=6) + (1 | house_id), season_dry)
 # summary(model_dry)
@@ -470,7 +464,7 @@ plot_estimates <- results_time %>%
           legend.position = "none") +
   scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
                      labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
-plot_estimates
+#plot_estimates
 
 
 plot_estimates <- results %>%
@@ -486,7 +480,7 @@ plot_estimates <- results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Diastolic BP - Kitchen PM model") +
+  ggtitle(label = "Systolic BP - Kitchen PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -518,7 +512,7 @@ plot_estimates <- results_phase_season %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Diastolic BP - Kitchen PM model") +
+  ggtitle(label = "Systolic BP - Kitchen PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -746,9 +740,9 @@ tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>%
 
 ############################################################
 ##### personal PM initial model - model with kitchen or ambient temp
-# Try: temp_c, temp_rolling_24, temp_f, temp_max_previous, kitchen_temp
+# Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
 model_ppm_temp <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_f +
+                       waist_cm + school_bi + temp_max_previous +
                        (1 | house_id), r00_model_data)
 #summary(model_ppm_temp)
 tidy_model_ppm_temp <- tidy(model_ppm_temp, conf.int = TRUE) %>% 
@@ -769,7 +763,7 @@ tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>%
 
 ############################################################
 ##### Personal PM models by individual phase/visit and season
-model_p1 <- lm(outcome ~ log_p_twa + kitchen_temp +
+model_p1 <- lm(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_1)
 # summary(model_p1)
 tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>% 
@@ -777,7 +771,7 @@ tidy_model_p1 <- tidy(model_p1, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 1", "na"))
 
-model_p2 <- lm(outcome ~ log_p_twa + kitchen_temp +
+model_p2 <- lm(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_2)
 # summary(model_p2)
 tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>% 
@@ -785,7 +779,7 @@ tidy_model_p2 <- tidy(model_p2, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 2", "na"))
 
-model_p3 <- lm(outcome ~ log_p_twa + kitchen_temp +
+model_p3 <- lm(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_3)
 # summary(model_p3)
 tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>% 
@@ -793,7 +787,7 @@ tidy_model_p3 <- tidy(model_p3, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 3", "na"))
 
-model_p4 <- lm(outcome ~ log_p_twa + kitchen_temp +
+model_p4 <- lm(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_4)
 # summary(model_p4)
 tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>% 
@@ -801,7 +795,7 @@ tidy_model_p4 <- tidy(model_p4, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 4", "na"))
 
-model_p5 <- lm(outcome ~ log_p_twa + kitchen_temp +
+model_p5 <- lm(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_5)
 # summary(model_p5)
 tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>% 
@@ -809,7 +803,7 @@ tidy_model_p5 <- tidy(model_p5, conf.int = TRUE) %>%
     select(-p.value) %>% 
     mutate(model = if_else(term == "log_p_twa", "visit 5", "na"))
 
-model_p6 <- lm(outcome ~ log_p_twa + kitchen_temp +
+model_p6 <- lm(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi , phase_6)
 # summary(model_p6)
 tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>% 
@@ -820,7 +814,7 @@ tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>%
 
 
 
-model_rainy <- lmer(outcome ~ log_p_twa + kitchen_temp +
+model_rainy <- lmer(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi +
                    ns(date_sphygmo, df=6) + (1 | house_id), season_rainy)
 # summary(model_rainy)
@@ -829,7 +823,7 @@ tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>%
     select(-group) %>% 
     mutate(model = if_else(term == "log_p_twa", "rainy season", "na"))
 
-model_dry <- lmer(outcome ~ log_p_twa + kitchen_temp +
+model_dry <- lmer(outcome ~ log_p_twa + temp_max_previous +
                    age_baseline + waist_cm + school_bi +
                    ns(date_sphygmo, df=6) + (1 | house_id), season_dry)
 # summary(model_dry)
@@ -905,7 +899,7 @@ plot_estimates <- results_time %>%
           legend.position = "none") +
   scale_y_continuous(breaks = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1), 
                      labels = c(-1, -.75, -.5, -.25, 0, .25, .5, .75, 1)) 
-plot_estimates
+#plot_estimates
 
 
 plot_estimates <- results %>%
@@ -921,7 +915,7 @@ plot_estimates <- results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Diastolic BP - Personal PM model") +
+  ggtitle(label = "Systolic BP - Personal PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -953,7 +947,7 @@ plot_estimates <- results_phase_season %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Diastolic BP - Personal PM model") +
+  ggtitle(label = "systolic BP - Personal PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
