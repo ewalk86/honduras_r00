@@ -1,0 +1,132 @@
+---
+title: "A1C Models for SAS/R Comparison"
+author: "Ethan Walker"
+date: "November 2, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+library(sjstats)
+library(rptR)
+library(gamm4)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+
+```{r}
+# Creating datasets for various analyses
+## Analyses for outcomes: sys_bp_periph, dia_bp_periph
+# load full dataset
+r00_full_long <- read_csv("input/r00_full_dataset_31oct2019_by.csv")
+
+r00_model_data <- r00_full_long %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  # removes 22 observations for pregnancies
+  #filter(pregnant_new == 0) %>%
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
+  mutate(outcome = as.numeric(hba1c_2)) %>% 
+  mutate(assigned_stove_2 = factor(assigned_stove, levels = c("Traditional", "Justa"))) %>% 
+  mutate(stove_use_3.2 = factor(stove_use_3, 
+                                levels = c("trad", "justa+trad", "justa/imprvd"))) 
+```
+
+```{r}
+##### ITT primary model - spline with 6 df
+model_itt <- lmer(outcome ~ assigned_stove_2 + ns(date_sphygmo, df=6) + 
+                  (1 | house_id), r00_model_data)
+ # summary(model_itt)
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove_2Justa', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove_2Justa", "primary", "na")) 
+
+##### ITT primary model - season
+model_itt <- lmer(outcome ~ assigned_stove_2 + season + 
+                  (1 | house_id), r00_model_data)
+ # summary(model_itt)
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stove_2Justa', term)) %>% 
+    mutate(model = if_else(term == "assigned_stove_2Justa", "primary", "na")) 
+
+############################################################
+
+##### Kitchen PM model - spline with 6 df
+model_apm <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + 
+                  age_baseline + bmi + whr + phys_act + dds_total +
+                  SES_weighted_sum + (1 | house_id), r00_model_data)
+#summary(model_apm)
+tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "primary", "na")) 
+
+##### Kitchen PM model - season
+model_apm <- lmer(outcome ~ log_a_twa + season + 
+                  age_baseline + bmi + whr + phys_act + dds_total +
+                  SES_weighted_sum + (1 | house_id), r00_model_data)
+#summary(model_apm)
+tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "primary", "na")) 
+
+##### Personal PM model - spline with 6 df
+model_ppm <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + 
+                  age_baseline + bmi + whr + phys_act + dds_total +
+                  SES_weighted_sum + (1 | house_id), r00_model_data)
+#summary(model_ppm)
+tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "primary", "na")) 
+
+##### Personal PM model - season
+model_ppm <- lmer(outcome ~ log_p_twa + season + 
+                  age_baseline + bmi + whr + phys_act + dds_total +
+                  SES_weighted_sum + (1 | house_id), r00_model_data)
+#summary(model_ppm)
+tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "primary", "na")) 
+
+############################################################
+
+##### Stove-use model - spline with 6 df
+model_stove_use <- lmer(outcome ~ stove_use_3.2 + ns(date_sphygmo, df=6) + 
+                   age_baseline + bmi + whr + phys_act + dds_total +
+                   SES_weighted_sum + (1 | house_id), r00_model_data)
+#summary(model_stove_use)
+tidy_model_stove_use <- tidy(model_stove_use, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3.2', term)) %>% 
+    mutate(model = "primary")  
+
+##### Stove-use model - season
+model_stove_use <- lmer(outcome ~ stove_use_3.2 + season + 
+                   age_baseline + bmi + whr + phys_act + dds_total +
+                   SES_weighted_sum + (1 | house_id), r00_model_data)
+#summary(model_stove_use)
+tidy_model_stove_use <- tidy(model_stove_use, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3.2', term)) %>% 
+    mutate(model = "primary")  
+```
+

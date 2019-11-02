@@ -54,7 +54,7 @@ r00_model_data <- r00_full_long %>%
   filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
-  mutate(outcome = dia_bp_periph) 
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 ```
@@ -71,7 +71,7 @@ r00_model_data <- r00_full_long %>%
 # s() has problems with dates, so using a numeric form for date that counts up 
   # the number of days beginning on the first day of the study
 
-model_apm_spline <- gamm4(outcome ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 6) + 
+model_apm_spline <- gamm4(outcome ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 7) + 
                           age_baseline +  waist_cm + school_bi + 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
                           data = r00_model_data,
@@ -83,7 +83,7 @@ plot(model_apm_spline$gam, seWithMean = TRUE, select = 1, shade = TRUE,
 summary(model_apm_spline$gam)
 summary(model_apm_spline$mer)
 
-model_apm_spline <- gamm4(outcome ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 4) + 
+model_apm_spline <- gamm4(outcome ~ s(log_a_twa, fx = TRUE, bs = "cr", k = 7) + 
                           age_baseline +  waist_cm + school_bi + 
                           s(date_days, fx = TRUE, bs = "cr", k = 7), 
                           data = r00_model_data,
