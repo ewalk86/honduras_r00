@@ -34,12 +34,15 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
                   "#FF3366", "#33CC99", "#33999")
 ```
 
+# This markdown runs the primary models in each framework to compare results with 
+# SAS code made by Bonnie Young. The models using "season" to account for time
+# match up on results exactly. The models using a spline trend function for data
+# are slightly different, although the differences are expected and not meaningful.
 
 ```{r}
 # Creating datasets for various analyses
-## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_csv("input/r00_full_dataset_31oct2019_by.csv")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
 r00_model_data <- r00_full_long %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
@@ -48,10 +51,7 @@ r00_model_data <- r00_full_long %>%
   #filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = as.numeric(hba1c_2)) %>% 
-  mutate(assigned_stove_2 = factor(assigned_stove, levels = c("Traditional", "Justa"))) %>% 
-  mutate(stove_use_3.2 = factor(stove_use_3, 
-                                levels = c("trad", "justa+trad", "justa/imprvd"))) 
+  mutate(outcome = as.numeric(hba1c_2))  
 ```
 
 ```{r}

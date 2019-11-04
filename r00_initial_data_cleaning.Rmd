@@ -509,11 +509,23 @@ new_vars <- r00_full_long %>%
   select(-temp_f, -temp_previous)
 ```
 
+########### New changes to long dataset by Bonnie - start here to make additions now
+```{r}
+r00_new_long <- read_csv("input/r00_full_dataset_31oct2019_by.csv")
+
+r00_full_repeated_by_phase <- r00_new_long %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  #filter(!is.na(study_arm)) %>% 
+  mutate(assigned_stove = factor(assigned_stove, levels = c("Traditional", "Justa"))) %>% 
+  mutate(stove_use_3 = factor(stove_use_3, 
+                                levels = c("trad", "justa+trad", "justa/imprvd"))) 
+```
+
 # Save final, combined dataset
 ```{r}
-write_rds(new_vars, "output/r00_full_repeated_by_phase.rds")
+write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
 
-write_csv(new_vars, "output/r00_full_repeated_by_phase.csv", na = " ")
+write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv", na = " ")
 ```
 
 # Change AIx/CPP outliers to NA and save dataset

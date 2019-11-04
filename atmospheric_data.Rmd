@@ -1,7 +1,7 @@
 ---
 title: "Atmospheric data"
 author: "Ethan Walker"
-date: "Updated October 28, 2019"
+date: "Updated 4 November, 2019"
 output: pdf_document
 ---
 
@@ -33,7 +33,7 @@ ground_weather_data <- read_rds("output/ground_weather_data.rds")
 # Downloaded from: https://disc.gsfc.nasa.gov/datasets?page=1&keywords=MERRA-2
 ```{r}
 # Create list of files to use in function below
-temp_data <- list.files(path = "C:/R/honduras_r00/input/atmospheric", pattern = ".nc",
+temp_data <- list.files(path = "C:/R/honduras_r00/input/atmospheric/temperature", pattern = ".nc",
                                                 all.files = TRUE, full.names = TRUE)
 temp_data <- list.files(path = "C:/Users/ewalks/wgetdown", pattern = ".nc",
                                                 all.files = TRUE, full.names = TRUE)
@@ -86,6 +86,68 @@ temp_output <- data.frame(do.call("rbind", (lapply(temp_data, nc_data_function))
 # saveRDS(temp_output, "output/ambient_temp_data.rds")
 ```
 
+# Load and format reanalysis pollution data
+# Downloaded from: https://disc.gsfc.nasa.gov/datasets/M2T1NXAER_5.12.4/summary?keywords=MERRA-2
+```{r}
+# Create list of files to use in function below
+pollution_data <- list.files(path = "C:/R/honduras_r00/input/atmospheric/pollution", 
+                             pattern = ".nc",
+                                                all.files = TRUE, full.names = TRUE)
+pollution_data <- list.files(path = "C:/Users/ewalks/wgetdown/pollution_data", pattern = ".nc",
+                                                all.files = TRUE, full.names = TRUE)
+
+nc_data <- nc_open(pollution_data)
+nc_data
+bc_surface_mass <- data.frame(ncvar_get(nc_data, varid = "BCSMASS"))
+dust_surface_mass_pm25 <- data.frame(ncvar_get(nc_data, varid = "DUSMASS25"))
+
+
+
+# Create function to load and format files from list above
+nc_data_function <- function(path) {
+
+nc_data <- nc_open(path)
+
+# Try different pollution vars: DUSMASS25, BCSMASS, OCSMASS, SO2SMASS, SO4SMASS, SSSMASS25
+pollution <- data.frame(ncvar_get(nc_data, varid = "BCSMASS"))
+
+# save for now # names(pollution)[1:144] <- format(seq(from = 13.0, to = 15.5, by = 0.5))
+
+pollution_new <- data.frame(t(pollution))
+
+pollution_clean <- pollution_new %>%
+  rownames_to_column() %>% 
+  select(-rowname) %>% 
+  mutate(lat = rep(seq(14, 14.5, 0.5), times = 24)) %>% 
+  mutate(time = rep(seq(from = 30, to = 1410, by = 60), each = 2)) %>% 
+  rename("-88.125" = X1,
+         "-87.500" = X2) %>% 
+  gather(long, amb_pm, -lat, -time) %>% 
+  mutate(file = path) %>% 
+  separate(file, into = c("trash1", "date"), sep = "Nx.") %>% 
+  separate(date, into = c("date", "trash2"), sep = ".SUB") %>% 
+  select(-trash1, -trash2) %>% 
+  mutate(pollution_date = ymd(date)) %>% 
+  mutate(pollution_time = format(as.POSIXct(Sys.Date()) + time*60,
+        format="%H:%M:%S", tz="UCT")) %>% 
+  mutate(pollution_datetime = ymd_hms(paste(pollution_date, pollution_time))) %>% 
+  select(-date, -time) %>%  
+  mutate(pollution_lat = as.numeric(lat),
+         pollution_long = as.numeric(long),
+         amb_bc = as.numeric(amb_pm)) %>% 
+  select(-lat, -long, -amb_pm) %>% 
+  arrange(pollution_date, pollution_time)
+
+output <<- pollution_clean
+}
+
+# Apply list to function, bind output from each file together, save as dataframe
+amb_output <- data.frame(do.call("rbind", (lapply(pollution_data, nc_data_function))))
+
+# saveRDS(amb_output, "output/ambient_pm25dust_data.rds")
+# saveRDS(amb_output, "output/ambient_bc_data.rds")
+```
+
 ```{r}
 # Clean up GPS coordinates from main R00 database
 gps_data <- r00_full_long %>% 
@@ -113,7 +175,19 @@ temp_data <- ambient_temp_data %>%
   arrange(temp_lat, temp_long, temp_datetime) %>% 
   mutate(temp_rolling_24 = rollmean(temp_c, 24, fill="extend", align = "right")) 
 
-# Join ambient temp data with R00 GPS data
+# Join ambient pollution dataframes together
+pm_data <- read_rds("output/ambient_pm25dust_data.rds")
+bc_data <- read_rds("output/ambient_bc_data.rds")
+
+pollution_joined <- pm_data %>% 
+  full_join(bc_data, by = c("pollution_datetime", "pollution_lat", "pollution_long")) %>% 
+  mutate(pollution_date = pollution_date.x,
+         pollution_time = pollution_time.x) %>% 
+  select(-pollution_date.x, -pollution_date.y, -pollution_time.x, -pollution_time.y) %>% 
+  mutate(pollution_datetime = round_date(pollution_datetime, "hour")) %>% 
+  arrange(pollution_lat, pollution_long, pollution_datetime)
+
+# Join ambient data with R00 GPS data
 data_joined <- gps_data %>% 
   left_join(temp_data, by = "temp_datetime") %>% 
   mutate(diff_lat = abs(house_lat - temp_lat),
@@ -124,9 +198,24 @@ data_joined <- gps_data %>%
   filter(rank_diff == 1) %>% 
   select(house_id, phase, house_lat, house_long, temp_datetime, temp_c,
          temp_lat, temp_long, temp_rolling_24)
+
+data_joined <- ambient_temp_house_phase %>% 
+  mutate(pollution_datetime = temp_datetime) %>% 
+  left_join(pollution_joined, by = "pollution_datetime") %>% 
+  mutate(diff_lat = abs(house_lat - pollution_lat),
+         diff_long = abs(house_long - pollution_long),
+         diff_total = diff_lat + diff_long) %>% 
+  group_by(house_id, phase) %>% 
+  mutate(rank_diff = min_rank(diff_total)) %>% 
+  filter(rank_diff == 1) %>% 
+  mutate(ambient_pm = as.numeric(amb_pm),
+         ambient_bc = as.numeric(amb_bc)) %>% 
+  select(house_id, phase, house_lat, house_long, temp_datetime, temp_c,
+         temp_lat, temp_long, temp_rolling_24, ambient_pm, ambient_bc, pollution_lat, 
+         pollution_long, pollution_datetime)
   
 
-# saveRDS(data_joined, "output/ambient_temp_house_phase.rds")
+# saveRDS(data_joined, "output/ambient_temp_pollution.rds")
 ```
 
 # Ground-level weather data from:
@@ -155,15 +244,13 @@ ground_weather_data <- gwd %>%
 # saveRDS(ground_weather_data, "output/ground_weather_data.rds")
 ```
 
-# Combine full data, reanalysis temp data, and ground-level temp data to look at correlations
+# Check temp correlations
 ```{r}
 corr_data <- r00_full_long %>% 
-  left_join(ambient_temp_house_phase, by = c("house_id", "phase")) %>% 
-  left_join(ground_weather_data, by = "date_sphygmo") %>% 
   ungroup() %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
-  select(a_twa, p_twa, kitchen_temp, temp_c, temp_f, temp_rolling_24,
-         temp_max_previous)
+  select(a_twa, p_twa, kitchen_temp, temp_c, temp_rolling_24, 
+         temp_max, temp_max_previous)
 
 temp_cor <- round(cor(corr_data, method = c("spearman"), use = "complete.obs"), 2)
 temp_cor
@@ -172,5 +259,13 @@ corrplot(temp_cor, type = "upper", order = "hclust",
 chart.Correlation(temp_cor, histogram=TRUE, method = c("spearman"))
 cor_table <- xtable(temp_cor)
 view(cor_table)
+```
+
+# Look at temperature over course of study
+```{r}
+plot(r00_full_long$date_sphygmo, r00_full_long$temp_c)
+plot(r00_full_long$date_sphygmo, r00_full_long$temp_rolling_24)
+plot(r00_full_long$date_sphygmo, r00_full_long$temp_max)
+plot(r00_full_long$date_sphygmo, r00_full_long$temp_max_previous)
 ```
 

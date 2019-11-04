@@ -31,9 +31,7 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 
 data_outliers_removed <- r00_model_data_outliers_removed %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
-  filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) 
+  filter(!is.na(study_arm)) 
   # further removes 196 observations (n=1162)
   # filter(!is.na(aug_index))
 
@@ -1358,7 +1356,7 @@ kable(all_6_phases)
 ### aix = ODK variable
 ### aug_index = Sphygmocor variable
 ```{r}
-data_aix_check <- r00_full_joined_sphygmocor %>% 
+data_aix_check <- data_outliers_removed %>% 
   select(house_id, phase, study_arm, aix, aug_index) %>% 
   mutate(aix_check = if_else(aix == round(aug_index, digits = 0), 0, 1)) %>% 
   filter(aix_check == 1)

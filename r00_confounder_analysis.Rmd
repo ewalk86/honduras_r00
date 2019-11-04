@@ -1,7 +1,7 @@
 ---
 title: "R00 Confounders Analysis"
 author: "Ethan Walker"
-date: "2 October 2019"
+date: "Updated 4 November 2019"
 output: pdf_document
 ---
 
@@ -33,9 +33,10 @@ library(boxcoxmix)
 ---
 
 ```{r}
-#load full dataset
+#load dataset with AIx/CPP outliers set at NA
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
+#load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 ```
 
@@ -46,20 +47,16 @@ r00_data <- r00_model_data_outliers_removed %>%
   filter(phase == 1) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>% 
   mutate(outcome = pulse_pressure_central) 
 
 ## Data prep for BP
 r00_data <- r00_full_long %>% 
   # filter for baseline (phase 1)
-  filter(phase == 1) %>%
+  #filter(phase == 1) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>% 
   ########### use sys_bp_periph or dia_bp_periph
-  mutate(outcome = dia_bp_periph) 
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(sys_bp_periph))
 ```
@@ -68,7 +65,7 @@ r00_data <- r00_full_long %>%
 ## Running models for Phase 1 
 
 ```{r}
-# Function for outcome = numeric/continuous predictor variables
+# Function for outcome and numeric/continuous predictor variables
 
 numeric_function <- function(df = r00_data, term_fun, label_fun){
   term_new <- eval(substitute(term_fun), df, parent.frame())
@@ -97,22 +94,24 @@ numeric_function(df = r00_data, term_fun = sugar,
                        label_fun = "sugar")
 numeric_function(df = r00_data, term_fun = manteca,
                        label_fun = "manteca")
-numeric_function(df = r00_data, term_fun = mean_temp,
-                       label_fun = "mean_temp")
 numeric_function(df = r00_data, term_fun = SES_weighted_sum,
                        label_fun = "SES_weighted_sum")
 numeric_function(df = r00_data, term_fun = phys_act,
                        label_fun = "phys_act")
+numeric_function(df = r00_data, term_fun = mean_temp,
+                       label_fun = "mean_temp")
 numeric_function(df = r00_data, term_fun = temp_c,
                        label_fun = "temp_c")
 numeric_function(df = r00_data, term_fun = temp_rolling_24,
                        label_fun = "temp_rolling_24")
+numeric_function(df = r00_data, term_fun = temp_max,
+                       label_fun = "temp_max")
 numeric_function(df = r00_data, term_fun = temp_max_previous,
                        label_fun = "temp_max_previous")
 ```
 
 ```{r}
-# Function for outcome = AIx and categorical predictor variables
+# Function for outcome and categorical predictor variables
 
 categorical_function <- function(df = r00_data, term_fun){
   term_new <- eval(substitute(term_fun), df, parent.frame())
@@ -139,4 +138,5 @@ categorical_function(df = r00_data, term_fun = phys_act_cat)
 categorical_function(df = r00_data, term_fun = salt_cat)
 categorical_function(df = r00_data, term_fun = sugar_cat)
 categorical_function(df = r00_data, term_fun = manteca_cat)
+categorical_function(df = r00_data, term_fun = season)
 ```

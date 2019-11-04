@@ -42,20 +42,15 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+ambient_temp_pollution_data <- read_rds("output/ambient_temp_pollution.rds")
 
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
 r00_model_data <- r00_full_long %>% 
-  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
-  mutate(med_bp = as.numeric(med_bp),
-         med_bp = if_else(is.na(med_bp), 0, med_bp)) %>%
-  mutate(age_cat_50 = if_else(age_current < 50, 0, 1),
-         age_cat_50 = as.factor(age_cat_50)) %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
   mutate(outcome = sys_bp_periph)
@@ -558,7 +553,7 @@ qqnorm(residuals(model_apm), main = "Kitchen PM primary model")
 # Personal PM
 ```{r}
 ##### personal PM all data
-model_ppm <- lmer(outcome ~ log_p_twa + age_baseline +
+model_ppm <- lmer(outcome ~ log_p_twa + age_baseline + 
                     ns(date_sphygmo, df=6) + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
 #summary(model_ppm)
