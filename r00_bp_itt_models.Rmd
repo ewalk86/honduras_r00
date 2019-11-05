@@ -51,11 +51,9 @@ r00_model_data <- r00_full_long %>%
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph) 
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome)) 
 
@@ -65,14 +63,14 @@ r00_data_6phases <- r00_full_long %>%
   filter(complete_case_sbp == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  mutate(outcome = sys_bp_periph)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
   filter(complete_case_sbp == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  mutate(outcome = sys_bp_periph)
   
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
@@ -89,7 +87,7 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   filter(pregnant_new == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph) %>% 
+  mutate(outcome = sys_bp_periph) %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -285,7 +283,7 @@ tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>%
 ##### Model with kitchen or ambient temp
 # Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
 model_temp <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                          temp_c +
+                          temp_rolling_24 +
                           (1 | house_id), r00_model_data)
 #summary(model_temp)
 tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 

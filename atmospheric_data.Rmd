@@ -1,12 +1,12 @@
 ---
 title: "Atmospheric data"
 author: "Ethan Walker"
-date: "Updated 4 November, 2019"
+date: "Updated 5 November, 2019"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
 ```{r}
@@ -24,9 +24,6 @@ library(xtable)
 ```{r}
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") 
-ambient_temp_data <- read_rds("output/ambient_temp_data.rds")
-ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
-ground_weather_data <- read_rds("output/ground_weather_data.rds")
 ```
 
 # Load and format reanalysis temp data
@@ -109,7 +106,7 @@ nc_data_function <- function(path) {
 nc_data <- nc_open(path)
 
 # Try different pollution vars: DUSMASS25, BCSMASS, OCSMASS, SO2SMASS, SO4SMASS, SSSMASS25
-pollution <- data.frame(ncvar_get(nc_data, varid = "BCSMASS"))
+pollution <- data.frame(ncvar_get(nc_data, varid = "OCSMASS"))
 
 # save for now # names(pollution)[1:144] <- format(seq(from = 13.0, to = 15.5, by = 0.5))
 
@@ -134,7 +131,7 @@ pollution_clean <- pollution_new %>%
   select(-date, -time) %>%  
   mutate(pollution_lat = as.numeric(lat),
          pollution_long = as.numeric(long),
-         amb_bc = as.numeric(amb_pm)) %>% 
+         amb_oc = as.numeric(amb_pm)) %>% 
   select(-lat, -long, -amb_pm) %>% 
   arrange(pollution_date, pollution_time)
 
@@ -146,8 +143,10 @@ amb_output <- data.frame(do.call("rbind", (lapply(pollution_data, nc_data_functi
 
 # saveRDS(amb_output, "output/ambient_pm25dust_data.rds")
 # saveRDS(amb_output, "output/ambient_bc_data.rds")
+# saveRDS(amb_output, "output/ambient_oc_data.rds")
 ```
 
+# Clean up temp and pollution data and merge into single dataset
 ```{r}
 # Clean up GPS coordinates from main R00 database
 gps_data <- r00_full_long %>% 
@@ -167,27 +166,23 @@ gps_data <- r00_full_long %>%
          long = -long,
          house_long = round(long, digits = 4)) %>% 
   select(-gps_new, -lat, -long) %>% 
-  mutate(temp_datetime = round_date(datetime_sphygmo, "hour")) 
+  mutate(temp_datetime = round_date(datetime_sphygmo, "hour")) %>% 
+  # fixing errors from hand entering GPA coordinates in the field
+  mutate(house_long = if_else(house_id == "OLO037", -88.1444, house_long),
+         house_long = if_else(house_id == "ZAC015", -88.249617, house_long),
+         house_long = if_else(house_id == "QDL019", -88.182402, house_long),
+         house_long = if_else(house_id == "QDL005", -88.1779, house_long),
+         house_lat = if_else(house_id == "CAC012", 14.410, house_lat))
 
 # Format ambient temp data from above, to be joined with main R00 database
+ambient_temp_data <- read_rds("output/ambient_temp_data.rds")
+
 temp_data <- ambient_temp_data %>% 
   mutate(temp_datetime = round_date(temp_datetime, "hour")) %>% 
   arrange(temp_lat, temp_long, temp_datetime) %>% 
   mutate(temp_rolling_24 = rollmean(temp_c, 24, fill="extend", align = "right")) 
 
-# Join ambient pollution dataframes together
-pm_data <- read_rds("output/ambient_pm25dust_data.rds")
-bc_data <- read_rds("output/ambient_bc_data.rds")
-
-pollution_joined <- pm_data %>% 
-  full_join(bc_data, by = c("pollution_datetime", "pollution_lat", "pollution_long")) %>% 
-  mutate(pollution_date = pollution_date.x,
-         pollution_time = pollution_time.x) %>% 
-  select(-pollution_date.x, -pollution_date.y, -pollution_time.x, -pollution_time.y) %>% 
-  mutate(pollution_datetime = round_date(pollution_datetime, "hour")) %>% 
-  arrange(pollution_lat, pollution_long, pollution_datetime)
-
-# Join ambient data with R00 GPS data
+# Join ambient temp data with R00 GPS data
 data_joined <- gps_data %>% 
   left_join(temp_data, by = "temp_datetime") %>% 
   mutate(diff_lat = abs(house_lat - temp_lat),
@@ -198,6 +193,27 @@ data_joined <- gps_data %>%
   filter(rank_diff == 1) %>% 
   select(house_id, phase, house_lat, house_long, temp_datetime, temp_c,
          temp_lat, temp_long, temp_rolling_24)
+# saveRDS(data_joined, "output/ambient_temp_house_phase.rds")
+
+# Join ambient pollution dataframes together
+pm_data <- read_rds("output/ambient_pm25dust_data.rds")
+bc_data <- read_rds("output/ambient_bc_data.rds")
+oc_data <- read_rds("output/ambient_oc_data.rds")
+
+pollution_joined <- pm_data %>% 
+  full_join(bc_data, by = c("pollution_datetime", "pollution_lat", "pollution_long")) %>% 
+  mutate(pollution_date = pollution_date.x,
+         pollution_time = pollution_time.x) %>% 
+  select(-pollution_date.x, -pollution_date.y, -pollution_time.x, -pollution_time.y) %>% 
+  full_join(oc_data, by = c("pollution_datetime", "pollution_lat", "pollution_long")) %>% 
+  mutate(pollution_date = pollution_date.x,
+         pollution_time = pollution_time.x) %>% 
+  select(-pollution_date.x, -pollution_date.y, -pollution_time.x, -pollution_time.y) %>% 
+  mutate(pollution_datetime = round_date(pollution_datetime, "hour")) %>% 
+  arrange(pollution_lat, pollution_long, pollution_datetime)
+
+# Join ambient pollution data with temp data
+ambient_temp_house_phase <- read_rds("output/ambient_temp_house_phase.rds")
 
 data_joined <- ambient_temp_house_phase %>% 
   mutate(pollution_datetime = temp_datetime) %>% 
@@ -209,13 +225,14 @@ data_joined <- ambient_temp_house_phase %>%
   mutate(rank_diff = min_rank(diff_total)) %>% 
   filter(rank_diff == 1) %>% 
   mutate(ambient_pm = as.numeric(amb_pm),
-         ambient_bc = as.numeric(amb_bc)) %>% 
+         ambient_bc = as.numeric(amb_bc),
+         ambient_oc = as.numeric(amb_oc)) %>% 
   select(house_id, phase, house_lat, house_long, temp_datetime, temp_c,
-         temp_lat, temp_long, temp_rolling_24, ambient_pm, ambient_bc, pollution_lat, 
-         pollution_long, pollution_datetime)
-  
-
+         temp_lat, temp_long, temp_rolling_24, ambient_pm, ambient_bc, ambient_oc,
+         pollution_lat, pollution_long, pollution_datetime)
 # saveRDS(data_joined, "output/ambient_temp_pollution.rds")
+
+# Now join with full dataset and run summary stats below
 ```
 
 # Ground-level weather data from:
@@ -242,6 +259,8 @@ ground_weather_data <- gwd %>%
 
 # Save La Esperanza ground level temp data
 # saveRDS(ground_weather_data, "output/ground_weather_data.rds")
+
+# Now join with full dataset and run summary stats below
 ```
 
 # Check temp correlations
@@ -249,7 +268,8 @@ ground_weather_data <- gwd %>%
 corr_data <- r00_full_long %>% 
   ungroup() %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
-  select(a_twa, p_twa, kitchen_temp, temp_c, temp_rolling_24, 
+  select(a_twa, p_twa, ambient_pm, ambient_bc, ambient_oc,
+         kitchen_temp, temp_c, temp_rolling_24, 
          temp_max, temp_max_previous)
 
 temp_cor <- round(cor(corr_data, method = c("spearman"), use = "complete.obs"), 2)
@@ -267,5 +287,41 @@ plot(r00_full_long$date_sphygmo, r00_full_long$temp_c)
 plot(r00_full_long$date_sphygmo, r00_full_long$temp_rolling_24)
 plot(r00_full_long$date_sphygmo, r00_full_long$temp_max)
 plot(r00_full_long$date_sphygmo, r00_full_long$temp_max_previous)
+```
+
+# Boxplots for ambient pollution
+```{r}
+boxplot_data <- r00_full_long %>% 
+  select(ambient_pm, ambient_bc, ambient_oc, temp_c, temp_rolling_24)
+
+mean(as.numeric(boxplot_data$ambient_pm), na.rm = TRUE)
+median(as.numeric(boxplot_data$ambient_pm), na.rm = TRUE)
+range(as.numeric(boxplot_data$ambient_pm), na.rm = TRUE)
+boxplot(as.numeric(boxplot_data$ambient_pm))
+boxplot(log(as.numeric(boxplot_data$ambient_pm)))
+
+mean(as.numeric(boxplot_data$ambient_bc), na.rm = TRUE)
+median(as.numeric(boxplot_data$ambient_bc), na.rm = TRUE)
+range(as.numeric(boxplot_data$ambient_bc), na.rm = TRUE)
+boxplot(as.numeric(boxplot_data$ambient_bc))
+boxplot(log(as.numeric(boxplot_data$ambient_bc)))
+
+mean(as.numeric(boxplot_data$ambient_oc), na.rm = TRUE)
+median(as.numeric(boxplot_data$ambient_oc), na.rm = TRUE)
+range(as.numeric(boxplot_data$ambient_oc), na.rm = TRUE)
+boxplot(as.numeric(boxplot_data$ambient_oc))
+boxplot(log(as.numeric(boxplot_data$ambient_oc)))
+
+mean(as.numeric(boxplot_data$temp_c), na.rm = TRUE)
+median(as.numeric(boxplot_data$temp_c), na.rm = TRUE)
+range(as.numeric(boxplot_data$temp_c), na.rm = TRUE)
+boxplot(as.numeric(boxplot_data$temp_c))
+boxplot(log(as.numeric(boxplot_data$temp_c)))
+
+mean(as.numeric(boxplot_data$temp_rolling_24), na.rm = TRUE)
+median(as.numeric(boxplot_data$temp_rolling_24), na.rm = TRUE)
+range(as.numeric(boxplot_data$temp_rolling_24), na.rm = TRUE)
+boxplot(as.numeric(boxplot_data$temp_rolling_24))
+boxplot(log(as.numeric(boxplot_data$temp_rolling_24)))
 ```
 

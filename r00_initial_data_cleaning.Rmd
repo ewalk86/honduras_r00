@@ -1,7 +1,7 @@
 ---
 title: "Data Cleaning"
 author: "Ethan Walker"
-date: "Updated 9 Oct 2019"
+date: "Updated 5 November 2019"
 output: pdf_document
 ---
 
@@ -509,43 +509,6 @@ new_vars <- r00_full_long %>%
   select(-temp_f, -temp_previous)
 ```
 
-########### New changes to long dataset by Bonnie - start here to make additions now
-```{r}
-r00_new_long <- read_csv("input/r00_full_dataset_31oct2019_by.csv")
-
-r00_full_repeated_by_phase <- r00_new_long %>% 
-  # removes 6 observations for participant who wasn't assigned to a study arm
-  #filter(!is.na(study_arm)) %>% 
-  mutate(assigned_stove = factor(assigned_stove, levels = c("Traditional", "Justa"))) %>% 
-  mutate(stove_use_3 = factor(stove_use_3, 
-                                levels = c("trad", "justa+trad", "justa/imprvd"))) 
-```
-
-# Save final, combined dataset
-```{r}
-write_rds(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.rds")
-
-write_csv(r00_full_repeated_by_phase, "output/r00_full_repeated_by_phase.csv", na = " ")
-```
-
-# Change AIx/CPP outliers to NA and save dataset
-```{r}
-# load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
-
-# USE THIS DATASET FOR AIx/CPP ANALYSES!!!
-## Removes values >75 for AIx and CPP, and <-25 for AIx
-## This dataset is already saved -- use code above to load
-r00_model_data_outliers_removed <- r00_full_long %>% 
-  # removes 6 potential "outliers" with high or low AIx
-  # removes 4 potential "outliers" > 75mmHg CPP
-  mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 
-  mutate(pulse_pressure_central = if_else(pulse_pressure_central > 75,
-                                          9999, pulse_pressure_central)) %>% 
-  replace_with_na(replace = list(aug_index = 9999)) %>% 
-  replace_with_na(replace = list(pulse_pressure_central = 9999)) 
-write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed.rds")
-```
 
 
 

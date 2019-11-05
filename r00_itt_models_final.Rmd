@@ -50,9 +50,7 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 ```{r}
 r00_model_data <- r00_model_data_outliers_removed %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
-  filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0)  
+  filter(!is.na(study_arm))  
   # Creating variable for time of Sphygmocor assessment to include in the models
   # separate(datetime_sphygmo, c("date_test", "time_test"), sep = " ") %>% 
   # mutate(time_test = hms(time_test))
@@ -254,6 +252,18 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
 
 ############################################################
+##### AIx ITT model - with potential ambient confounders
+# Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
+# ambient_pm, ambient_bc, ambient_oc
+model_temp <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                     log(ambient_bc) + temp_c +
+                     (1 | house_id), r00_model_data)
+#summary(model_temp)
+tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "temp", "na"))
+
+############################################################
 # Combine prepped data for plotting
 aix_results <- rbind(tidy_model_itt,
                      tidy_model_6phases,
@@ -401,6 +411,18 @@ model_season <- lmer(pulse_pressure_central ~ assigned_stove + season +
 tidy_model_season <- tidy(model_season, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "season", "na")) 
+
+############################################################
+##### CPP ITT model - with potential ambient confounders
+# Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
+# ambient_pm, ambient_bc, ambient_oc
+model_temp <- lmer(pulse_pressure_central ~ assigned_stove + 
+                     log(ambient_bc) + temp_c +
+                   ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+#summary(model_temp)
+tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "temp", "na"))
 
 
 ############################################################

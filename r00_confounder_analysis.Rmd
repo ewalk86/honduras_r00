@@ -47,12 +47,12 @@ r00_data <- r00_model_data_outliers_removed %>%
   filter(phase == 1) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
-  mutate(outcome = pulse_pressure_central) 
+  mutate(outcome = aug_index) 
 
 ## Data prep for BP
 r00_data <- r00_full_long %>% 
   # filter for baseline (phase 1)
-  #filter(phase == 1) %>%
+  filter(phase == 1) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   ########### use sys_bp_periph or dia_bp_periph
@@ -108,6 +108,12 @@ numeric_function(df = r00_data, term_fun = temp_max,
                        label_fun = "temp_max")
 numeric_function(df = r00_data, term_fun = temp_max_previous,
                        label_fun = "temp_max_previous")
+numeric_function(df = r00_data, term_fun = log(ambient_pm),
+                       label_fun = "log(ambient_pm)")
+numeric_function(df = r00_data, term_fun = log(ambient_bc),
+                       label_fun = "log(ambient_bc)")
+numeric_function(df = r00_data, term_fun = log(ambient_oc),
+                       label_fun = "log(ambient_oc)")
 ```
 
 ```{r}
