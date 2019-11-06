@@ -53,7 +53,7 @@ r00_model_data <- r00_full_long %>%
   filter(!is.na(study_arm)) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome)) 
 
@@ -63,14 +63,14 @@ r00_data_6phases <- r00_full_long %>%
   filter(complete_case_sbp == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = dia_bp_periph)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
   filter(complete_case_sbp == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = dia_bp_periph)
   
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
@@ -87,7 +87,7 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   filter(pregnant_new == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph) %>% 
+  mutate(outcome = dia_bp_periph) %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -176,7 +176,7 @@ model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
 # format model output for plotting
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "primary", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "all data, primary", "na")) 
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
@@ -272,7 +272,7 @@ tidy_model_no_time <- tidy(model_no_time, conf.int = TRUE) %>%
 ##### ITT model - checking for impact of potential confounders
 model_confounders <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
                           age_baseline + waist_cm + school_bi + 
-                          ses_materials + 
+                          SES_weighted_sum + dds_cat + bmi + phys_act + salt_cat +
                           (1 | house_id), r00_model_data)
 #summary(model_confounders)
 tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
@@ -282,13 +282,13 @@ tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>%
 ############################################################
 ##### Model with kitchen or ambient temp
 # Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
-model_temp <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                          temp_rolling_24 +
+model_ambient <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                          temp_c + log(ambient_bc) +
                           (1 | house_id), r00_model_data)
-#summary(model_temp)
-tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+#summary(model_ambient)
+tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "temp", "na"))
+    mutate(model = if_else(term == "assigned_stoveJusta", "ambient", "na"))
 
 ############################################################
 # Combine prepped data for plotting
@@ -301,10 +301,11 @@ results <- rbind(tidy_model_itt,
                      tidy_model_bpjoined,
                      tidy_model_6phases,
                      tidy_model_5phases,
+                     tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
                      tidy_model_itt_3df,
                      tidy_model_12df,
-                     tidy_model_temp,
+                     tidy_model_ambient,
                      tidy_model_confounders)
 #kable(results)
 ```
@@ -340,10 +341,10 @@ plot_estimates <- results_time %>%
 #plot_estimates
 
 plot_estimates <- results %>%
-  mutate(model = factor(model, levels = c("primary", "bp joined",
-                                          "complete case", "missed visit",
+  mutate(model = factor(model, levels = c("all data, primary", "bp joined",
+                                          "complete case", "missed visit", "missed visit 2",
                                           "no bp meds", "spline 12 df", 
-                                          "spline 3 df", "temp", "confounders"))) %>% 
+                                          "spline 3 df", "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
@@ -365,7 +366,9 @@ plot_estimates <- results %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
-          legend.position = "none") 
+          legend.position = "none") +
+  scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3, 4, 5), 
+                     labels = c(-3, -2, -1, 0, 1, 2, 3, 4, 5))
 plot_estimates
 ```
 

@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 Intent-to-treat Models and Plots"
 author: "Ethan Walker"
-date: "27 July 2019"
+date: "Updated 5 November 2019"
 output: pdf_document
 ---
 
@@ -186,7 +186,7 @@ model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) +
 # format model output for plotting
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "all data", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "all data, primary", "na")) 
 
 ############################################################
 ##### AIx ITT model - participants who completed all 6 phases
@@ -255,13 +255,24 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
 ##### AIx ITT model - with potential ambient confounders
 # Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
 # ambient_pm, ambient_bc, ambient_oc
-model_temp <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                     log(ambient_bc) + temp_c +
-                     (1 | house_id), r00_model_data)
-#summary(model_temp)
-tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+model_ambient <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                      temp_c + log(ambient_bc) +
+                      (1 | house_id), r00_model_data)
+#summary(model_ambient)
+tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "temp", "na"))
+    mutate(model = if_else(term == "assigned_stoveJusta", "ambient", "na"))
+
+############################################################
+##### AIx ITT model - with potential confounders based on simple associations with AIx
+model_confounders <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                     age_baseline + waist_cat + school_bi +
+                     bmi + SES_weighted_sum + whr_cat + phys_act + salt_cat + sugar_cat +
+                     (1 | house_id), r00_model_data)
+#summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
 
 ############################################################
 # Combine prepped data for plotting
@@ -272,16 +283,19 @@ aix_results <- rbind(tidy_model_itt,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
                      tidy_model_season,
-                     tidy_model_12df)
+                     tidy_model_12df,
+                     tidy_model_ambient,
+                     tidy_model_confounders)
 #kable(aix_results)
 ```
 
 # Plot model results 
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit",
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit",
                                           "missed visit 2", "no bp meds", "visit", 
-                                          "season", "spline 12 df"))) %>% 
+                                          "season", "spline 12 df", "ambient",
+                                          "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +
@@ -304,8 +318,8 @@ plot_estimates <- aix_results %>%
           panel.border = element_blank(), 
           panel.grid = element_blank(),
           legend.position = "none") +
-  scale_y_continuous(breaks = c(-3, -2, -1, 0, 1, 2, 3), 
-                     labels = c(-3, -2, -1, 0, 1, 2, 3)) 
+  scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4), 
+                     labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4)) 
 plot_estimates
 ```
 
@@ -347,7 +361,7 @@ model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=
 #summary(model_itt)
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "all data", "na")) 
+    mutate(model = if_else(term == "assigned_stoveJusta", "all data, primary", "na")) 
 
 ############################################################
 ##### CPP ITT model - participants who completed all 6 phases
@@ -416,14 +430,25 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
 ##### CPP ITT model - with potential ambient confounders
 # Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
 # ambient_pm, ambient_bc, ambient_oc
-model_temp <- lmer(pulse_pressure_central ~ assigned_stove + 
-                     log(ambient_bc) + temp_c +
-                   ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
-#summary(model_temp)
-tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+model_ambient <- lmer(pulse_pressure_central ~ assigned_stove + 
+                      ns(date_sphygmo, df=6) + 
+                      temp_c + log(ambient_bc) +
+                      (1 | house_id), r00_model_data)
+#summary(model_ambient)
+tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "temp", "na"))
+    mutate(model = if_else(term == "assigned_stoveJusta", "ambient", "na"))
 
+############################################################
+##### CPP ITT model - with potential confounders based on simple associations with AIx
+model_confounders <- lmer(pulse_pressure_central ~ assigned_stove + 
+                     ns(date_sphygmo, df=6) + age_baseline + waist_cat + school_bi +
+                     bmi + SES_weighted_sum + whr_cat + phys_act + 
+                     (1 | house_id), r00_model_data)
+#summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
 
 ############################################################
 # Combine prepped data for plotting
@@ -434,16 +459,18 @@ cpp_results <- rbind(tidy_model_itt,
                      tidy_model_no_bp_meds,
                      tidy_model_phase,
                      tidy_model_season,
-                     tidy_model_12df)
+                     tidy_model_12df,
+                     tidy_model_confounders)
 #kable(cpp_results)
 ```
 
 # Plot CPP results
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit",
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit",
                                           "missed visit 2", "no bp meds", 
-                                          "visit", "season", "spline 12 df"))) %>% 
+                                          "visit", "season", "spline 12 df",
+                                          "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9)) +

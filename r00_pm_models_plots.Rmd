@@ -118,7 +118,7 @@ model_apm <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline 
 # format model output for plotting
 tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "all data", "na")) 
+    mutate(model = if_else(term == "log_a_twa", "all data, primary", "na")) 
 
 ############################################################
 ##### AIx and area PM complete case
@@ -268,26 +268,27 @@ tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>%
 
 ############################################################
 ##### AIx and area PM initial model - full model with all potential confounders
-model_apm_full <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + dds_total + phys_act +
-                       ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
-#summary(model_apm_full)
-tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>% 
+model_apm_confounders <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + 
+                     age_baseline + waist_cat + school_bi +
+                     bmi + SES_weighted_sum + whr_cat + phys_act + salt_cat + sugar_cat +
+                     (1 | house_id), r00_model_data)
+#summary(model_apm_confounders)
+tidy_model_apm_confounders <- tidy(model_apm_confounders, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "full", "na"))
+    mutate(model = if_else(term == "log_a_twa", "confounders", "na"))
 
 ############################################################
 ##### AIx and area PM - model with potential ambient confounders
 # Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
 # ambient_pm, ambient_bc, ambient_oc
-model_apm_temp <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_c +
-                       (1 | house_id), r00_model_data)
-#summary(model_apm_temp)
-tidy_model_apm_temp <- tidy(model_apm_temp, conf.int = TRUE) %>% 
+model_apm_ambient <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + 
+                      age_baseline + waist_cat + school_bi +
+                      temp_c + log(ambient_bc) +
+                      (1 | house_id), r00_model_data)
+#summary(model_apm_ambient)
+tidy_model_apm_ambient <- tidy(model_apm_ambient, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "temp", "na"))
+    mutate(model = if_else(term == "log_a_twa", "ambient", "na"))
 
 ############################################################
 # Combine formatted results for plotting
@@ -299,12 +300,8 @@ aix_results <- rbind(tidy_model_apm,
                      tidy_model_apm_phase,
                      tidy_model_apm_season,
                      tidy_model_apm_spline12,
-                     tidy_model_apm_bmi,
-                     tidy_model_apm_whr,
-                     tidy_model_apm_beds,
-                     tidy_model_apm_ses,
-                     tidy_model_apm_pa,
-                     tidy_model_apm_dds)
+                     tidy_model_apm_ambient,
+                     tidy_model_apm_confounders)
 #kable(aix_results)
 ```
 
@@ -312,11 +309,10 @@ aix_results <- rbind(tidy_model_apm,
 ## Plot model estimates - AIx and Area PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
-                                          "missed visit 2",
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", 
+                                          "missed visit", "missed visit 2",
                                           "no bp meds", "visit", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+                                          "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
@@ -370,7 +366,7 @@ model_ppm <- lmer(aug_index ~ log_p_twa +
 #summary(model_ppm)
 tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "all data", "na")) 
+    mutate(model = if_else(term == "log_p_twa", "all data, primary", "na")) 
 
 ############################################################
 ##### AIx and personal PM complete case
@@ -522,26 +518,27 @@ tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>%
 
 ############################################################
 ##### AIx and personal PM initial model - full model with all potential confounders
-model_ppm_full <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + dds_total + phys_act +
-                       ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
-#summary(model_ppm_full)
-tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>% 
+model_ppm_confounders <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + 
+                     age_baseline + waist_cat + school_bi +
+                     bmi + SES_weighted_sum + whr_cat + phys_act + salt_cat + sugar_cat +
+                     (1 | house_id), r00_model_data)
+#summary(model_ppm_confounders)
+tidy_model_ppm_confounders <- tidy(model_ppm_confounders, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "full", "na"))
+    mutate(model = if_else(term == "log_p_twa", "confounders", "na"))
 
 ############################################################
 ##### AIx and personal PM - model with potential ambient confounders
 # Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
 # ambient_pm, ambient_bc, ambient_oc
-model_ppm_temp <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_c +
-                       (1 | house_id), r00_model_data)
-#summary(model_ppm_temp)
-tidy_model_ppm_temp <- tidy(model_ppm_temp, conf.int = TRUE) %>% 
+model_ppm_ambient <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + 
+                      age_baseline + waist_cat + school_bi +
+                      temp_c + log(ambient_bc) +
+                      (1 | house_id), r00_model_data)
+#summary(model_ppm_ambient)
+tidy_model_ppm_ambient <- tidy(model_ppm_ambient, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "temp", "na"))
+    mutate(model = if_else(term == "log_p_twa", "ambient", "na"))
 
 ############################################################
 aix_results <- rbind(tidy_model_ppm,
@@ -552,23 +549,18 @@ aix_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_phase,
                      tidy_model_ppm_season,
                      tidy_model_ppm_spline12,
-                     tidy_model_ppm_bmi,
-                     tidy_model_ppm_whr,
-                     tidy_model_ppm_beds,
-                     tidy_model_ppm_ses,
-                     tidy_model_ppm_pa,
-                     tidy_model_ppm_dds)
+                     tidy_model_ppm_ambient,
+                     tidy_model_ppm_confounders)
 #kable(aix_results)
 ```
 
 ## Plot model estimates - AIx and Personal PM
 ```{r}
 plot_estimates <- aix_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
-                                          "missed visit 2",
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", 
+                                          "missed visit", "missed visit 2",
                                           "no bp meds", "visit", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+                                          "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
@@ -622,7 +614,7 @@ model_apm <- lmer(pulse_pressure_central ~ log_a_twa +
 #summary(model_apm)
 tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "all data", "na")) 
+    mutate(model = if_else(term == "log_a_twa", "all data, primary", "na")) 
 
 ############################################################
 ##### CPP and area PM complete case
@@ -781,28 +773,27 @@ tidy_model_apm_dds <- tidy(model_apm_dds, conf.int = TRUE) %>%
 
 ############################################################
 ##### CPP and area PM initial model - full model with all potential confounders
-model_apm_full <- lmer(pulse_pressure_central ~ log_a_twa + 
-                       ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + dds_total + phys_act +
-                       ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
-#summary(model_apm_full)
-tidy_model_apm_full <- tidy(model_apm_full, conf.int = TRUE) %>% 
+model_apm_confounders <- lmer(pulse_pressure_central ~ log_a_twa + 
+                     ns(date_sphygmo, df=6) + age_baseline + waist_cat + school_bi +
+                     bmi + SES_weighted_sum + whr_cat + phys_act + 
+                     (1 | house_id), r00_model_data)
+#summary(model_apm_confounders)
+tidy_model_apm_confounders <- tidy(model_apm_confounders, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "full", "na"))
+    mutate(model = if_else(term == "log_a_twa", "confounders", "na"))
 
 ############################################################
 ##### CPP and area PM - model with potential ambient confounders
 # Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
 # ambient_pm, ambient_bc, ambient_oc
-model_apm_temp <- lmer(pulse_pressure_central ~ log_a_twa 
-                       + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_max +
-                       (1 | house_id), r00_model_data)
-#summary(model_apm_temp)
-tidy_model_apm_temp <- tidy(model_apm_temp, conf.int = TRUE) %>% 
+model_apm_ambient <- lmer(pulse_pressure_central ~ log_a_twa + ns(date_sphygmo, df=6) + 
+                   age_baseline + waist_cm + school_bi +  
+                   temp_c + log(ambient_bc) +
+                   (1 | house_id), r00_model_data)
+#summary(model_apm_ambient)
+tidy_model_apm_ambient <- tidy(model_apm_ambient, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "temp", "na"))
+    mutate(model = if_else(term == "log_a_twa", "ambient", "na"))
 
 
 ############################################################
@@ -814,23 +805,18 @@ cpp_results <- rbind(tidy_model_apm,
                      tidy_model_apm_phase,
                      tidy_model_apm_season,
                      tidy_model_apm_spline12,
-                     tidy_model_apm_bmi,
-                     tidy_model_apm_whr,
-                     tidy_model_apm_beds,
-                     tidy_model_apm_ses,
-                     tidy_model_apm_pa,
-                     tidy_model_apm_dds)
+                     tidy_model_apm_confounders,
+                     tidy_model_apm_ambient)
 #kable(cpp_results)
 ```
 
 ## Plot model estimates - CPP and Area PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit", 
                                           "missed visit 2",
                                           "no bp meds", "visit", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+                                          "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
@@ -900,7 +886,7 @@ model_ppm <- lmer(pulse_pressure_central ~ log_p_twa +
 #summary(model_ppm)
 tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "all data", "na")) 
+    mutate(model = if_else(term == "log_p_twa", "all data, primary", "na")) 
 
 ############################################################
 ##### CPP and personal PM complete case
@@ -1061,28 +1047,28 @@ tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>%
 
 ############################################################
 ##### CPP and personal PM initial model - full model with all potential confounders
-model_ppm_full <- lmer(pulse_pressure_central ~ log_p_twa + 
-                       ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + dds_total + phys_act +
-                       ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
-#summary(model_ppm_full)
-tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>% 
+model_ppm_confounders <- lmer(pulse_pressure_central ~ log_p_twa + 
+                     ns(date_sphygmo, df=6) + age_baseline + waist_cat + school_bi +
+                     bmi + SES_weighted_sum + whr_cat + phys_act + 
+                     (1 | house_id), r00_model_data)
+#summary(model_ppm_confounders)
+tidy_model_ppm_confounders <- tidy(model_ppm_confounders, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "full", "na"))
+    mutate(model = if_else(term == "log_p_twa", "confounders", "na"))
 
 ############################################################
 ##### CPP and personal PM - model with potential ambient confounders
 # Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
 # ambient_pm, ambient_bc, ambient_oc
-model_ppm_temp <- lmer(pulse_pressure_central ~ log_p_twa 
-                       + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + log(ambient_bc) +
-                       (1 | house_id), r00_model_data)
-#summary(model_ppm_temp)
-tidy_model_ppm_temp <- tidy(model_ppm_temp, conf.int = TRUE) %>% 
+model_ppm_ambient <- lmer(pulse_pressure_central ~ log_p_twa 
+                       + ns(date_sphygmo, df=6) + 
+                   age_baseline + waist_cm + school_bi +  
+                   temp_c + log(ambient_bc) +
+                   (1 | house_id), r00_model_data)
+#summary(model_ppm_ambient)
+tidy_model_ppm_ambient <- tidy(model_ppm_ambient, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "temp", "na"))
+    mutate(model = if_else(term == "log_p_twa", "ambient", "na"))
 
 
 ############################################################
@@ -1094,23 +1080,18 @@ cpp_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_phase,
                      tidy_model_ppm_season,
                      tidy_model_ppm_spline12,
-                     tidy_model_ppm_bmi,
-                     tidy_model_ppm_whr,
-                     tidy_model_ppm_beds,
-                     tidy_model_ppm_ses,
-                     tidy_model_ppm_pa,
-                     tidy_model_ppm_dds)
+                     tidy_model_ppm_confounders,
+                     tidy_model_ppm_ambient)
 #kable(cpp_results)
 ```
 
 ## Plot model estimates - CPP and Personal PM
 ```{r}
 plot_estimates <- cpp_results %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
-                                          "missed visit 2",
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", 
+                                          "missed visit", "missed visit 2",
                                           "no bp meds", "visit", "season", "spline 12 df", 
-                                          "bmi", "whr", "beds", "ses assets", "dds",
-                                          "phys act"))) %>% 
+                                          "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +

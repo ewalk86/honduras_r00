@@ -47,7 +47,7 @@ r00_data <- r00_model_data_outliers_removed %>%
   filter(phase == 1) %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
-  mutate(outcome = aug_index) 
+  mutate(outcome = pulse_pressure_central) 
 
 ## Data prep for BP
 r00_data <- r00_full_long %>% 
@@ -56,7 +56,7 @@ r00_data <- r00_full_long %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   ########### use sys_bp_periph or dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(sys_bp_periph))
 ```

@@ -50,6 +50,17 @@ r00_model_data <- r00_full_long %>%
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
+  mutate(stove_use_4 = factor(stove_use_4,
+                              levels = c("trad", "justa+trad", "justa+imp", "justa"),
+                              labels = c("trad", "justa+trad", "justa+imp", "justa")),
+         stove_use_days_stack = factor(stove_use_days_stack,
+                  levels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd"),
+                  labels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd")),
+         stove_use_hours = factor(stove_use_hours,
+                  levels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
+                             "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5"),
+                  labels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
+                        "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5")))%>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
   mutate(outcome = sys_bp_periph) 
@@ -57,21 +68,21 @@ r00_model_data <- r00_full_long %>%
   # filter(!is.na(outcome))
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
-r00_data_6phases <- r00_full_long %>%
+r00_data_6phases <- r00_model_data %>%
   filter(complete_case_sbp == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
   mutate(outcome = sys_bp_periph)
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
-r00_data_5phases <- r00_full_long %>%
+r00_data_5phases <- r00_model_data %>%
   filter(complete_case_sbp == 0) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
   mutate(outcome = sys_bp_periph)
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
-r00_data_sphygmo_p2 <- r00_full_long %>%
+r00_data_sphygmo_p2 <- r00_model_data %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
@@ -129,8 +140,6 @@ stove_use_compliance <- r00_full_long %>%
   ungroup() %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
   mutate(outcome = sys_bp_periph)
@@ -540,10 +549,10 @@ model_stove_use_3 <- lmer(outcome ~ stove_use_3 +
 #icc(model_stove_use_3)
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "primary") 
+    mutate(model = "all data, primary") 
 
 ################################################################
-model_bpjoined <- lmer(dia_bp_joined ~ stove_use_3 + 
+model_bpjoined <- lmer(sys_bp_joined ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
                          (1 | house_id), r00_model_data)
@@ -724,24 +733,24 @@ tidy_model_dds <- tidy(model_dds, conf.int = TRUE) %>%
 ################################################################
 ##### Model with kitchen or ambient temp
 # Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
-model_temp <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi +  temp_rolling_24 +
+model_ambient <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi +  temp_c + log(ambient_bc) +
                        (1 | house_id), r00_model_data)
-#summary(model_temp)
-tidy_model_temp <- tidy(model_temp, conf.int = TRUE) %>% 
+#summary(model_ambient)
+tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "temp")
+    mutate(model = "ambient")
 
 ################################################################
 ##### full model with all potential confounders
-model_full <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + dds_total + phys_act +
-                       ses_materials + beds_new + 
-                       (1 | house_id), r00_model_data)
-#summary(model_full)
-tidy_model_full <- tidy(model_full, conf.int = TRUE) %>% 
+model_confounders <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + 
+                          age_baseline + waist_cm + school_bi + 
+                          SES_weighted_sum + dds_cat + bmi + phys_act + salt_cat +
+                          (1 | house_id), r00_model_data)
+#summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
    filter(grepl('stove_use_3', term)) %>% 
-    mutate(model = "full")
+    mutate(model = "confounders")
 
 ################################################################
 ######################################### stove_use_4
@@ -777,7 +786,7 @@ model_4level <- lmer(outcome ~ stove_use_4 +
 #icc(model_4level)
 tidy_model_4level <- tidy(model_4level, conf.int = TRUE) %>% 
     filter(grepl('stove_use_4', term)) %>% 
-    mutate(model = "all data") 
+    mutate(model = "all data, primary") 
 
 ################################################################
 model_4level_p2_sphygmo <- lmer(outcome ~ stove_use_4 + 
@@ -824,7 +833,7 @@ model_days <- lmer(outcome ~ stove_use_days_stack +
 #icc(model_days)
 tidy_model_days <- tidy(model_days, conf.int = TRUE) %>% 
     filter(grepl('stove_use_days_stack', term)) %>% 
-    mutate(model = "all data") 
+    mutate(model = "all data, primary") 
 
 ################################################################
 model_days_p2_sphygmo <- lmer(outcome ~ stove_use_days_stack + 
@@ -871,7 +880,7 @@ model_hours <- lmer(outcome ~ stove_use_hours +
 #icc(model_hours)
 tidy_model_hours <- tidy(model_hours, conf.int = TRUE) %>% 
     filter(grepl('stove_use_hours', term)) %>% 
-    mutate(model = "all data") 
+    mutate(model = "all data, primary") 
 
 ################################################################
 model_hours_p2_sphygmo <- lmer(outcome ~ stove_use_hours + 
@@ -895,17 +904,12 @@ results_3level <- rbind(tidy_model_stove_use_3,
                      tidy_model_bpjoined,
                      tidy_model_6phases,
                      tidy_model_5phases,
+                     tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
                      tidy_model_spline12,
                      tidy_model_spline3,
-                     tidy_model_bmi,
-                     tidy_model_whr,
-                     tidy_model_beds,
-                     tidy_model_ses,
-                     tidy_model_pa,
-                     tidy_model_dds,
-                     tidy_model_temp,
-                     tidy_model_full)
+                     tidy_model_ambient,
+                     tidy_model_confounders)
 
 results_4level <- rbind(tidy_model_4level_6phases,
                      tidy_model_4level_5phases,
@@ -928,7 +932,7 @@ results_hours <- rbind(tidy_model_hours_6phases,
 # different ways of modeling time
 plot_estimates <- results_time %>%
   mutate(model = factor(model, levels = c("no time", "season",
-                                          "visit", "primary"))) %>% 
+                                          "visit", "all data, primary"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
                         labels = c("justa+trad", "justa/imprvd"))) %>% 
@@ -964,11 +968,10 @@ plot_estimates <- results_time %>%
 
 # primary stove-use model with sensitivity analyses
 plot_estimates <- results_3level %>%
-  mutate(model = factor(model, levels = c("primary", "bp joined",
-                                          "complete case", "missed visit",
+  mutate(model = factor(model, levels = c("all data, primary", "bp joined",
+                                          "complete case", "missed visit", "missed visit 2",
                                           "no bp meds", "spline 12 df", "spline 3 df",
-                                          "bmi", "whr", "beds", "ses assets", "phys act",
-                                          "dds", "temp", "full"))) %>% 
+                                          "ambient", "confounders"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
                         labels = c("justa+trad", "justa/imprvd"))) %>% 
@@ -1004,7 +1007,7 @@ plot_estimates
 
 # stove use 4-level
 plot_estimates <- results_4level %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit", 
                                           "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_4justa+trad",
@@ -1042,7 +1045,7 @@ plot_estimates
 
 # stove use days/month model
 plot_estimates <- results_days %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit", 
                                           "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_days_stackjusta+trad, 4+",
@@ -1081,7 +1084,7 @@ plot_estimates
 
 # stove use hours/day model
 plot_estimates <- results_hours %>%
-  mutate(model = factor(model, levels = c("all data", "complete case", "missed visit", 
+  mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit", 
                                           "missed visit 2"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_hourstrad, <3.5",
