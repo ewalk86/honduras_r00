@@ -1,7 +1,7 @@
 ---
 title: "R00 Stove Use Models"
 author: "Ethan Walker"
-date: "17 July 2019"
+date: "Updated 7 November 2019"
 output: pdf_document
 ---
 
@@ -46,18 +46,7 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 
 stove_use_data <- r00_model_data_outliers_removed %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
-  filter(!is.na(study_arm)) %>% 
-  mutate(stove_use_4 = factor(stove_use_4,
-                              levels = c("trad", "justa+trad", "justa+imp", "justa"),
-                              labels = c("trad", "justa+trad", "justa+imp", "justa")),
-         stove_use_days_stack = factor(stove_use_days_stack,
-                  levels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd"),
-                  labels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd")),
-         stove_use_hours = factor(stove_use_hours,
-                  levels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
-                             "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5"),
-                  labels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
-                             "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5")))
+  filter(!is.na(study_arm))
   # Creating variable for time of Sphygmocor assessment to include in the models
   # separate(datetime_sphygmo, c("date_test", "time_test"), sep = " ") %>% 
   # mutate(time_test = hms(time_test))
@@ -66,21 +55,12 @@ stove_use_data <- r00_model_data_outliers_removed %>%
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
 r00_data_6phases <- stove_use_data %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  ungroup()
+  filter(complete_case_aix == 1)
   
 
 # Dataset for participants who have AIx data for all <6 Phases
 r00_data_5phases <- stove_use_data %>%
-  filter(!is.na(aug_index)) %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>% 
-  ungroup() 
+  filter(complete_case_aix == 0) 
 
 
 # Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
@@ -94,7 +74,6 @@ r00_data_sphygmo_p2 <- stove_use_data %>%
   group_by(house_id) %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
   ungroup() %>% 
-  filter(pregnant_new == 0) %>% 
   filter(!is.na(aug_index))  # 949 obs from 184 participants  
 
 
@@ -142,10 +121,11 @@ stove_use_compliance <- r00_model_data_outliers_removed %>%
 ```
 
 
+```{r, eval=FALSE}
 # Other "test" datasets when assessing missing data and selection bias
 ## Saving in case I need it for future analyses
 ## DO NOT USE THIS CHUNK OF CODE ##
-```{r}
+
 # load full dataset
 #r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 
@@ -351,9 +331,11 @@ r00_model_data_phase2 <- stove_use_data %>%
   ungroup() 
 ```
 
+
+```{r, eval=FALSE}
 # Analysis plan
 ## New variables here are already incorporated into the full database
-```{r}
+
 # stratify assigned stove and stove-use variables
 table(stove_use_data$assigned_stove, stove_use_data$stove_use_3)
 
@@ -441,8 +423,10 @@ table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_3)
 table(stove_use_data$hours_primary_3.5, stove_use_data$stove_use_hours)
 ```
 
+
+```{r, eval=FALSE}
 # Describe actual stove use over course of study, by assigned study arm
-```{r}
+
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
@@ -524,7 +508,7 @@ stove_use_options_2 <- stove_use_3 %>%
 #write_csv(stove_use_options_2, "output/stove_use_options_2.csv")
 ```
 
-# Stove use analyses with a priori confounders
+# Stove use analyses for AIx and CPP
 ```{r}
 # AIx and Stove use variables
 ## tried: prim_sum_temp_percent_50 (and other SUMs vars), prim_stove_loc, hours_primary,
@@ -533,7 +517,6 @@ stove_use_options_2 <- stove_use_3 %>%
 ## haptrash_freq, hapsmoke_freq, mean_hum, mean_dew, mean_temp, max_temp, max_hum, max_dew,
 ## sec_stove, sums, hours_secondary, SES_weighted_sum, ses_weighted_cat, enclosure, 
 ## condition
-
 
 ##### Complete-case model 
 model_6phases <- lmer(aug_index ~ stove_use_3 + 
@@ -888,8 +871,10 @@ aix_results_hours <- rbind(tidy_model_hours_6phases,
 #kable(aix_results)
 ```
 
-## Plot model estimates - AIx and Stove Use
+
 ```{r}
+## Plot model estimates - AIx and Stove Use
+
 # primary stove-use model with sensitivity analyses
 plot_estimates <- aix_results_3level %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
@@ -907,7 +892,7 @@ plot_estimates <- aix_results_3level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "AIx stove use analysis: 3 level") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -946,7 +931,7 @@ plot_estimates <- aix_results_4level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "AIx stove use analysis: 4 level") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -985,7 +970,7 @@ plot_estimates <- aix_results_days %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "AIx stove use analysis: days/month") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1027,7 +1012,7 @@ plot_estimates <- aix_results_hours %>%
                 position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "AIx stove use analysis: hours/day") +
   labs(y = "Estimate vs traditional stove \n use 3.5+ hours/day (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1062,7 +1047,7 @@ plot_estimates <- tidy_model_compliance %>%
                 position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "AIx stove use analysis: compliance") +
   labs(y = "Estimate vs compliant \n stove users (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1082,8 +1067,10 @@ plot_estimates <- tidy_model_compliance %>%
 plot_estimates
 ```
 
-# AIx primary model diagnostic plots - stove use
+
 ```{r}
+# AIx primary model diagnostic plots - stove use
+
 plot(model_stove_use_3, main = "AIx and stove-use model", 
      xlab = "fitted values", ylab = "residuals")
 
@@ -1098,8 +1085,6 @@ qqnorm(residuals(model_stove_use_3), main = "AIx and stove-use model")
 ```
 
 
-
-# Stove use analyses with a priori confounders
 ```{r}
 # CPP and Stove use variables
 
@@ -1464,8 +1449,10 @@ cpp_results_hours <- rbind(tidy_model_hours_6phases,
 #kable(cpp_results)
 ```
 
-## Plot model estimates - CPP and Stove Use
+
 ```{r}
+## Plot model estimates - CPP and Stove Use
+
 plot_estimates <- cpp_results_3level %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
@@ -1482,7 +1469,7 @@ plot_estimates <- cpp_results_3level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "CPP stove use analysis: 3-level") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1520,7 +1507,7 @@ plot_estimates <- cpp_results_4level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "CPP stove use analysis: 4-level") +
   labs(y = "Estimate vs traditional stove with or \n without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1559,7 +1546,7 @@ plot_estimates <- cpp_results_days %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "CPP stove use analysis: days/month") +
   labs(y = "Estimate vs traditional stove with or \n without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1601,7 +1588,7 @@ plot_estimates <- cpp_results_hours %>%
                 position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "CPP stove use analysis: hours/day") +
   labs(y = "Estimate vs traditional stove \n use 3.5+ hours/day (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1636,6 +1623,7 @@ plot_estimates <- tidy_model_compliance %>%
                 position = position_dodge(width = 0.75), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() + 
+  ggtitle(label = "CPP stove use analysis: compliance") +
   labs(y = "Estimate vs compliant \n stove users (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1655,8 +1643,10 @@ plot_estimates <- tidy_model_compliance %>%
 plot_estimates
 ```
 
-# CPP primary model diagnostic plots - stove use
+
 ```{r}
+# CPP primary model diagnostic plots - stove use
+
 plot(model_stove_use_3, main = "CPP and stove-use model", 
      xlab = "fitted values", ylab = "residuals")
 

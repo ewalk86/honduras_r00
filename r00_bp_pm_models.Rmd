@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP PM Models and Plots"
 author: "Ethan Walker"
-date: "Updated 28 October 2019"
+date: "Updated 7 November 2019"
 output: pdf_document
 ---
 
@@ -52,23 +52,17 @@ r00_model_data <- r00_full_long %>%
   filter(!is.na(study_arm)) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = dia_bp_periph)
+  mutate(outcome = sys_bp_periph)
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_full_long %>%
-  filter(complete_case_sbp == 1) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  filter(complete_case_sbp == 1) 
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
-  filter(complete_case_sbp == 0) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  filter(complete_case_sbp == 0) 
 
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
@@ -81,11 +75,7 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
                                           0, sphygmo_missing_phase2)) %>%
   group_by(house_id) %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
-  ungroup() %>% 
-  filter(pregnant_new == 0) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = dia_bp_periph) %>% 
+  ungroup() %>%
   filter(!is.na(outcome))  # 955 obs from 184 participants   
 
 
@@ -115,8 +105,10 @@ season_dry <- r00_model_data %>%
   filter(season == 2)
 ```
 
-# Kitchen PM
+
 ```{r}
+# Kitchen PM
+
 ##### Kitchen PM all data
 # run and save model
 model_apm <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + 
@@ -129,7 +121,7 @@ tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>%
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
-model_apm_bpjoined <- lmer(dia_bp_joined ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
+model_apm_bpjoined <- lmer(sys_bp_joined ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
 # summary(model_apm_bpjoined)
 tidy_model_apm_bpjoined <- tidy(model_apm_bpjoined, conf.int = TRUE) %>% 
@@ -429,8 +421,10 @@ results_phase_season <- rbind(tidy_model_p1,
 ```
 
 
-## Plot model estimates - Kitchen PM
+
 ```{r}
+## Plot model estimates - Kitchen PM
+
 plot_estimates <- results_time %>%
   mutate(model = factor(model, levels = c("no time", "season",
                                           "visit", "primary"))) %>% 
@@ -522,11 +516,13 @@ plot_estimates <- results_phase_season %>%
           legend.position = "none") +
   scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4), 
                      labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4)) 
-plot_estimates
+#plot_estimates
 ```
 
-# Primary model diagnostic plots - Kitchen PM
+
 ```{r}
+# Primary model diagnostic plots - Kitchen PM
+
 plot(model_apm, main = "Kitchen PM primary model", 
      xlab = "fitted values", ylab = "residuals")
 
@@ -542,8 +538,10 @@ qqnorm(residuals(model_apm), main = "Kitchen PM primary model")
 
 ---------------------------------
 
-# Personal PM
+
 ```{r}
+# Personal PM
+
 ##### personal PM all data
 model_ppm <- lmer(outcome ~ log_p_twa + age_baseline + 
                     ns(date_sphygmo, df=6) + 
@@ -551,7 +549,7 @@ model_ppm <- lmer(outcome ~ log_p_twa + age_baseline +
 #summary(model_ppm)
 tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "primary", "na")) 
+    mutate(model = if_else(term == "log_p_twa", "all data, primary", "na")) 
 
 #int_emtrends <- emtrends(model_ppm, pairwise ~ age_cat_50, var = "log_p_twa")
 #summary(int_emtrends, conf.int = TRUE)
@@ -739,28 +737,26 @@ tidy_model_ppm_dds <- tidy(model_ppm_dds, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_p_twa", "dds", "na"))
 
 ############################################################
-##### personal PM initial model - model with kitchen or ambient temp
-# Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
-model_ppm_temp <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + temp_rolling_24 +
+# Try: temp_c, temp_rolling_24, temp_max_previous, temp_max, kitchen_temp,
+# ambient_pm, ambient_bc, ambient_oc
+model_ppm_ambient <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
+                       waist_cm + school_bi + temp_c + log(ambient_bc) +
                        (1 | house_id), r00_model_data)
-#summary(model_ppm_temp)
-tidy_model_ppm_temp <- tidy(model_ppm_temp, conf.int = TRUE) %>% 
+#summary(model_ppm_ambient)
+tidy_model_ppm_ambient <- tidy(model_ppm_ambient, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "temp", "na"))
+    mutate(model = if_else(term == "log_p_twa", "ambient", "na"))
 
 ############################################################
-##### personal PM initial model - full model with all potential confounders
-model_ppm_full <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline +
-                       waist_cm + school_bi + dds_total + phys_act + bmi_cat +
-                       ses_materials + beds_new + salt_cat + sugar_cat +
-                       manteca_cat + caffeine_today + breakfast +
-                       kitchen_temp + temp_c + 
-                       (1 | house_id), r00_model_data)
-#summary(model_ppm_full)
-tidy_model_ppm_full <- tidy(model_ppm_full, conf.int = TRUE) %>% 
+##### Personal PM model with all potential confounders
+model_ppm_confounders <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + 
+                          age_baseline + waist_cm + school_bi + 
+                          SES_weighted_sum + dds_cat + bmi + phys_act + salt_cat +
+                          (1 | house_id), r00_model_data)
+#summary(model_ppm_confounders)
+tidy_model_ppm_confounders <- tidy(model_ppm_confounders, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "full", "na"))
+    mutate(model = if_else(term == "log_p_twa", "confounders", "na"))
 
 
 ############################################################
@@ -849,17 +845,12 @@ results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_bpjoined,
                      tidy_model_ppm_6phases,
                      tidy_model_ppm_5phases,
+                     tidy_model_p2_sphygmo,
                      tidy_model_ppm_no_bp_meds,
                      tidy_model_ppm_spline12,
                      tidy_model_ppm_spline3,
-                     tidy_model_ppm_bmi,
-                     tidy_model_ppm_whr,
-                     tidy_model_ppm_beds,
-                     tidy_model_ppm_ses,
-                     tidy_model_ppm_pa,
-                     tidy_model_ppm_dds,
-                     tidy_model_ppm_temp,
-                     tidy_model_ppm_full)
+                     tidy_model_ppm_ambient,
+                     tidy_model_ppm_confounders)
 
 
 results_phase_season <- rbind(tidy_model_p1,
@@ -873,8 +864,10 @@ results_phase_season <- rbind(tidy_model_p1,
 #kable(results)
 ```
 
-## Plot model estimates - Personal PM
+
 ```{r}
+## Plot model estimates - Personal PM
+
 plot_estimates <- results_time %>%
   mutate(model = factor(model, levels = c("no time", "season",
                                           "visit", "primary"))) %>% 
@@ -906,11 +899,10 @@ plot_estimates <- results_time %>%
 
 
 plot_estimates <- results %>%
-  mutate(model = factor(model, levels = c("primary", "bp joined",
-                                          "complete case", "missed visit", 
+  mutate(model = factor(model, levels = c("all data, primary", "bp joined",
+                                          "complete case", "missed visit", "missed visit 2",
                                           "no bp meds", "spline 12 df", "spline 3 df",
-                                          "bmi", "whr", "beds", "ses assets", "phys act",
-                                          "dds", "temp", "full"))) %>% 
+                                          "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
   #scale_shape_manual(values = c(15, 16, 17, 18, 13, 9, 4, 8, 14, 10, 12, 7, 11)) +
@@ -967,11 +959,13 @@ plot_estimates <- results_phase_season %>%
           legend.position = "none") +
   scale_y_continuous(breaks = c(-4, -3, -2, -1, 0, 1, 2, 3, 4), 
                      labels = c(-4, -3, -2, -1, 0, 1, 2, 3, 4)) 
-plot_estimates
+# plot_estimates
 ```
 
-# Primary model diagnostic plots - Personal PM
+
 ```{r}
+# Primary model diagnostic plots - Personal PM
+
 plot(model_ppm, main = "Personal PM primary model", 
      xlab = "fitted values", ylab = "residuals")
 

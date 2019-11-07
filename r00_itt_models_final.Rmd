@@ -46,8 +46,10 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 ```
 
-# Creating datasets for various analyses
+
 ```{r}
+# Creating datasets for various analyses
+
 r00_model_data <- r00_model_data_outliers_removed %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm))  
@@ -60,21 +62,12 @@ r00_model_data <- r00_model_data_outliers_removed %>%
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
 r00_data_6phases <- r00_model_data %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  ungroup()
+  filter(complete_case_aix == 1)
   
 
 # Dataset for participants who have AIx data for all <6 Phases
 r00_data_5phases <- r00_model_data %>%
-  filter(!is.na(aug_index)) %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>% 
-  ungroup() 
+  filter(complete_case_aix == 0) 
 
 
 # Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
@@ -88,7 +81,6 @@ r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
   group_by(house_id) %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
   ungroup() %>% 
-  filter(pregnant_new == 0) %>% 
   filter(!is.na(aug_index))  # 949 obs from 184 participants  
 
 
@@ -166,8 +158,10 @@ aix_bmi <- lm(aug_index ~ bmi, data = r00_model_data_p6)
 tidy(aix_bmi)
 ```
 
+
+```{r}
 # Run ITT models for AIx
-```{r, echo=TRUE}
+
 ##### AIx ITT primary model - spline with 6 df
 # run and save model
 model_itt <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
@@ -289,8 +283,10 @@ aix_results <- rbind(tidy_model_itt,
 #kable(aix_results)
 ```
 
-# Plot model results 
+
 ```{r}
+# Plot model results 
+
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit",
                                           "missed visit 2", "no bp meds", "visit", 
@@ -303,7 +299,7 @@ plot_estimates <- aix_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: intent-to-treat model") +
+  ggtitle(label = "AIx intent-to-treat model") +
   labs(y = "Justa vs traditional (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -326,12 +322,14 @@ plot_estimates
 
 \pagebreak  
 
-# AIx ITT primary model diagnostic plots
+
 ```{r}
-plot(model_phase2, main = "AIx primary model", 
+# AIx ITT primary model diagnostic plots
+
+plot(model_itt, main = "AIx primary model", 
      xlab = "fitted values", ylab = "residuals")
 
-qqnorm(residuals(model_phase2), main = "AIx primary model QQ Plot")
+qqnorm(residuals(model_itt), main = "AIx primary model QQ Plot")
 
 #aix_influential <- influence(sphygmo_model_season, obs = TRUE)
 
@@ -351,8 +349,10 @@ cpp_bmi <- lm(pulse_pressure_central ~ bmi, data = r00_model_data_baseline)
 tidy(cpp_bmi)
 ```
 
+
+```{r}
 # Run ITT models for CPP
-```{r, echo=TRUE}
+
 ##### CPP ITT primary model - spline with 6 df
 model_itt <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
                   (1 | house_id), r00_model_data)
@@ -464,8 +464,10 @@ cpp_results <- rbind(tidy_model_itt,
 #kable(cpp_results)
 ```
 
-# Plot CPP results
+
 ```{r}
+# Plot CPP results
+
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit",
                                           "missed visit 2", "no bp meds", 
@@ -478,7 +480,7 @@ plot_estimates <- cpp_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: intent-to-treat model") +
+  ggtitle(label = "CPP intent-to-treat model") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -504,20 +506,11 @@ plot_estimates
 # Log transformed CPP helps diagnostic plots, but makes no difference in results
 ## Continuing to use untransformed CPP in primary analyses for ease of interpretation
 ```{r}
-plot(model_phase2, main = "Central Pulse Pressure primary model", 
+plot(model_itt, main = "Central Pulse Pressure primary model", 
      xlab = "fitted values", ylab = "residuals")
 
-qqnorm(residuals(model_phase2), main = "Central Pulse Pressure primary model QQ Plot")
+qqnorm(residuals(model_itt), main = "Central Pulse Pressure primary model QQ Plot")
 
-
-
-model_itt_log <- lmer(log(pulse_pressure_central) ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                  (1 | house_id), r00_model_data_phase2) 
-
-plot(model_itt_log, main = "Log Central Pulse Pressure primary model", 
-     xlab = "fitted values", ylab = "residuals")
-
-qqnorm(residuals(model_itt_log), main = "Log Central Pulse Pressure primary model QQ Plot")
 
 #cpp_influential <- influence(sphygmo_model_season, obs = TRUE)
 

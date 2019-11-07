@@ -19,6 +19,7 @@ library(naniar)
 library(corrplot)
 library(PerformanceAnalytics)
 library(xtable)
+library(knitr)
 ```
 
 ```{r}
@@ -281,47 +282,60 @@ cor_table <- xtable(temp_cor)
 view(cor_table)
 ```
 
-# Look at temperature over course of study
+# Look at temperature/PM over course of study
 ```{r}
 plot(r00_full_long$date_sphygmo, r00_full_long$temp_c)
 plot(r00_full_long$date_sphygmo, r00_full_long$temp_rolling_24)
 plot(r00_full_long$date_sphygmo, r00_full_long$temp_max)
 plot(r00_full_long$date_sphygmo, r00_full_long$temp_max_previous)
+plot(r00_full_long$date_sphygmo, r00_full_long$ambient_pm)
+plot(r00_full_long$date_sphygmo, r00_full_long$ambient_bc)
+plot(r00_full_long$date_sphygmo, r00_full_long$log_a_twa)
+plot(r00_full_long$date_sphygmo, r00_full_long$log_p_twa)
 ```
 
 # Boxplots for ambient pollution
 ```{r}
 boxplot_data <- r00_full_long %>% 
-  select(ambient_pm, ambient_bc, ambient_oc, temp_c, temp_rolling_24)
+  select(ambient_pm, ambient_bc, ambient_oc, temp_c, temp_rolling_24, season, phase)
 
 mean(as.numeric(boxplot_data$ambient_pm), na.rm = TRUE)
 median(as.numeric(boxplot_data$ambient_pm), na.rm = TRUE)
 range(as.numeric(boxplot_data$ambient_pm), na.rm = TRUE)
 boxplot(as.numeric(boxplot_data$ambient_pm))
-boxplot(log(as.numeric(boxplot_data$ambient_pm)))
+boxplot(log(as.numeric(boxplot_data$ambient_pm))~boxplot_data$season)
 
 mean(as.numeric(boxplot_data$ambient_bc), na.rm = TRUE)
 median(as.numeric(boxplot_data$ambient_bc), na.rm = TRUE)
 range(as.numeric(boxplot_data$ambient_bc), na.rm = TRUE)
 boxplot(as.numeric(boxplot_data$ambient_bc))
-boxplot(log(as.numeric(boxplot_data$ambient_bc)))
+boxplot(log(as.numeric(boxplot_data$ambient_bc))~boxplot_data$season)
 
 mean(as.numeric(boxplot_data$ambient_oc), na.rm = TRUE)
 median(as.numeric(boxplot_data$ambient_oc), na.rm = TRUE)
 range(as.numeric(boxplot_data$ambient_oc), na.rm = TRUE)
 boxplot(as.numeric(boxplot_data$ambient_oc))
-boxplot(log(as.numeric(boxplot_data$ambient_oc)))
+boxplot(log(as.numeric(boxplot_data$ambient_oc))~boxplot_data$season)
 
 mean(as.numeric(boxplot_data$temp_c), na.rm = TRUE)
 median(as.numeric(boxplot_data$temp_c), na.rm = TRUE)
 range(as.numeric(boxplot_data$temp_c), na.rm = TRUE)
-boxplot(as.numeric(boxplot_data$temp_c))
-boxplot(log(as.numeric(boxplot_data$temp_c)))
+boxplot(as.numeric(boxplot_data$temp_c)~boxplot_data$season)
 
 mean(as.numeric(boxplot_data$temp_rolling_24), na.rm = TRUE)
 median(as.numeric(boxplot_data$temp_rolling_24), na.rm = TRUE)
 range(as.numeric(boxplot_data$temp_rolling_24), na.rm = TRUE)
-boxplot(as.numeric(boxplot_data$temp_rolling_24))
-boxplot(log(as.numeric(boxplot_data$temp_rolling_24)))
+boxplot(as.numeric(boxplot_data$temp_rolling_24)~boxplot_data$season)
+```
+
+# Ambient data by study arm, visit 1
+```{r}
+study_arm_ambient <- r00_full_long %>% 
+  filter(phase == 1) %>% 
+  select(study_arm, temp_c, temp_rolling_24, ambient_bc, ambient_pm) %>% 
+  na.exclude() %>% 
+  group_by(study_arm) %>% 
+  summarize_all(mean)
+kable(study_arm_ambient, digits = 2)
 ```
 

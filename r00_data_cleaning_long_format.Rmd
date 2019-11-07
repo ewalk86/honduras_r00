@@ -63,6 +63,29 @@ new_data <- r00_full_long %>%
          -pollution_datetime.y, -pollution_datetime.x)
 ```
 
+# Fix/re-order stove-use variables; they seemed to be ordered backwards after
+# Bonnie made changes in SAS
+```{r}
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+new_data <- r00_full_long %>% 
+  mutate(stove_use_4 = factor(stove_use_4,
+                              levels = c("trad", "justa+trad", "justa+imp", "justa"),
+                              labels = c("trad", "justa+trad", "justa+imp", "justa")),
+         stove_use_days_stack = factor(stove_use_days_stack,
+                  levels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd"),
+                  labels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd")),
+         stove_use_hours = factor(stove_use_hours,
+                  levels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
+                             "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5"),
+                  labels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
+                        "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5")))
+```
+
+
+
+
+
 ################ DO THESE SAVING STEPS AFTER EACH DATA ADDITION, THEN LOAD TO SERVER
 # Save final, combined dataset
 ```{r}

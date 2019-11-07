@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 PM Models and Plots"
 author: "Ethan Walker"
-date: "27 July 2019"
+date: "Updated 7 November 2019"
 output: pdf_document
 ---
 
@@ -56,21 +56,12 @@ r00_model_data <- r00_model_data_outliers_removed %>%
 
 # Dataset for participants who have AIx data for all 6 Phases (107 participants)
 r00_data_6phases <- r00_model_data %>%
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) == 6) %>% 
-  ungroup()
+  filter(complete_case_aix == 1)
   
 
 # Dataset for participants who have AIx data for all <6 Phases
 r00_data_5phases <- r00_model_data %>%
-  filter(!is.na(aug_index)) %>% 
-  group_by(house_id) %>% 
-  #create new var to be able to filter for participants that completed 6 phases
-  mutate(phase_complete = if_else(!is.na(aug_index), 1, 0)) %>% 
-  filter(sum(phase_complete) < 6) %>% 
-  ungroup() 
+  filter(complete_case_aix == 0) 
 
 
 # Dataset removing 46 participants who missed AIx in phase 2 from sphygmo malfunction
@@ -84,7 +75,6 @@ r00_data_sphygmo_p2 <- r00_model_data_outliers_removed %>%
   group_by(house_id) %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
   ungroup() %>% 
-  filter(pregnant_new == 0) %>% 
   filter(!is.na(aug_index))  # 949 obs from 184 participants  
 
 
@@ -94,6 +84,9 @@ r00_model_data_meds <- r00_model_data %>%
   filter(is.na(med_bp)) 
 ```
 
+
+# AIx and CPP exposure-response models
+```{r}
 # Analyses with a priori confounders
 ## use log transformed pm
 ## use splines initially, but try phase and season
@@ -106,10 +99,6 @@ r00_model_data_meds <- r00_model_data %>%
 ## phys_act and dds_total have weaker associations with outcomes
 ### add them to model one at a time and see if they make a difference
 
-\pagebreak  
-
-# AIx and area PM
-```{r, echo=TRUE}
 ##### AIx and area PM all data
 # run and save model
 model_apm <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
@@ -306,8 +295,9 @@ aix_results <- rbind(tidy_model_apm,
 ```
 
 
-## Plot model estimates - AIx and Area PM
 ```{r}
+## Plot model estimates - AIx and Area PM
+
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
@@ -320,7 +310,7 @@ plot_estimates <- aix_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "AIx area PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -340,8 +330,10 @@ plot_estimates <- aix_results %>%
 plot_estimates
 ```
 
-# AIx primary model diagnostic plots - Area PM
+
 ```{r}
+# AIx primary model diagnostic plots - Area PM
+
 plot(model_apm, main = "AIx and area PM primary model", 
      xlab = "fitted values", ylab = "residuals")
 
@@ -357,8 +349,10 @@ qqnorm(residuals(model_apm), main = "AIx and area PM primary model")
 
 ---------------------------------
 
+
+```{r}
 # AIx and personal PM
-```{r, echo=TRUE}
+
 ##### AIx and personal PM all data
 model_ppm <- lmer(aug_index ~ log_p_twa + 
                     ns(date_sphygmo, df=6) + age_baseline +
@@ -554,8 +548,10 @@ aix_results <- rbind(tidy_model_ppm,
 #kable(aix_results)
 ```
 
-## Plot model estimates - AIx and Personal PM
+
 ```{r}
+## Plot model estimates - AIx and Personal PM
+
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
@@ -568,7 +564,7 @@ plot_estimates <- aix_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "AIx personal PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -588,8 +584,10 @@ plot_estimates <- aix_results %>%
 plot_estimates
 ```
 
-# AIx primary model diagnostic plots - Personal PM
+
 ```{r}
+# AIx primary model diagnostic plots - Personal PM
+
 plot(model_ppm, main = "AIx and personal PM primary model", 
      xlab = "fitted values", ylab = "residuals")
 
@@ -605,8 +603,10 @@ qqnorm(residuals(model_ppm), main = "AIx and personal PM primary model")
 
 ---------------------------------
 
+
+```{r}
 # CPP and area PM
-```{r, echo=TRUE}
+
 ##### CPP and area PM all data
 model_apm <- lmer(pulse_pressure_central ~ log_a_twa + 
                     ns(date_sphygmo, df=6) + age_baseline +
@@ -810,8 +810,10 @@ cpp_results <- rbind(tidy_model_apm,
 #kable(cpp_results)
 ```
 
-## Plot model estimates - CPP and Area PM
+
 ```{r}
+## Plot model estimates - CPP and Area PM
+
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit", 
                                           "missed visit 2",
@@ -824,7 +826,7 @@ plot_estimates <- cpp_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "CPP area PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -857,16 +859,6 @@ plot(model_apm, main = "CPP and area PM primary model",
 
 qqnorm(residuals(model_apm), main = "CPP and area PM primary model")
 
-# log(cpp)
-model_apm_logcpp <- lmer(log(pulse_pressure_central) ~ log_a_twa + 
-                    ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-
-plot(model_apm_logcpp, main = "Log CPP and area PM", 
-     xlab = "fitted values", ylab = "residuals")
-
-qqnorm(residuals(model_apm_logcpp), main = "Log CPP and area PM")
-
 
 #cpp_influential <- influence(model_apm, obs = TRUE)
 
@@ -877,8 +869,10 @@ qqnorm(residuals(model_apm_logcpp), main = "Log CPP and area PM")
 
 ---------------------------------
 
+
+```{r}
 # CPP and personal PM
-```{r, echo=TRUE}
+
 ##### CPP and personal PM all data
 model_ppm <- lmer(pulse_pressure_central ~ log_p_twa + 
                     ns(date_sphygmo, df=6) + age_baseline +
@@ -1085,8 +1079,10 @@ cpp_results <- rbind(tidy_model_ppm,
 #kable(cpp_results)
 ```
 
-## Plot model estimates - CPP and Personal PM
+
 ```{r}
+## Plot model estimates - CPP and Personal PM
+
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
@@ -1099,7 +1095,7 @@ plot_estimates <- cpp_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  #ggtitle(label = "AIx sensitivity analyses: area PM model") +
+  ggtitle(label = "CPP personal PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -1129,14 +1125,6 @@ plot(model_ppm, main = "CPP and personal PM primary model",
 qqnorm(residuals(model_ppm), main = "CPP and personal PM primary model")
 
 
-model_ppm_logcpp <- lmer(log(pulse_pressure_central) ~ log_p_twa + 
-                    ns(date_sphygmo, df=6) + age_baseline +
-                      waist_cm + school_self + (1 | house_id), r00_model_data)
-
-plot(model_ppm_logcpp, main = "Log CPP and personal PM", 
-     xlab = "fitted values", ylab = "residuals")
-
-qqnorm(residuals(model_ppm_logcpp), main = "Log CPP and personal PM")
 
 #cpp_influential <- influence(model_ppm, obs = TRUE)
 

@@ -1,7 +1,7 @@
 ---
 title: "R00 BP Stove Use Models"
 author: "Ethan Walker"
-date: "Updated 15 October 2019"
+date: "Updated 7 November 2019"
 output: pdf_document
 ---
 
@@ -49,37 +49,21 @@ r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
 r00_model_data <- r00_full_long %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
-  filter(!is.na(study_arm)) %>% 
-  mutate(stove_use_4 = factor(stove_use_4,
-                              levels = c("trad", "justa+trad", "justa+imp", "justa"),
-                              labels = c("trad", "justa+trad", "justa+imp", "justa")),
-         stove_use_days_stack = factor(stove_use_days_stack,
-                  levels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd"),
-                  labels = c("trad", "justa+trad, 4+", "justa+trad, <4", "justa/imprvd")),
-         stove_use_hours = factor(stove_use_hours,
-                  levels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
-                             "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5"),
-                  labels = c("trad, 3.5+", "trad, <3.5", "justa+trad, 3.5+",
-                        "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5")))%>% 
+  filter(!is.na(study_arm)) %>%
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph) 
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = dia_bp_periph) %>% 
+  filter(is.na(med_bp))
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_model_data %>%
-  filter(complete_case_sbp == 1) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph)
+  filter(complete_case_sbp == 1) 
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_model_data %>%
-  filter(complete_case_sbp == 0) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph)
+  filter(complete_case_sbp == 0) 
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
 r00_data_sphygmo_p2 <- r00_model_data %>%
@@ -91,11 +75,7 @@ r00_data_sphygmo_p2 <- r00_model_data %>%
                                           0, sphygmo_missing_phase2)) %>%
   group_by(house_id) %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
-  ungroup() %>% 
-  filter(pregnant_new == 0) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph)  %>% 
+  ungroup() %>%
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -104,7 +84,7 @@ r00_model_data_meds <- r00_model_data %>%
   #filtering out bp med users
   filter(is.na(med_bp))
 
-stove_use_compliance <- r00_full_long %>% 
+stove_use_compliance <- r00_model_data %>% 
   #select(house_id, study_arm, phase, stove_use_3) %>% 
   mutate(dummy_var = factor(stove_use_3, 
                             levels = c("trad", "justa+trad", "justa/imprvd"),
@@ -137,12 +117,7 @@ stove_use_compliance <- r00_full_long %>%
                                          (sum(dummy_var) == 204 | sum(dummy_var) == 104 |
                                           sum(dummy_var) == 203),
                                          "complier", stove_use_label)) %>% 
-  ungroup() %>% 
-  # removes 6 observations for participant who wasn't assigned to a study arm
-  filter(!is.na(study_arm)) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph)
+  ungroup()
 ```
 
 ```{r, eval=FALSE}
@@ -552,7 +527,7 @@ tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>%
     mutate(model = "all data, primary") 
 
 ################################################################
-model_bpjoined <- lmer(sys_bp_joined ~ stove_use_3 + 
+model_bpjoined <- lmer(dia_bp_joined ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
                          (1 | house_id), r00_model_data)
@@ -927,8 +902,10 @@ results_hours <- rbind(tidy_model_hours_6phases,
                      tidy_model_hours_p2_sphygmo)
 ```
 
-## Plot model estimates - Stove-Use
+
 ```{r}
+## Plot model estimates - Stove-Use
+
 # different ways of modeling time
 plot_estimates <- results_time %>%
   mutate(model = factor(model, levels = c("no time", "season",
@@ -1158,8 +1135,10 @@ plot_estimates <- tidy_model_compliance %>%
 plot_estimates
 ```
 
-# Primary model diagnostic plots - stove use
+
 ```{r}
+# Primary model diagnostic plots - stove use
+
 plot(model_stove_use_3, main = "Stove-use model", 
      xlab = "fitted values", ylab = "residuals")
 

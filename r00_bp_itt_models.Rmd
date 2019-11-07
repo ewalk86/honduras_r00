@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP ITT Models"
 author: "Ethan Walker"
-date: "Updated 28 October 2019"
+date: "Updated 7 November 2019"
 output: pdf_document
 ---
 
@@ -53,24 +53,18 @@ r00_model_data <- r00_full_long %>%
   filter(!is.na(study_arm)) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph) 
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome)) 
 
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_full_long %>%
-  filter(complete_case_sbp == 1) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  filter(complete_case_sbp == 1) 
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
 r00_data_5phases <- r00_full_long %>%
-  filter(complete_case_sbp == 0) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph)
+  filter(complete_case_sbp == 0) 
   
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
@@ -84,10 +78,6 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   group_by(house_id) %>%
   filter(sum(sphygmo_missing_phase2) == 0) %>% 
   ungroup() %>% 
-  filter(pregnant_new == 0) %>% 
-  ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = dia_bp_periph) %>% 
   filter(!is.na(outcome))  # 955 obs from 184 participants  
 
 
@@ -180,7 +170,7 @@ tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>%
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
-model_bpjoined <- lmer(dia_bp_joined ~ assigned_stove + ns(date_sphygmo, df=6) +
+model_bpjoined <- lmer(sys_bp_joined ~ assigned_stove + ns(date_sphygmo, df=6) +
                       (1 | house_id), r00_model_data)
 # summary(model_bpjoined)
 tidy_model_bpjoined <- tidy(model_bpjoined, conf.int = TRUE) %>% 
@@ -310,8 +300,10 @@ results <- rbind(tidy_model_itt,
 #kable(results)
 ```
 
-# Plot model results 
+
 ```{r}
+# Plot model results 
+
 plot_estimates <- results_time %>%
   mutate(model = factor(model, levels = c("no time", "season", "visit", "primary"))) %>% 
   ggplot() +
@@ -352,7 +344,7 @@ plot_estimates <- results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Diastolic BP ITT models") +
+  ggtitle(label = "Systolic BP ITT models") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
