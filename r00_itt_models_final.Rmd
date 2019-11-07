@@ -219,6 +219,15 @@ tidy_model_12df <- tidy(model_itt_12df, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "spline 12 df", "na")) 
 
 ############################################################
+##### AIx ITT model - spline with 3 df
+model_itt_3df <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=3) + 
+                  (1 | house_id), r00_model_data)
+#summary(model_itt_3df)
+tidy_model_3df <- tidy(model_itt_3df, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "spline 3 df", "na")) 
+
+############################################################
 ##### AIx ITT model - bp meds removed (57 obs)
 model_no_bp_meds <- lmer(aug_index ~ assigned_stove + ns(date_sphygmo, df=6) + 
                          (1 | house_id), r00_model_data_meds)
@@ -275,9 +284,8 @@ aix_results <- rbind(tidy_model_itt,
                      tidy_model_5phases,
                      tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
-                     tidy_model_phase,
-                     tidy_model_season,
                      tidy_model_12df,
+                     tidy_model_3df,
                      tidy_model_ambient,
                      tidy_model_confounders)
 #kable(aix_results)
@@ -289,8 +297,8 @@ aix_results <- rbind(tidy_model_itt,
 
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit",
-                                          "missed visit 2", "no bp meds", "visit", 
-                                          "season", "spline 12 df", "ambient",
+                                          "missed visit 2", "no bp meds", "spline 12 df",
+                                          "spline 3 df", "ambient",
                                           "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -299,7 +307,7 @@ plot_estimates <- aix_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx intent-to-treat model") +
+  #ggtitle(label = "AIx intent-to-treat model") +
   labs(y = "Justa vs traditional (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -400,6 +408,15 @@ tidy_model_12df <- tidy(model_itt_12df, conf.int = TRUE) %>%
     mutate(model = if_else(term == "assigned_stoveJusta", "spline 12 df", "na")) 
 
 ############################################################
+##### CPP ITT model - spline with 3 df
+model_itt_3df <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=3) + 
+                  (1 | house_id), r00_model_data)
+#summary(model_itt_3df)
+tidy_model_itt_3df <- tidy(model_itt_3df, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "spline 3 df", "na")) 
+
+############################################################
 ##### CPP ITT model - bp meds removed (57 obs)
 model_no_bp_meds <- lmer(pulse_pressure_central ~ assigned_stove + ns(date_sphygmo, df=6) + 
                          (1 | house_id), r00_model_data_meds)
@@ -432,7 +449,7 @@ tidy_model_season <- tidy(model_season, conf.int = TRUE) %>%
 # ambient_pm, ambient_bc, ambient_oc
 model_ambient <- lmer(pulse_pressure_central ~ assigned_stove + 
                       ns(date_sphygmo, df=6) + 
-                      temp_c + log(ambient_bc) +
+                      temp_c + 
                       (1 | house_id), r00_model_data)
 #summary(model_ambient)
 tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
@@ -457,9 +474,9 @@ cpp_results <- rbind(tidy_model_itt,
                      tidy_model_5phases,
                      tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
-                     tidy_model_phase,
-                     tidy_model_season,
                      tidy_model_12df,
+                     tidy_model_itt_3df,
+                     tidy_model_ambient,
                      tidy_model_confounders)
 #kable(cpp_results)
 ```
@@ -471,7 +488,7 @@ cpp_results <- rbind(tidy_model_itt,
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit",
                                           "missed visit 2", "no bp meds", 
-                                          "visit", "season", "spline 12 df",
+                                          "spline 12 df", "spline 3 df", "ambient",
                                           "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -480,7 +497,7 @@ plot_estimates <- cpp_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP intent-to-treat model") +
+  #ggtitle(label = "CPP intent-to-treat model") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 

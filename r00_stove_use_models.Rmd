@@ -597,6 +597,17 @@ tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>%
     mutate(model = "spline 12 df")
 
 ################################################################
+##### date spline with 3 df
+model_spline3 <- lmer(aug_index ~ stove_use_3 + 
+                           ns(date_sphygmo, df=3) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           stove_use_data)
+#summary(model_spline3)
+tidy_model_spline3 <- tidy(model_spline3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "spline 3 df")
+
+################################################################
 ##### phase instead of spline
 model_phase <- lmer(aug_index ~ stove_use_3 + phase + age_baseline +
                         waist_cm + school_bi + (1 | house_id), 
@@ -693,7 +704,7 @@ tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>%
 # ambient_pm, ambient_bc, ambient_oc
 model_ambient <- lmer(aug_index ~ stove_use_3 + ns(date_sphygmo, df=6) + 
                       age_baseline + waist_cat + school_bi +
-                      temp_c + log(ambient_bc) +
+                      temp_c + 
                       (1 | house_id), stove_use_data)
 #summary(model_ambient)
 tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
@@ -847,9 +858,8 @@ aix_results_3level <- rbind(tidy_model_6phases,
                      tidy_model_stove_use_3,
                      tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
-                     tidy_model_phase,
-                     tidy_model_season,
                      tidy_model_spline12,
+                     tidy_model_spline3,
                      tidy_model_ambient,
                      tidy_model_confounders)
 
@@ -879,7 +889,7 @@ aix_results_hours <- rbind(tidy_model_hours_6phases,
 plot_estimates <- aix_results_3level %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2", 
-                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "no bp meds", "spline 12 df", "spline 3 df",
                                           "ambient", "confounders"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
@@ -892,7 +902,7 @@ plot_estimates <- aix_results_3level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx stove use analysis: 3 level") +
+  #ggtitle(label = "AIx stove use analysis: 3 level") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16),
@@ -1167,6 +1177,17 @@ tidy_model_spline12 <- tidy(model_spline12, conf.int = TRUE) %>%
     mutate(model = "spline 12 df")
 
 ################################################################
+##### date spline with 3 df
+model_spline3 <- lmer(pulse_pressure_central ~ stove_use_3 + 
+                           ns(date_sphygmo, df=3) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           stove_use_data)
+#summary(model_spline3)
+tidy_model_spline3 <- tidy(model_spline3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "spline 3 df")
+
+################################################################
 ##### phase instead of spline
 model_phase <- lmer(pulse_pressure_central ~ stove_use_3 + 
                       phase + age_baseline +
@@ -1271,7 +1292,7 @@ tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>%
 # ambient_pm, ambient_bc, ambient_oc
 model_ambient <- lmer(pulse_pressure_central ~ stove_use_3 + ns(date_sphygmo, df=6) + 
                    age_baseline + waist_cm + school_bi +  
-                   temp_c + log(ambient_bc) +
+                   temp_c + 
                    (1 | house_id), stove_use_data)
 #summary(model_ambient)
 tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
@@ -1425,9 +1446,8 @@ cpp_results_3level <- rbind(tidy_model_6phases,
                      tidy_model_stove_use_3,
                      tidy_model_p2_sphygmo,
                      tidy_model_no_bp_meds,
-                     tidy_model_phase,
-                     tidy_model_season,
                      tidy_model_spline12,
+                     tidy_model_spline3,
                      tidy_model_ambient,
                      tidy_model_confounders)
 
@@ -1456,7 +1476,7 @@ cpp_results_hours <- rbind(tidy_model_hours_6phases,
 plot_estimates <- cpp_results_3level %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
-                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "no bp meds", "spline 12 df", "spline 3 df",
                                           "ambient", "confounders"))) %>% 
   mutate(level = factor(term, 
                         levels = c("stove_use_3justa+trad", "stove_use_3justa/imprvd"),
@@ -1469,7 +1489,7 @@ plot_estimates <- cpp_results_3level %>%
                 position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP stove use analysis: 3-level") +
+  #ggtitle(label = "CPP stove use analysis: 3-level") +
   labs(y = "Estimate vs traditional stove with \n or without secondary stove (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16),

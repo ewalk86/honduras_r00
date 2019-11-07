@@ -171,6 +171,17 @@ tidy_model_apm_spline12 <- tidy(model_apm_spline12, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_a_twa", "spline 12 df", "na")) 
 
 ############################################################
+##### AIx and area PM initial model - date spline with 3 df
+model_apm_spline3 <- lmer(aug_index ~ log_a_twa + 
+                           ns(date_sphygmo, df=3) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_apm_spline3)
+tidy_model_apm_spline3 <- tidy(model_apm_spline3, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "spline 3 df", "na")) 
+
+############################################################
 ##### AIx and area PM reduced model 
 model_apm_reduced <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) +
                          (1 | house_id), r00_model_data)
@@ -272,7 +283,7 @@ tidy_model_apm_confounders <- tidy(model_apm_confounders, conf.int = TRUE) %>%
 # ambient_pm, ambient_bc, ambient_oc
 model_apm_ambient <- lmer(aug_index ~ log_a_twa + ns(date_sphygmo, df=6) + 
                       age_baseline + waist_cat + school_bi +
-                      temp_c + log(ambient_bc) +
+                      temp_c + 
                       (1 | house_id), r00_model_data)
 #summary(model_apm_ambient)
 tidy_model_apm_ambient <- tidy(model_apm_ambient, conf.int = TRUE) %>% 
@@ -286,9 +297,8 @@ aix_results <- rbind(tidy_model_apm,
                      tidy_model_apm_5phases,
                      tidy_model_p2_sphygmo,
                      tidy_model_apm_no_bp_meds,
-                     tidy_model_apm_phase,
-                     tidy_model_apm_season,
                      tidy_model_apm_spline12,
+                     tidy_model_apm_spline3,
                      tidy_model_apm_ambient,
                      tidy_model_apm_confounders)
 #kable(aix_results)
@@ -301,7 +311,7 @@ aix_results <- rbind(tidy_model_apm,
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
-                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "no bp meds", "spline 12 df", "spline 3 df",
                                           "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -310,7 +320,7 @@ plot_estimates <- aix_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx area PM model") +
+  #ggtitle(label = "AIx area PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -424,6 +434,17 @@ tidy_model_ppm_spline12 <- tidy(model_ppm_spline12, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_p_twa", "spline 12 df", "na")) 
 
 ############################################################
+##### AIx and personal PM initial model - spline with 3 df
+model_ppm_spline3 <- lmer(aug_index ~ log_p_twa + 
+                           ns(date_sphygmo, df=3) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_ppm_spline3)
+tidy_model_ppm_spline3 <- tidy(model_ppm_spline3, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "spline 3 df", "na")) 
+
+############################################################
 ##### AIx and personal PM reduced model 
 model_ppm_reduced <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) +
                          (1 | house_id), r00_model_data)
@@ -527,7 +548,7 @@ tidy_model_ppm_confounders <- tidy(model_ppm_confounders, conf.int = TRUE) %>%
 # ambient_pm, ambient_bc, ambient_oc
 model_ppm_ambient <- lmer(aug_index ~ log_p_twa + ns(date_sphygmo, df=6) + 
                       age_baseline + waist_cat + school_bi +
-                      temp_c + log(ambient_bc) +
+                      temp_c + 
                       (1 | house_id), r00_model_data)
 #summary(model_ppm_ambient)
 tidy_model_ppm_ambient <- tidy(model_ppm_ambient, conf.int = TRUE) %>% 
@@ -540,9 +561,8 @@ aix_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_5phases,
                      tidy_model_p2_sphygmo,
                      tidy_model_ppm_no_bp_meds,
-                     tidy_model_ppm_phase,
-                     tidy_model_ppm_season,
                      tidy_model_ppm_spline12,
+                     tidy_model_ppm_spline3,
                      tidy_model_ppm_ambient,
                      tidy_model_ppm_confounders)
 #kable(aix_results)
@@ -555,7 +575,7 @@ aix_results <- rbind(tidy_model_ppm,
 plot_estimates <- aix_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
-                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "no bp meds", "spline 12 df", "spline 3 df",
                                           "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -564,7 +584,7 @@ plot_estimates <- aix_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "AIx personal PM model") +
+  #ggtitle(label = "AIx personal PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (%)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -680,6 +700,17 @@ tidy_model_apm_spline12 <- tidy(model_apm_spline12, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_a_twa", "spline 12 df", "na")) 
 
 ############################################################
+##### CPP and area PM model - spline with 3 df 
+model_apm_spline3 <- lmer(pulse_pressure_central ~ log_a_twa + 
+                           ns(date_sphygmo, df=3) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_apm_spline3)
+tidy_model_apm_spline3 <- tidy(model_apm_spline3, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "spline 3 df", "na")) 
+
+############################################################
 ##### CPP and area PM reduced model 
 model_apm_reduced <- lmer(pulse_pressure_central ~ log_a_twa + 
                           ns(date_sphygmo, df=6) + (1 | house_id), 
@@ -788,7 +819,7 @@ tidy_model_apm_confounders <- tidy(model_apm_confounders, conf.int = TRUE) %>%
 # ambient_pm, ambient_bc, ambient_oc
 model_apm_ambient <- lmer(pulse_pressure_central ~ log_a_twa + ns(date_sphygmo, df=6) + 
                    age_baseline + waist_cm + school_bi +  
-                   temp_c + log(ambient_bc) +
+                   temp_c + 
                    (1 | house_id), r00_model_data)
 #summary(model_apm_ambient)
 tidy_model_apm_ambient <- tidy(model_apm_ambient, conf.int = TRUE) %>% 
@@ -802,9 +833,8 @@ cpp_results <- rbind(tidy_model_apm,
                      tidy_model_apm_5phases,
                      tidy_model_p2_sphygmo,
                      tidy_model_apm_no_bp_meds,
-                     tidy_model_apm_phase,
-                     tidy_model_apm_season,
                      tidy_model_apm_spline12,
+                     tidy_model_apm_spline3,
                      tidy_model_apm_confounders,
                      tidy_model_apm_ambient)
 #kable(cpp_results)
@@ -817,7 +847,7 @@ cpp_results <- rbind(tidy_model_apm,
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", "missed visit", 
                                           "missed visit 2",
-                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "no bp meds", "spline 12 df", "spline 3 df",
                                           "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -826,7 +856,7 @@ plot_estimates <- cpp_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP area PM model") +
+  #ggtitle(label = "CPP area PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -946,6 +976,17 @@ tidy_model_ppm_spline12 <- tidy(model_ppm_spline12, conf.int = TRUE) %>%
     mutate(model = if_else(term == "log_p_twa", "spline 12 df", "na")) 
 
 ############################################################
+##### CPP and area PM model - spline with 3 df 
+model_ppm_spline3 <- lmer(pulse_pressure_central ~ log_p_twa + 
+                           ns(date_sphygmo, df=3) + age_baseline +
+                           waist_cm + school_bi + (1 | house_id), 
+                           r00_model_data)
+#summary(model_ppm_spline3)
+tidy_model_ppm_spline3 <- tidy(model_ppm_spline3, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "spline 3 df", "na")) 
+
+############################################################
 ##### CPP and personal PM reduced model 
 model_ppm_reduced <- lmer(pulse_pressure_central ~ log_p_twa + 
                           ns(date_sphygmo, df=6) +
@@ -1057,7 +1098,7 @@ tidy_model_ppm_confounders <- tidy(model_ppm_confounders, conf.int = TRUE) %>%
 model_ppm_ambient <- lmer(pulse_pressure_central ~ log_p_twa 
                        + ns(date_sphygmo, df=6) + 
                    age_baseline + waist_cm + school_bi +  
-                   temp_c + log(ambient_bc) +
+                   temp_c + 
                    (1 | house_id), r00_model_data)
 #summary(model_ppm_ambient)
 tidy_model_ppm_ambient <- tidy(model_ppm_ambient, conf.int = TRUE) %>% 
@@ -1071,9 +1112,8 @@ cpp_results <- rbind(tidy_model_ppm,
                      tidy_model_ppm_5phases,
                      tidy_model_p2_sphygmo,
                      tidy_model_ppm_no_bp_meds,
-                     tidy_model_ppm_phase,
-                     tidy_model_ppm_season,
                      tidy_model_ppm_spline12,
+                     tidy_model_ppm_spline3,
                      tidy_model_ppm_confounders,
                      tidy_model_ppm_ambient)
 #kable(cpp_results)
@@ -1086,7 +1126,7 @@ cpp_results <- rbind(tidy_model_ppm,
 plot_estimates <- cpp_results %>%
   mutate(model = factor(model, levels = c("all data, primary", "complete case", 
                                           "missed visit", "missed visit 2",
-                                          "no bp meds", "visit", "season", "spline 12 df", 
+                                          "no bp meds", "spline 12 df", "spline 3 df",
                                           "ambient", "confounders"))) %>% 
   ggplot() +
   geom_point(aes(x=model, y=estimate), size = 4) +
@@ -1095,7 +1135,7 @@ plot_estimates <- cpp_results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "CPP personal PM model") +
+  #ggtitle(label = "CPP personal PM model") +
   labs(y = "Estimate per natural log increase \n in fine particulate matter (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 

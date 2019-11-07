@@ -51,24 +51,25 @@ r00_model_data <- r00_full_long %>%
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
+  #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, sys_bp_joined, dia_bp_joined
-  mutate(outcome = sys_bp_periph) 
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome)) 
 
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
-r00_data_6phases <- r00_full_long %>%
+r00_data_6phases <- r00_model_data %>%
   filter(complete_case_sbp == 1) 
   
 # Dataset for participants who have BP data for <6 Phases (118 participants, 493 obs)
-r00_data_5phases <- r00_full_long %>%
+r00_data_5phases <- r00_model_data %>%
   filter(complete_case_sbp == 0) 
   
 
 # Dataset removing 46 participants who missed BP in phase 2 from sphygmo malfunction
-r00_data_sphygmo_p2 <- r00_full_long %>%
+r00_data_sphygmo_p2 <- r00_model_data %>%
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   mutate(sphygmo_missing_phase2 = as.numeric(sys_bp_final_nurse),
@@ -273,7 +274,7 @@ tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>%
 ##### Model with kitchen or ambient temp
 # Try: temp_c, temp_rolling_24, temp_max_previous, kitchen_temp
 model_ambient <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                          temp_c + log(ambient_bc) +
+                          temp_c + 
                           (1 | house_id), r00_model_data)
 #summary(model_ambient)
 tidy_model_ambient <- tidy(model_ambient, conf.int = TRUE) %>% 
@@ -313,7 +314,7 @@ plot_estimates <- results_time %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Systolic BP ITT models") +
+  #ggtitle(label = "Systolic BP ITT models") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
@@ -344,7 +345,7 @@ plot_estimates <- results %>%
                 size = 1.2, width = 0.5) +
   geom_hline(yintercept = 0) +
   theme_bw() +  
-  ggtitle(label = "Systolic BP ITT models") +
+  #ggtitle(label = "Systolic BP ITT models") +
   labs(y = "Justa vs traditional (mmHg)") +
   labs(x = "") +
   theme(title = element_text(size = 16), 
