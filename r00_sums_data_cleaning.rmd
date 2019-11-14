@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
 library(caTools)
+library(knitr)
 ```
 
 # Load datasets
@@ -676,5 +677,44 @@ r00_sums_full_dataset[is.na(r00_sums_full_dataset)] <- 0
 ```{r}
 write_rds(r00_sums_full_dataset, "output/r00_sums_full_dataset.rds")
 write_csv(r00_sums_full_dataset, "output/r00_sums_full_dataset.csv")
+```
+
+## Testing new 'sumsarizer' package: install_github("geocene/sumsarizer")
+### How-to vignette: https://github.com/Geocene/sumsarizer/blob/master/vignettes/how-to.Rmd
+```{r}
+library(sumsarizer)
+library(knitr)
+
+# load a single sums data file
+test_file <- import_sums("input/sums/ANT011_Primary_51541_26Oct2016.csv")
+
+# detect an event at a set threshold
+test_detector <- apply_detector(test_file, threshold_detector, threshold=35, direction=">")
+
+
+test_firefinder <- apply_detector(test_file, firefinder_detector)
+
+
+test_events <- list_events(test_firefinder)
+
+
+kable(head(test_events))
+
+
+plot_sums(test_firefinder)
+
+
+### Try with multiple files
+
+# import a folder of sums data files
+all_files <- file.path("input/sums/")
+test_all_files <- import_folder(all_files)
+
+
+all_sums <- apply_detector(test_all_files, threshold_detector, threshold=35, direction=">")
+all_events <- list_events(all_sums)
+summaries <- event_summaries(all_events)
+kable(head(summaries))
+
 ```
 
