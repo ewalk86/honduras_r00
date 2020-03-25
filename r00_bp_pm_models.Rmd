@@ -18,6 +18,7 @@ library(lmerTest)
 library(pbkrtest)
 library(emmeans)
 library(broom)
+library(broom.mixed)
 library(purrr)
 library(car)
 library(forcats)
@@ -373,20 +374,20 @@ tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>%
 
 model_rainy <- lmer(outcome ~ log_a_twa + 
                    age_baseline + waist_cm + school_bi +
-                   ns(date_sphygmo, df=6) + (1 | house_id), season_rainy)
-# summary(model_rainy)
+                   phase + (1 | house_id), season_rainy)
+#summary(model_rainy)
 tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>%  
-    select(-group) %>% 
+    select(-p.value, -effect, -group, -df) %>% 
     mutate(model = if_else(term == "log_a_twa", "rainy season", "na"))
 
 model_dry <- lmer(outcome ~ log_a_twa + 
                    age_baseline + waist_cm + school_bi +
-                   ns(date_sphygmo, df=6) + (1 | house_id), season_dry)
-# summary(model_dry)
+                   phase + (1 | house_id), season_dry)
+#summary(model_dry)
 tidy_model_dry <- tidy(model_dry, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>%  
-    select(-group) %>% 
+    select(-p.value, -effect, -group, -df) %>% 
     mutate(model = if_else(term == "log_a_twa", "dry season", "na"))
 
 
