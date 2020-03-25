@@ -1,0 +1,156 @@
+---
+title: "BP, AIx, CPP final models and results, all frameworks"
+author: "Ethan Walker"
+date: "11/13/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
+```
+
+# Load libraries to run models and print tidy results
+```{r, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(pbkrtest)
+library(emmeans)
+library(broom)
+library(broom.mixed)
+library(purrr)
+library(car)
+library(forcats)
+library(readxl)
+library(naniar)
+library(splines)
+library(lubridate)
+library(knitr)
+library(influence.ME)
+library(boxcoxmix)
+library(sjstats)
+library(rptR)
+library(gamm4)
+jvPalette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+```
+
+# Load data and prep dataset for modeling
+```{r}
+# load full dataset
+### Use this data to run models for SBP and DBP ###
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+
+# dataset with AIx/CPP outliers removed (10 total)
+### Use this data to run models for AIx and CPP ###
+r00_model_data_outliers_removed <- r00_full_long %>% 
+  # removes 6 potential "outliers" with high or low AIx
+  # removes 4 potential "outliers" > 75mmHg CPP
+  mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 
+  mutate(pulse_pressure_central = if_else(pulse_pressure_central > 75,
+                                          9999, pulse_pressure_central)) %>% 
+  replace_with_na(replace = list(aug_index = 9999)) %>% 
+  replace_with_na(replace = list(pulse_pressure_central = 9999))
+
+# prep data to be used in models below
+### start with correct dataset from above, depending on outcome of interest ###
+r00_model_data <- r00_full_long %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
+  mutate(outcome = sys_bp_periph) 
+```
+
+# Run ITT model
+```{r}
+##### ITT primary model - spline with 6 df
+# run and save model
+model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                  (1 | house_id), r00_model_data)
+
+# summary(model_itt) # run model summary for full model output
+
+# format tidy model output
+tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(term = "Justa vs traditional") %>% 
+    mutate(model = if_else(term == "Justa vs traditional", "Intent to treat", "na")) 
+
+# print tidy output
+tidy_model_itt
+```
+
+# Run PM/exposure-response model
+```{r}
+##### Kitchen PM model
+# run and save model
+model_apm <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + 
+                   age_baseline + waist_cm + school_bi + (1 | house_id), r00_model_data)
+
+# summary(model_apm) # run model summary for full model output
+
+# format tidy model output
+tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>%  
+    mutate(term = "Kitchen PM") %>% 
+    mutate(model = if_else(term == "Kitchen PM", "Exposure-response", "na")) 
+
+# print tidy output
+tidy_model_apm
+
+
+##### Personal PM model
+# run and save model
+model_ppm <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + 
+                  age_baseline + waist_cm + school_bi + 
+                  (1 | house_id), r00_model_data)
+
+# summary(model_ppm) # run model summary for full model output
+
+# format tidy model output
+tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>%  
+    mutate(term = "Personal PM") %>% 
+    mutate(model = if_else(term == "Personal PM", "Exposure-response", "na")) 
+
+# print tidy output
+tidy_model_ppm
+```
+
+# Run stove-use model
+```{r}
+##### ITT primary model - spline with 6 df
+# run and save model
+model_stove_use_3 <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=6) + 
+                          waist_cm + school_bi + age_baseline +
+                          (1 | house_id), r00_model_data)
+
+# summary(model_stove_use_3) # run model summary for full model output
+
+# format tidy model output
+tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "Stove-use") %>% 
+    mutate(term = if_else(term == "stove_use_3justa+trad", "Justa + trad vs trad",
+                          "Justa/improved vs trad"))
+
+# print tidy output
+tidy_model_stove_use_3
+```
+
+# Bind all model results together and print
+```{r}
+results_combined <- rbind(tidy_model_itt,
+                          tidy_model_ppm,
+                          tidy_model_apm,
+                          tidy_model_stove_use_3)
+
+final_results <- results_combined %>% 
+  select(term, estimate, p.value, conf.low, conf.high, model)
+
+# print final results
+final_results
+```
