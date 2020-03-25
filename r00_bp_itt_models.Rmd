@@ -54,7 +54,7 @@ r00_model_data <- r00_full_long %>%
   #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = dia_bp_periph) 
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome)) 
 

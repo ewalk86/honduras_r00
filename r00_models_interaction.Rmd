@@ -18,6 +18,7 @@ library(lmerTest)
 library(pbkrtest)
 library(emmeans)
 library(broom)
+library(broom.mixed)
 library(purrr)
 library(car)
 library(forcats)
@@ -48,12 +49,10 @@ r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_remo
 r00_model_data <- r00_full_long %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
-  filter(!is.na(study_arm)) %>% 
-  # removes 22 observations for pregnancies
-  filter(pregnant_new == 0) %>%
+  filter(!is.na(study_arm)) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = hba1c_2) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -107,10 +106,10 @@ r00_model_data_meds <- r00_model_data %>%
 # Season: season
 
 ############################################################
-model_int <- lmer(outcome ~ assigned_stove*season + kitchen_temp +
+model_int <- lmer(outcome ~ assigned_stove*waist_cat + 
                           ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
 summary(model_int)
-int_emmeans <- emmeans(model_int, pairwise ~ assigned_stove | season)
+int_emmeans <- emmeans(model_int, pairwise ~ assigned_stove | waist_cat)
 #summary(int_emmeans, conf.int = TRUE)
 confint(int_emmeans)
 # This line will plot the interaction term
@@ -129,17 +128,18 @@ confint(int_emmeans)
 
 ############################################################
 # Personal pm
-model_ppm_int <- lmer(outcome ~ log_p_twa*season + kitchen_temp +
-                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data)
+model_ppm_int <- lmer(outcome ~ log_p_twa*bp_cat + 
+                      season + bmi + age_baseline + 
+                      whr + phys_act + dds_total + SES_weighted_sum + 
+                      (1 | house_id), r00_model_data)
    #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ season, var = "log_p_twa")
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ bp_cat, var = "log_p_twa")
 summary(int_emtrends, conf.int = TRUE)
 #emmip(model_ppm_int, season ~ log_p_twa, cov.reduce = range)
 
 ############################################################
 # Kitchen pm
-model_apm_int <- lmer(outcome ~ log_a_twa*season + kitchen_temp +
+model_apm_int <- lmer(outcome ~ log_a_twa*season + 
                       ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
                       school_bi + (1 | house_id), r00_model_data)
  #summary(model_apm_int)
