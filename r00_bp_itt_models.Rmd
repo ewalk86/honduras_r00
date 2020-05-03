@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP ITT Models"
 author: "Ethan Walker"
-date: "Updated 7 November 2019"
+date: "Updated 3 May 2020"
 output: pdf_document
 ---
 
@@ -18,6 +18,7 @@ library(lmerTest)
 library(pbkrtest)
 library(emmeans)
 library(broom)
+library(broom.mixed)
 library(purrr)
 library(car)
 library(forcats)
@@ -27,7 +28,7 @@ library(splines)
 library(lubridate)
 library(knitr)
 library(influence.ME)
-library(boxcoxmix)
+#library(boxcoxmix)
 library(sjstats)
 library(rptR)
 library(gamm4)
@@ -54,9 +55,18 @@ r00_model_data <- r00_full_long %>%
   #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome)) 
+
+model_confounders <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                          age_baseline + waist_cm + school_bi +
+                          (1 | house_id), r00_model_data)
+#summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
+tidy_model_confounders
 
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
@@ -87,6 +97,61 @@ r00_model_data_meds <- r00_model_data %>%
   #filtering out bp med users
   filter(is.na(med_bp)) 
 ```
+
+# Chunk for running quick sensitivity analyses
+```{r}
+r00_model_data <- r00_model_data_outliers_removed %>% # r00_full_long, r00_model_data_outliers_removed
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  #filter(personal_takeoff == 1) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
+  mutate(outcome = pulse_pressure_central) %>% 
+  filter(phase != 5 & phase != 6) %>% 
+  # further removes 190 observations (n=1168)
+  filter(!is.na(outcome)) 
+table(r00_model_data$stove_use_3)
+
+model_confounders <- lmer(outcome ~ stove_use_3 + ns(date_sphygmo, df=4) +  
+                          age_baseline + waist_cm + school_bi +
+                          (1 | house_id), r00_model_data)
+summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
+tidy_model_confounders
+
+
+r00_model_data2 <- r00_model_data_outliers_removed %>% # r00_full_long, r00_model_data_outliers_removed
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  #filter(personal_takeoff == 1) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
+  mutate(outcome = aug_index) %>% 
+  select(house_id, phase, outcome, age_baseline, waist_cm, stove_use_3,
+         school_bi, date_sphygmo) %>% 
+  group_by(house_id) %>% 
+  pivot_wider(names_from = phase, values_from = outcome) %>% 
+  rename(baseline = '1',
+         outcome = '3') %>% 
+  fill(baseline, .direction = "down") %>% 
+  filter(!is.na(outcome)) 
+table(r00_model_data2$stove_use_3)
+
+
+model_confounders <- lm(outcome ~ stove_use_3 + baseline +
+                          age_baseline + waist_cm + school_bi, 
+                        r00_model_data2)
+summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
+tidy_model_confounders
+```
+
 
 ```{r, eval=FALSE}
 # Simple linear models between AIx and age/bmi
@@ -262,8 +327,7 @@ tidy_model_no_time <- tidy(model_no_time, conf.int = TRUE) %>%
 ############################################################
 ##### ITT model - checking for impact of potential confounders
 model_confounders <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                          age_baseline + waist_cm + school_bi + 
-                          SES_weighted_sum + dds_cat + bmi + phys_act + salt_cat +
+                          age_baseline + waist_cm + school_bi +
                           (1 | house_id), r00_model_data)
 #summary(model_confounders)
 tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 

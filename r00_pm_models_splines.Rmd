@@ -28,7 +28,6 @@ library(splines)
 library(lubridate)
 library(knitr)
 library(influence.ME)
-library(boxcoxmix)
 library(gamm4)
 library(sjstats)
 jvPalette <- c("#330099","#CC0066","#FF6633", 
