@@ -43,7 +43,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")

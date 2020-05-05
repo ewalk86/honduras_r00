@@ -1,7 +1,7 @@
 ---
 title: "R00 Dataset Cleaning and Additions"
 author: "Ethan Walker"
-date: "November 5, 2019"
+date: "Updated 5 May 2020"
 output: pdf_document
 ---
 
@@ -20,12 +20,12 @@ library(lubridate)
 # R00 dataset and makes further additions and cleaning adjustments
 ```{r}
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds") 
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds") 
 ```
 
 # Bonnie made changes to long version of dataset - load that and save here
 ```{r}
-r00_new_long <- read_csv("input/r00_full_dataset_31oct2019_by.csv")
+r00_new_long <- read_csv("input/r00_full_dataset_11dec2019_by.csv")
 
 r00_full_repeated_by_phase <- r00_new_long %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
@@ -39,7 +39,7 @@ r00_full_repeated_by_phase <- r00_new_long %>%
 ```{r}
 ambient_temp_pollution <- read_rds("output/ambient_temp_pollution.rds")
 
-new_data <- r00_full_long %>% 
+new_data <- r00_full_repeated_by_phase %>% 
   left_join(ambient_temp_pollution, by = c("house_id", "phase")) %>% 
   mutate(house_lat = house_lat.y,
          house_long = house_long.y,
@@ -48,12 +48,12 @@ new_data <- r00_full_long %>%
          temp_lat = temp_lat.y,
          temp_long = temp_long.y,
          temp_rolling_24 = temp_rolling_24.y,
-         ambient_pm = as.numeric(ambient_pm.y * 1000000000),
-         ambient_bc = as.numeric(ambient_bc.y * 1000000000),
-         ambient_oc = as.numeric(ambient_oc.y * 1000000000),
-         pollution_lat = pollution_lat.y,
-         pollution_long = pollution_long.y,
-         pollution_datetime = pollution_datetime.y) %>% 
+         ambient_pm = as.numeric(ambient_pm * 1000000000),
+         ambient_bc = as.numeric(ambient_bc * 1000000000),
+         ambient_oc = as.numeric(ambient_oc * 1000000000),
+         pollution_lat = pollution_lat,
+         pollution_long = pollution_long,
+         pollution_datetime = pollution_datetime) %>% 
   select(-house_lat.y, -house_lat.x, -house_long.y, -house_long.x,
          -temp_datetime.y, -temp_datetime.x, -temp_c.y, -temp_c.x,
          -temp_lat.y, -temp_lat.x, -temp_long.y, -temp_long.x,
@@ -66,7 +66,7 @@ new_data <- r00_full_long %>%
 # Fix/re-order stove-use variables; they seemed to be ordered backwards after
 # Bonnie made changes in SAS
 ```{r}
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
 new_data <- r00_full_long %>% 
   mutate(stove_use_4 = factor(stove_use_4,
@@ -82,22 +82,41 @@ new_data <- r00_full_long %>%
                         "justa+trad, <3.5", "justa/imprvd, 3.5+", "justa/imprvd, <3.5")))
 ```
 
+# Add mean within-person PM to full dataset
+```{r}
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds") %>% 
+  mutate(phase = as.factor(phase))
+within_person_pm <- read_xlsx("input/mean_within_person_pm_04may2020.xlsx")
 
+new_data <- within_person_pm %>% 
+  select(-Study_Arm_r00_p2) %>% 
+  group_by(house_id) %>% 
+  mutate_all(as.numeric) %>% 
+  pivot_longer(c("mean_log_p_twa_p1":"mean_log_a_twa_p6"), values_to = "mean_log_twa",
+               names_to = "names") %>% 
+  separate(names, c("names", "phase"), sep = 14) %>% 
+  separate(phase, c("trash", "phase"), sep = "_p") %>% 
+  pivot_wider(names_from = "names", values_from = "mean_log_twa") %>%
+  select(-trash) %>% 
+  ungroup() %>% 
+  arrange(house_id, phase) %>% 
+  right_join(r00_full_long, by = c("house_id", "phase"))
+```
 
 
 
 ################ DO THESE SAVING STEPS AFTER EACH DATA ADDITION, THEN LOAD TO SERVER
 # Save final, combined dataset
 ```{r}
-write_rds(new_data, "output/r00_full_repeated_by_phase.rds")
+write_rds(new_data, "output/r00_full_repeated_by_phase_5may2020.rds")
 
-write_csv(new_data, "output/r00_full_repeated_by_phase.csv", na = " ")
+write_csv(new_data, "output/r00_full_repeated_by_phase_5may2020.csv", na = " ")
 ```
 
 # Change AIx/CPP outliers to NA and save dataset
 ```{r}
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
 # USE THIS DATASET FOR AIx/CPP ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
@@ -110,5 +129,5 @@ r00_model_data_outliers_removed <- r00_full_long %>%
                                           9999, pulse_pressure_central)) %>% 
   replace_with_na(replace = list(aug_index = 9999)) %>% 
   replace_with_na(replace = list(pulse_pressure_central = 9999)) 
-write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed.rds")
+write_rds(r00_model_data_outliers_removed, "output/r00_model_data_outliers_removed_5may2020.rds")
 ```
