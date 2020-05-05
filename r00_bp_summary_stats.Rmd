@@ -58,6 +58,19 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   filter(!is.na(sys_bp_periph))  # 955 obs from 184 participants  
 ```
 
+# Eval missing data for manuscript flow chart
+```{r}
+n_check <- r00_model_data_outliers_removed %>% 
+  filter(!is.na(pulse_pressure_central)) %>% 
+  filter(phase == 6) %>% 
+  #filter(!is.na(assigned_stove)) %>% 
+  #filter(!is.na(log_p_twa)) %>% 
+  filter(!is.na(log_a_twa)) %>% 
+  group_by(study_arm) %>% 
+  count()
+```
+
+
 ```{r, eval=FALSE}
 # Other "test" datasets when assessing missing data and selection bias
 ## Saving in case I need it for future analyses
