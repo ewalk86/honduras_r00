@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP PM Models and Plots"
 author: "Ethan Walker"
-date: "Updated 7 November 2019"
+date: "Updated 10 May 2020"
 output: pdf_document
 ---
 
@@ -42,7 +42,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
@@ -53,8 +53,8 @@ r00_model_data <- r00_full_long %>%
   filter(!is.na(study_arm)) %>% 
   #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = dia_bp_periph) 
+  ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -374,7 +374,7 @@ tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>%
 
 model_rainy <- lmer(outcome ~ log_a_twa + 
                    age_baseline + waist_cm + school_bi +
-                   phase + (1 | house_id), season_rainy)
+                   ns(date_sphygmo, df=3) + (1 | house_id), season_rainy)
 #summary(model_rainy)
 tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>%  
@@ -383,7 +383,7 @@ tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>%
 
 model_dry <- lmer(outcome ~ log_a_twa + 
                    age_baseline + waist_cm + school_bi +
-                   phase + (1 | house_id), season_dry)
+                   ns(date_sphygmo, df=3) + (1 | house_id), season_dry)
 #summary(model_dry)
 tidy_model_dry <- tidy(model_dry, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>%  
@@ -817,20 +817,20 @@ tidy_model_p6 <- tidy(model_p6, conf.int = TRUE) %>%
 
 model_rainy <- lmer(outcome ~ log_p_twa + 
                    age_baseline + waist_cm + school_bi +
-                   ns(date_sphygmo, df=6) + (1 | house_id), season_rainy)
+                   ns(date_sphygmo, df=3) + (1 | house_id), season_rainy)
 # summary(model_rainy)
 tidy_model_rainy <- tidy(model_rainy, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>%  
-    select(-group) %>% 
+    select(-p.value, -effect, -group, -df) %>%
     mutate(model = if_else(term == "log_p_twa", "rainy season", "na"))
 
 model_dry <- lmer(outcome ~ log_p_twa + 
                    age_baseline + waist_cm + school_bi +
-                   ns(date_sphygmo, df=6) + (1 | house_id), season_dry)
+                   ns(date_sphygmo, df=3) + (1 | house_id), season_dry)
 # summary(model_dry)
 tidy_model_dry <- tidy(model_dry, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>%  
-    select(-group) %>% 
+    select(-p.value, -effect, -group, -df) %>%
     mutate(model = if_else(term == "log_p_twa", "dry season", "na"))
 
 

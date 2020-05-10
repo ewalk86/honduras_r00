@@ -43,7 +43,7 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 
 # USE THIS DATASET FOR ANALYSES!!!
 ## Removes values >75 for AIx and CPP, and <-25 for AIx
-r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed_5may2020.RDS")
 ```
 
 
