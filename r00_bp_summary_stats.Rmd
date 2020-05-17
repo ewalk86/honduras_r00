@@ -18,13 +18,19 @@ library(gridExtra)
 library(lubridate)
 library(haven)
 library(knitr)
+
+jv_palette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", 
+               "#0072B2", "#D55E00", "#CC79A7", "#999999")
 ```
 
 ---
 
 ```{r}
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
 #load dataset with AIx/CPP outliers removed (10 total)
 r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
@@ -56,6 +62,44 @@ r00_data_sphygmo_p2 <- r00_full_long %>%
   ungroup() %>% 
   filter(pregnant_new == 0) %>% 
   filter(!is.na(sys_bp_periph))  # 955 obs from 184 participants  
+```
+
+```{r, fig.height=4, fig.width=8}
+sbp_boxplot <- r00_full_long %>% 
+  select(phase, study_arm, sys_bp_periph, assigned_stove, stove_use_3) %>% 
+  mutate(phase = factor(phase, levels = c(1,2,3,4,5,6),
+                        labels = c("Visit 1", "Visit 2",
+                                   "Visit 3", "Visit 4",
+                                   "Visit 5", "Visit 6"))) %>% 
+  filter(!is.na(assigned_stove)) %>% 
+  filter(!is.na(sys_bp_periph)) %>% 
+  ggplot(aes(1, sys_bp_periph)) +
+    geom_boxplot(aes(assigned_stove, sys_bp_periph, fill = assigned_stove, size = 1), 
+                 lwd = 1.2, colour = "black", 
+                 fatten = 1, outlier.size = 1.5, width = 0.75) +
+    #stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    theme_minimal() +
+    scale_fill_manual(values = cbPalette) +
+    ylab(expression(paste("Systolic Blood Pressure (mmHg)"))) +
+    labs(x = " ", fill = "Assigned Stove: ") +
+    theme(axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          strip.text = element_text(size = 16, colour = "black"),
+          legend.text = element_text(size = 16, colour = "black"),
+          legend.title = element_text(size = 16, colour = "black"),
+          legend.position = "top",
+          panel.grid = element_blank(),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.title.x = element_text(margin = margin(t = 0, r = 0, b = 20, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.line.x.top = element_line(colour = "black", size = 1.2),
+          axis.ticks = element_blank()) +
+    facet_grid(~phase)
+sbp_boxplot
+
+ggsave("sbp_boxplots.jpeg", height = 4, width = 8)
 ```
 
 # Eval missing data for manuscript flow chart

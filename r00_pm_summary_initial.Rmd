@@ -14,11 +14,19 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
 library(tidyverse)
 library(readr)
 library(knitr)
+
+jv_palette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", 
+               "#0072B2", "#D55E00", "#CC79A7", "#999999")
 ```
 
 ```{r, message=FALSE}
 # load full database
-r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase.rds") %>% 
+r00_full_repeated_by_phase <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds") 
+
+%>% 
   select(date_sphygmo)
 
 #r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
@@ -438,104 +446,89 @@ kable(summary_personal_pm_stove_use, digits = 0)
 \pagebreak 
 
 # Area PM boxplots - all participants
-```{r, fig.height=6, fig.width=5}
+```{r, fig.height=4, fig.width=8}
 area_pm_boxplot <- r00_full_repeated_by_phase %>% 
   select(phase, study_arm, a_twa, assigned_stove, stove_use_3) %>% 
+  mutate(phase = factor(phase, levels = c(1,2,3,4,5,6),
+                        labels = c("Visit 1", "Visit 2",
+                                   "Visit 3", "Visit 4",
+                                   "Visit 5", "Visit 6"))) %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(a_twa)) %>% 
-  ggplot(aes(assigned_stove, a_twa)) +
-    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
-               fatten = 1, outlier.size = 1.5, width = 0.35) +
-    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+  ggplot(aes(1, a_twa)) +
+    geom_boxplot(aes(assigned_stove, a_twa, fill = assigned_stove, size = 1), 
+                 lwd = 1.2, colour = "black", 
+                 fatten = 1, outlier.size = 1.5, width = 0.75) +
+    #stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    scale_y_log10(breaks = c(1, 10, 100, 1000, 10000),
+                  labels = c(1, 10, 100, 1000, 10000),
+                  limits = c(1, 10000)) +
     theme_minimal() +
-    ylim(0, 1000) +
-    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
-    #labs(y = "Kitchen fine particulate matter (ug/m3)") +
-    labs(aes(x = "", y = paste("24-hour kitchen PM "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_text(size = 16, colour = "black"),
+    scale_fill_manual(values = cbPalette) +
+    ylab(expression(paste("24-hour Kitchen PM "[2.5], " (", mu, g/m^3, ")"))) +
+    labs(x = " ", fill = "Assigned Stove: ") +
+    theme(axis.text.x = element_blank(),
           axis.text.y = element_text(size = 16, colour = "black"),
+          strip.text = element_text(size = 16, colour = "black"),
+          legend.text = element_text(size = 16, colour = "black"),
+          legend.title = element_text(size = 16, colour = "black"),
+          legend.position = "top",
+          panel.grid = element_blank(),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.title.x = element_blank(),
+          axis.title.x = element_text(margin = margin(t = 0, r = 0, b = 20, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank())
+          axis.line.x.top = element_line(colour = "black", size = 1.2),
+          axis.ticks = element_blank()) +
+    facet_grid(~phase)
 area_pm_boxplot
 
-season_area_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(assigned_stove, study_arm, a_twa, season) %>% 
-  filter(!is.na(study_arm)) %>% 
-  filter(!is.na(a_twa)) %>% 
-  filter(!is.na(season)) %>%
-  ggplot(aes(assigned_stove, a_twa)) +
-    geom_boxplot(aes(size = 1, fill = season), lwd = 1.2, colour = "black", 
-               fatten = 1, outlier.size = 1.5, width = 0.35) +
-    #stat_summary(aes(group = season), fun.y=mean, geom="point", shape=17, size=3, color="red") +
-    theme_minimal() +
-    ylim(0, 1000) +
-    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
-    #labs(y = "Kitchen fine particulate matter (ug/m3)") +
-    labs(aes(x = "", y = paste("24-hour kitchen PM "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_text(size = 16, colour = "black"),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
-                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.title.x = element_blank(),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank())
-season_area_pm_boxplot
+ggsave("kitchen_pm_boxplots.jpeg", height = 4, width = 8)
 ```
 
 \pagebreak  
 
 # Personal PM boxplots - all participants
-```{r, fig.height=6, fig.width=5}
+```{r, fig.height=4, fig.width=8}
 personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
   select(phase, study_arm, p_twa, assigned_stove, stove_use_3) %>% 
+  mutate(phase = factor(phase, levels = c(1,2,3,4,5,6),
+                        labels = c("Visit 1", "Visit 2",
+                                   "Visit 3", "Visit 4",
+                                   "Visit 5", "Visit 6"))) %>% 
   filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(p_twa)) %>% 
-  ggplot(aes(assigned_stove, p_twa)) +
-    geom_boxplot(aes(size = 1), lwd = 1.2, colour = "black", 
-               fatten = 1, outlier.size = 1.5, width = 0.35) +
-    stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+  ggplot(aes(1, p_twa)) +
+    geom_boxplot(aes(assigned_stove, p_twa, fill = assigned_stove, size = 1), 
+                 lwd = 1.2, colour = "black", 
+                 fatten = 1, outlier.size = 1.5, width = 0.75) +
+    #stat_summary(fun.y=mean, geom="point", shape=17, size=3, color="red") +
+    scale_y_log10(breaks = c(1, 10, 100, 1000, 10000),
+                  labels = c(1, 10, 100, 1000, 10000),
+                  limits = c(1, 10000)) +
     theme_minimal() +
-    ylim(0, 500) +
-    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
-    labs(aes(x = "", y = paste("24-hour personal PM "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_text(size = 16, colour = "black"),
+    scale_fill_manual(values = cbPalette) +
+    ylab(expression(paste("24-hour Personal PM "[2.5], " (", mu, g/m^3, ")"))) +
+    labs(x = " ", fill = "Assigned Stove: ") +
+    theme(axis.text.x = element_blank(),
           axis.text.y = element_text(size = 16, colour = "black"),
+          strip.text = element_text(size = 16, colour = "black"),
+          legend.text = element_text(size = 16, colour = "black"),
+          legend.title = element_text(size = 16, colour = "black"),
+          legend.position = "top",
+          panel.grid = element_blank(),
           axis.title.y = element_text(size = 16,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.title.x = element_blank(),
+          axis.title.x = element_text(margin = margin(t = 0, r = 0, b = 20, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank())
+          axis.line.x.top = element_line(colour = "black", size = 1.2),
+          axis.ticks = element_blank()) +
+    facet_grid(~phase)
 personal_pm_boxplot
 
-season_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(assigned_stove, study_arm, p_twa, season) %>% 
-  filter(!is.na(study_arm)) %>% 
-  filter(!is.na(p_twa)) %>% 
-  filter(!is.na(season)) %>%
-  ggplot(aes(assigned_stove, p_twa)) +
-    geom_boxplot(aes(size = 1, fill = season), lwd = 1.2, colour = "black", 
-               fatten = 1, outlier.size = 1.5, width = 0.35) +
-    #stat_summary(aes(group = season), fun.y=mean, geom="point", shape=17, size=3, color="red") +
-    theme_minimal() +
-    ylim(0, 500) +
-    #geom_hline(yintercept = 50, color = "red", size = 1.2) +
-    #labs(y = "Kitchen fine particulate matter (ug/m3)") +
-    labs(aes(x = "", y = paste("24-hour personal PM "[2.5], " (", mu, g/m^3, ")"))) +
-    theme(axis.text.x = element_text(size = 16, colour = "black"),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
-                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
-          axis.title.x = element_blank(),
-          axis.line.x = element_line(colour = "black", size = 1.2), 
-          axis.line.y = element_line(colour = "black", size = 1.2), 
-          axis.ticks = element_blank())
-season_personal_pm_boxplot
+ggsave("personal_pm_boxplots.jpeg", height = 4, width = 8)
 ```
 
 \pagebreak  
@@ -576,12 +569,12 @@ personal_pm_boxplot <- r00_full_repeated_by_phase %>%
 personal_pm_boxplot
 
 log_personal_pm_boxplot <- r00_full_repeated_by_phase %>% 
-  select(phase, study_arm, p_twa) %>% 
+  select(phase, assigned_stove, p_twa) %>% 
   mutate(log_p_twa = log(p_twa)) %>% 
-  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(assigned_stove)) %>% 
   filter(!is.na(p_twa)) %>% 
   ggplot() +
-  geom_boxplot(aes(study_arm, log_p_twa)) +
+  geom_boxplot(aes(1, log_p_twa, fill = assigned_stove)) +
   facet_wrap(~phase)
 log_personal_pm_boxplot
 ```

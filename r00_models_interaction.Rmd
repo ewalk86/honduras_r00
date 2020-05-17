@@ -41,18 +41,18 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase.rds")
+r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
 #load dataset with AIx/CPP outliers removed (10 total)
-r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
+r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed_5may2020.RDS")
 
-r00_model_data <- r00_full_long %>% 
+r00_model_data <- r00_model_data_outliers_removed %>% 
   mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
-  mutate(outcome = hba1c_2) 
+  mutate(outcome = pulse_pressure_central) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -100,20 +100,22 @@ r00_model_data_meds <- r00_model_data %>%
 ## Use these vars as interaction terms
 # Age split at 40: age_cat_40
 # Waist split at 80: waist_cat
-# Blood pressure: bp_cat
 # Hba1c: hba1c_cat
 # Metabolic Syndrome: met_syn
 # Season: season
 
 ############################################################
-model_int <- lmer(outcome ~ assigned_stove*waist_cat + 
-                          ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+model_int <- lmer(outcome ~ assigned_stove*age_cat_40 + 
+                    age_baseline + waist_cm + school_bi +
+                    ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
 summary(model_int)
-int_emmeans <- emmeans(model_int, pairwise ~ assigned_stove | waist_cat)
+int_emmeans <- emmeans(model_int, pairwise ~ assigned_stove | age_cat_40)
 #summary(int_emmeans, conf.int = TRUE)
 confint(int_emmeans)
 # This line will plot the interaction term
 #emmip(model_int, season ~ assigned_stove, cov.reduce = range)
+table(model.frame(model_int)$assigned_stove)
+nobs(model_int)
 ```
 
 ### PM interaction analysis
