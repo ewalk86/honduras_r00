@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP PM Models and Plots"
 author: "Ethan Walker"
-date: "Updated 10 May 2020"
+date: "Updated 12 March 2021"
 output: pdf_document
 ---
 
@@ -44,6 +44,8 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # load full dataset
 r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
+r00_full_long <- read_csv("input/r00_full_dataset_01Mar2021_jpk.csv")
+
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
 
@@ -55,6 +57,9 @@ r00_model_data <- r00_full_long %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
   mutate(outcome = sys_bp_periph) 
+  #group_by(house_id, assigned_stove) %>% 
+  #mutate(outcome = mean(outcome, na.rm = T)) %>% 
+  #distinct(house_id, assigned_stove, .keep_all = T)
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -113,13 +118,14 @@ season_dry <- r00_model_data %>%
 
 ##### Kitchen PM all data
 # run and save model
-model_apm <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + 
-                   age_baseline + waist_cm + school_bi + (1 | house_id), r00_model_data)
+# also try with: pred_log_a_twa_LTA
+model_apm <- lmer(outcome ~ pred_log_a_twa_LTA + ns(date_sphygmo, df=3) + 
+                   age_baseline + waist_cm + school_bi + (1 | assigned_stove:house_id), r00_model_data)
 #summary(model_apm)
 # format model output for plotting
 tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
-    filter(grepl('log_a_twa', term)) %>% 
-    mutate(model = if_else(term == "log_a_twa", "all data, primary", "na")) 
+    filter(grepl('pred_log_a_twa_LTA', term)) %>% 
+    mutate(model = if_else(term == "pred_log_a_twa_LTA", "all data, primary", "na")) 
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
@@ -545,13 +551,14 @@ qqnorm(residuals(model_apm), main = "Kitchen PM primary model")
 # Personal PM
 
 ##### personal PM all data
-model_ppm <- lmer(outcome ~ log_p_twa + age_baseline + 
+# Also try with: pred_log_p_twa_LTA
+model_ppm <- lmer(outcome ~ pred_log_p_twa_LTA + age_baseline + 
                     ns(date_sphygmo, df=6) + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
 #summary(model_ppm)
 tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "all data, primary", "na")) 
+    filter(grepl('pred_log_p_twa_LTA', term)) %>% 
+    mutate(model = if_else(term == "pred_log_p_twa_LTA", "all data, primary", "na")) 
 
 #int_emtrends <- emtrends(model_ppm, pairwise ~ age_cat_50, var = "log_p_twa")
 #summary(int_emtrends, conf.int = TRUE)
