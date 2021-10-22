@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP ITT Models"
 author: "Ethan Walker"
-date: "Updated 10 May 2020"
+date: "Updated 10 Oct 2021"
 output: pdf_document
 ---
 
@@ -43,21 +43,42 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
+#r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
+
+r00_full_long <- read_csv("input/r00_full_dataset_28July2021_jpk.csv")
+
+
 
 #load dataset with AIx/CPP outliers removed (10 total)
-r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed_5may2020.RDS")
+#r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed_5may2020.RDS")
 
 r00_model_data <- r00_full_long %>% 
-  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp),
+         assigned_stove = factor(assigned_stove,
+                                 levels = c("Traditional", "Justa"))) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>% 
   #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  ######### sys_bp_periph, dia_bp_periph, 
+  mutate(outcome = sys_bp_periph)
   # further removes 190 observations (n=1168)
-  # filter(!is.na(outcome)) 
+  #filter(!is.na(outcome)) 
+
+r00_model_data <- r00_full_long %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp),
+         assigned_stove = factor(assigned_stove,
+                                 levels = c("Traditional", "Justa"))) %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 
+  mutate(pulse_pressure_central = if_else(pulse_pressure_central > 75,
+                                          9999, pulse_pressure_central)) %>% 
+  replace_with_na(replace = list(aug_index = 9999)) %>% 
+  replace_with_na(replace = list(pulse_pressure_central = 9999)) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### aug_index, pulse_pressure_central
+  mutate(outcome = pulse_pressure_central) 
 
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
@@ -226,6 +247,18 @@ model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) +
 tidy_model_itt <- tidy(model_itt, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "all data, primary", "na")) 
+table(model.frame(model_itt)$assigned_stove)
+
+############################################################
+##### ITT model - checking for impact of potential confounders
+model_confounders <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
+                          age_baseline + waist_cm + school_bi +
+                          (1 | house_id), r00_model_data)
+#summary(model_confounders)
+tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
+    filter(grepl('assigned_stoveJusta', term)) %>% 
+    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
+table(model.frame(model_confounders)$assigned_stove)
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
@@ -316,16 +349,6 @@ model_no_time <- lmer(outcome ~ assigned_stove +
 tidy_model_no_time <- tidy(model_no_time, conf.int = TRUE) %>% 
     filter(grepl('assigned_stoveJusta', term)) %>% 
     mutate(model = if_else(term == "assigned_stoveJusta", "no time", "na"))
-
-############################################################
-##### ITT model - checking for impact of potential confounders
-model_confounders <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
-                          age_baseline + waist_cm + school_bi +
-                          (1 | house_id), r00_model_data)
-#summary(model_confounders)
-tidy_model_confounders <- tidy(model_confounders, conf.int = TRUE) %>% 
-    filter(grepl('assigned_stoveJusta', term)) %>% 
-    mutate(model = if_else(term == "assigned_stoveJusta", "confounders", "na"))
 
 ############################################################
 ##### Model with kitchen or ambient temp

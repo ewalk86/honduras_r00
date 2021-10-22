@@ -1,7 +1,7 @@
 ---
 title: "Honduras R00 BP PM Models and Plots"
 author: "Ethan Walker"
-date: "Updated 12 March 2021"
+date: "Updated 22 Oct 2021"
 output: pdf_document
 ---
 
@@ -42,9 +42,9 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
+#r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
 
-r00_full_long <- read_csv("input/r00_full_dataset_01Mar2021_jpk.csv")
+r00_full_long <- read_csv("input/r00_full_dataset_28July2021_jpk.csv")
 
 #load dataset with AIx/CPP outliers removed (10 total)
 # r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed.RDS")
@@ -55,13 +55,27 @@ r00_model_data <- r00_full_long %>%
   filter(!is.na(study_arm)) %>% 
   #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
+  ######### sys_bp_periph, dia_bp_periph
   mutate(outcome = sys_bp_periph) 
   #group_by(house_id, assigned_stove) %>% 
   #mutate(outcome = mean(outcome, na.rm = T)) %>% 
   #distinct(house_id, assigned_stove, .keep_all = T)
   # further removes 190 observations (n=1168)
-  # filter(!is.na(outcome))
+  #filter(!is.na(outcome))
+
+r00_model_data <- r00_full_long %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp)) %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 
+  mutate(pulse_pressure_central = if_else(pulse_pressure_central > 75,
+                                          9999, pulse_pressure_central)) %>% 
+  replace_with_na(replace = list(aug_index = 9999)) %>% 
+  replace_with_na(replace = list(pulse_pressure_central = 9999)) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### aug_index, pulse_pressure_central
+  mutate(outcome = pulse_pressure_central) 
+  
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_model_data %>%
@@ -117,15 +131,34 @@ season_dry <- r00_model_data %>%
 # Kitchen PM
 
 ##### Kitchen PM all data
-# run and save model
-# also try with: pred_log_a_twa_LTA
-model_apm <- lmer(outcome ~ pred_log_a_twa_LTA + ns(date_sphygmo, df=3) + 
-                   age_baseline + waist_cm + school_bi + (1 | assigned_stove:house_id), r00_model_data)
-#summary(model_apm)
-# format model output for plotting
+model_apm <- lmer(outcome ~ log_a_twa + ns(date_sphygmo, df=6) + age_baseline + 
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+# summary(model_apm)
 tidy_model_apm <- tidy(model_apm, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "all data, primary", "na")) 
+nobs(model_apm)
+
+############################################################
+##### Kitchen PM initial model - no time
+model_apm_no_time <- lmer(outcome ~ log_a_twa + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), 
+                         r00_model_data)
+#summary(model_apm_no_time)
+tidy_model_apm_no_time <- tidy(model_apm_no_time, conf.int = TRUE) %>% 
+    filter(grepl('log_a_twa', term)) %>% 
+    mutate(model = if_else(term == "log_a_twa", "no time", "na"))
+nobs(model_apm_no_time)
+
+############################################################
+##### LTA Kitchen PM
+model_apm_lta <- lmer(outcome ~ pred_log_a_twa_LTA + age_baseline + 
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm_lta)
+tidy_model_apm_lta <- tidy(model_apm_lta, conf.int = TRUE) %>% 
     filter(grepl('pred_log_a_twa_LTA', term)) %>% 
     mutate(model = if_else(term == "pred_log_a_twa_LTA", "all data, primary", "na")) 
+nobs(model_apm_lta)
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
@@ -551,21 +584,34 @@ qqnorm(residuals(model_apm), main = "Kitchen PM primary model")
 # Personal PM
 
 ##### personal PM all data
-# Also try with: pred_log_p_twa_LTA
-model_ppm <- lmer(outcome ~ pred_log_p_twa_LTA + age_baseline + 
-                    ns(date_sphygmo, df=6) + 
+model_ppm <- lmer(outcome ~ log_p_twa + ns(date_sphygmo, df=6) + age_baseline + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
-#summary(model_ppm)
+# summary(model_ppm)
 tidy_model_ppm <- tidy(model_ppm, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "all data, primary", "na")) 
+nobs(model_ppm)
+
+############################################################
+##### personal PM initial model - no time
+model_ppm_no_time <- lmer(outcome ~ log_p_twa + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), 
+                         r00_model_data)
+#summary(model_ppm_no_time)
+tidy_model_ppm_no_time <- tidy(model_ppm_no_time, conf.int = TRUE) %>% 
+    filter(grepl('log_p_twa', term)) %>% 
+    mutate(model = if_else(term == "log_p_twa", "no time", "na"))
+nobs(model_ppm_no_time)
+
+############################################################
+##### LTA personal PM
+model_ppm_lta <- lmer(outcome ~ pred_log_p_twa_LTA + age_baseline + 
+                    waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_ppm_lta)
+tidy_model_ppm_lta <- tidy(model_ppm_lta, conf.int = TRUE) %>% 
     filter(grepl('pred_log_p_twa_LTA', term)) %>% 
     mutate(model = if_else(term == "pred_log_p_twa_LTA", "all data, primary", "na")) 
-
-#int_emtrends <- emtrends(model_ppm, pairwise ~ age_cat_50, var = "log_p_twa")
-#summary(int_emtrends, conf.int = TRUE)
-
-
-
-
+nobs(model_ppm_lta)
 
 ############################################################
 ##### ITT model - using joined bp data (sphygmo and manual during visit 2)
@@ -676,16 +722,6 @@ model_ppm_season <- lmer(outcome ~ log_p_twa + season + age_baseline +
 tidy_model_ppm_season <- tidy(model_ppm_season, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
     mutate(model = if_else(term == "log_p_twa", "season", "na"))
-
-############################################################
-##### personal PM initial model - no time
-model_ppm_no_time <- lmer(outcome ~ log_p_twa + age_baseline +
-                         waist_cm + school_bi + (1 | house_id), 
-                         r00_model_data)
-#summary(model_ppm_no_time)
-tidy_model_ppm_no_time <- tidy(model_ppm_no_time, conf.int = TRUE) %>% 
-    filter(grepl('log_p_twa', term)) %>% 
-    mutate(model = if_else(term == "log_p_twa", "no time", "na"))
 
 ############################################################
 ##### personal PM initial model - bmi instead of waist_cm
@@ -986,4 +1022,60 @@ qqnorm(residuals(model_ppm), main = "Personal PM primary model")
 #cooks <- cooks.distance.estex(influential, sort = TRUE)
 
 #plot.estex(influential, which = "cook")
+```
+
+
+```{r}
+# Kitchen BC
+
+##### Kitchen BC initial model - no time
+model_abc_no_time <- lmer(outcome ~ log_bc_area + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), 
+                         r00_model_data)
+#summary(model_abc_no_time)
+tidy_model_abc_no_time <- tidy(model_abc_no_time, conf.int = TRUE) %>% 
+    filter(grepl('log_bc_area', term)) %>% 
+    mutate(model = if_else(term == "log_bc_area", "no time", "na"))
+nobs(model_abc_no_time)
+
+############################################################
+##### LTA Kitchen BC
+model_abc_lta <- lmer(outcome ~ pred_log_bc_area_LTA + age_baseline + 
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_abc_lta)
+tidy_model_abc_lta <- tidy(model_abc_lta, conf.int = TRUE) %>% 
+    filter(grepl('pred_log_bc_area_LTA', term)) %>% 
+    mutate(model = if_else(term == "pred_log_bc_area_LTA", "all data, primary", "na")) 
+nobs(model_abc_lta)
+
+############################################################
+
+```
+
+
+```{r}
+# Personal BC
+
+##### Personal BC initial model - no time
+model_pbc_no_time <- lmer(outcome ~ log_bc_personal + age_baseline +
+                         waist_cm + school_bi + (1 | house_id), 
+                         r00_model_data)
+#summary(model_pbc_no_time)
+tidy_model_pbc_no_time <- tidy(model_pbc_no_time, conf.int = TRUE) %>% 
+    filter(grepl('log_bc_personal', term)) %>% 
+    mutate(model = if_else(term == "log_bc_personal", "no time", "na"))
+nobs(model_pbc_no_time)
+
+############################################################
+##### LTA Personal BC
+model_pbc_lta <- lmer(outcome ~ pred_log_bc_personal_LTA + age_baseline + 
+                      waist_cm + school_bi + (1 | house_id), r00_model_data)
+#summary(model_pbc_lta)
+tidy_model_pbc_lta <- tidy(model_pbc_lta, conf.int = TRUE) %>% 
+    filter(grepl('pred_log_bc_personal_LTA', term)) %>% 
+    mutate(model = if_else(term == "pred_log_bc_personal_LTA", "all data, primary", "na")) 
+nobs(model_pbc_lta)
+
+############################################################
+
 ```

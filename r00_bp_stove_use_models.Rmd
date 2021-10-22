@@ -42,21 +42,42 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
+#r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
+
+r00_full_long <- read_csv("input/r00_full_dataset_28July2021_jpk.csv")
 
 #load dataset with AIx/CPP outliers removed (10 total)
 r00_model_data_outliers_removed <-
 read_rds("output/r00_model_data_outliers_removed_5may2020.RDS")
 
 r00_model_data <- r00_full_long %>% 
-  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp),
+         stove_use_3 = factor(stove_use_3, 
+                             levels = c("trad", "justa/imprvd", "justa+trad"))) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>%
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
+
+r00_model_data <- r00_full_long %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp),
+         stove_use_3 = factor(stove_use_3, 
+                             levels = c("trad", "justa/imprvd", "justa+trad"))) %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 
+  mutate(pulse_pressure_central = if_else(pulse_pressure_central > 75,
+                                          9999, pulse_pressure_central)) %>% 
+  replace_with_na(replace = list(aug_index = 9999)) %>% 
+  replace_with_na(replace = list(pulse_pressure_central = 9999)) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### aug_index, pulse_pressure_central
+  mutate(outcome = pulse_pressure_central) 
+
+
 
 # Dataset for participants who have BP data for all 6 Phases (113 participants, 678 obs)
 r00_data_6phases <- r00_model_data %>%
@@ -517,6 +538,17 @@ stove_use_options_2 <- stove_use_3 %>%
 ## condition
 
 ################################################################
+model_stove_use_no_time <- lmer(outcome ~ stove_use_3 + 
+                         waist_cm + school_bi + age_baseline +
+                         (1 | house_id), r00_model_data)
+#summary(model_stove_use_no_time)
+#icc(model_stove_use_no_time)
+tidy_model_stove_use_no_time <- tidy(model_stove_use_no_time, conf.int = TRUE) %>% 
+    filter(grepl('stove_use_3', term)) %>% 
+    mutate(model = "all data, primary") 
+table(model.frame(model_stove_use_no_time)$stove_use_3)
+
+################################################################
 model_stove_use_3 <- lmer(outcome ~ stove_use_3 + 
                          ns(date_sphygmo, df=6) + 
                          waist_cm + school_bi + age_baseline +
@@ -526,6 +558,7 @@ model_stove_use_3 <- lmer(outcome ~ stove_use_3 +
 tidy_model_stove_use_3 <- tidy(model_stove_use_3, conf.int = TRUE) %>% 
     filter(grepl('stove_use_3', term)) %>% 
     mutate(model = "all data, primary") 
+table(model.frame(model_stove_use_3)$stove_use_3)
 
 ################################################################
 model_bpjoined <- lmer(dia_bp_joined ~ stove_use_3 + 
