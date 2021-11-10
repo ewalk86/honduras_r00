@@ -1,7 +1,7 @@
 ---
 title: "R00 Interaction Analyses"
 author: "Ethan Walker"
-date: "Updated 13 October 2019"
+date: "Updated 10 Nov 2021"
 output: pdf_document
 ---
 
@@ -41,18 +41,41 @@ jvPalette <- c("#330099","#CC0066","#FF6633",
 # Creating datasets for various analyses
 ## Analyses for outcomes: sys_bp_periph, dia_bp_periph
 # load full dataset
-r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
+#r00_full_long <- read_rds("output/r00_full_repeated_by_phase_5may2020.rds")
+
+r00_full_long <- read_csv("input/r00_full_dataset_28July2021_jpk.csv")
 
 #load dataset with AIx/CPP outliers removed (10 total)
-r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed_5may2020.RDS")
+#r00_model_data_outliers_removed <- read_rds("output/r00_model_data_outliers_removed_5may2020.RDS")
 
-r00_model_data <- r00_model_data_outliers_removed %>% 
-  mutate(kitchen_temp = as.numeric(mean_temp)) %>% 
+r00_model_data_outliers_removed <- r00_full_long %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp),
+         assigned_stove = factor(assigned_stove,
+                                 levels = c("Traditional", "Justa")),
+         stove_use_3 = factor(stove_use_3, 
+                             levels = c("trad", "justa/imprvd", "justa+trad"))) %>%
+  # removes 6 observations for participant who wasn't assigned to a study arm
+  filter(!is.na(study_arm)) %>% 
+  mutate(aug_index = if_else(aug_index > 75 | aug_index < -25, 9999, aug_index)) %>% 
+  mutate(pulse_pressure_central = if_else(pulse_pressure_central > 75,
+                                          9999, pulse_pressure_central)) %>% 
+  replace_with_na(replace = list(aug_index = 9999)) %>% 
+  replace_with_na(replace = list(pulse_pressure_central = 9999)) %>% 
+  ########### change outcome to health measure of interest ######################
+  ######### aug_index, pulse_pressure_central
+  mutate(outcome = aug_index) 
+
+r00_model_data <- r00_full_long %>% 
+  mutate(kitchen_temp = as.numeric(mean_temp),
+         assigned_stove = factor(assigned_stove,
+                                 levels = c("Traditional", "Justa")),
+         stove_use_3 = factor(stove_use_3, 
+                             levels = c("trad", "justa/imprvd", "justa+trad"))) %>% 
   # removes 6 observations for participant who wasn't assigned to a study arm
   filter(!is.na(study_arm)) %>%
   ########### change outcome to health measure of interest ######################
-  ######### sys_bp_periph, dia_bp_periph, aug_index, pulse_pressure_central
-  mutate(outcome = pulse_pressure_central) 
+  ######### sys_bp_periph, dia_bp_periph
+  mutate(outcome = sys_bp_periph) 
   # further removes 190 observations (n=1168)
   # filter(!is.na(outcome))
 
@@ -105,11 +128,11 @@ r00_model_data_meds <- r00_model_data %>%
 # Season: season
 
 ############################################################
-model_int <- lmer(outcome ~ assigned_stove*age_cat_40 + 
-                    age_baseline + waist_cm + school_bi +
-                    ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data)
+model_int <- lmer(outcome ~ assigned_stove*season + 
+                    #age_baseline + waist_cm + school_bi +
+                    ns(date_sphygmo, df=6) + (1 | house_id), r00_model_data_outliers_removed)
 summary(model_int)
-int_emmeans <- emmeans(model_int, pairwise ~ assigned_stove | age_cat_40)
+int_emmeans <- emmeans(model_int, revpairwise ~ assigned_stove | season)
 #summary(int_emmeans, conf.int = TRUE)
 confint(int_emmeans)
 # This line will plot the interaction term
@@ -123,31 +146,46 @@ nobs(model_int)
 ## Use these vars as interaction terms
 # Age split at 40: age_cat_40
 # Waist split at 80: waist_cat
-# Blood pressure: bp_cat
 # Hba1c: hba1c_cat
 # Metabolic Syndrome: met_syn
 # Season: season
 
 ############################################################
-# Personal pm
-model_ppm_int <- lmer(outcome ~ log_p_twa*bp_cat + 
-                      season + bmi + age_baseline + 
-                      whr + phys_act + dds_total + SES_weighted_sum + 
-                      (1 | house_id), r00_model_data)
+# Personal pm (log_p_twa) and bc (log_bc_personal)
+model_ppm_int <- lmer(outcome ~ log_bc_personal*season + 
+                      age_baseline + 
+                      waist_cm + 
+                      school_bi +  
+                      (1 | house_id), r00_model_data_outliers_removed)
    #summary(model_ppm_int)
-int_emtrends <- emtrends(model_ppm_int, pairwise ~ bp_cat, var = "log_p_twa")
+int_emtrends <- emtrends(model_ppm_int, pairwise ~ season, var = "log_bc_personal")
 summary(int_emtrends, conf.int = TRUE)
 #emmip(model_ppm_int, season ~ log_p_twa, cov.reduce = range)
 
 ############################################################
-# Kitchen pm
-model_apm_int <- lmer(outcome ~ log_a_twa*season + 
-                      ns(date_sphygmo, df=6) + age_baseline + waist_cm + 
-                      school_bi + (1 | house_id), r00_model_data)
+# Kitchen pm (log_a_twa) and bc (log_bc_area)
+model_apm_int <- lmer(outcome ~ log_bc_area*season + 
+                      age_baseline + 
+                      waist_cm + 
+                      school_bi +  
+                      (1 | house_id), r00_model_data_outliers_removed)
  #summary(model_apm_int)
-int_emtrends <- emtrends(model_apm_int, pairwise ~ season, var = "log_a_twa")
+int_emtrends <- emtrends(model_apm_int, pairwise ~ season, var = "log_bc_area")
 summary(int_emtrends, conf.int = TRUE)
 #emmip(model_apm_int, season ~ log_a_twa, cov.reduce = range)
+
+
+# Check #obs for PM/BC models
+n_obs <- r00_model_data %>% 
+  filter(!is.na(outcome)) %>% 
+  filter(!is.na(log_bc_area)) %>% 
+  filter(!is.na(age_baseline)) %>% 
+  filter(!is.na(waist_cm)) %>% 
+  filter(!is.na(school_bi)) %>% 
+  filter(!is.na(season)) %>% 
+  group_by(season) %>% 
+  count()
+n_obs
 ```
 
 ### Stove-use interaction analysis
@@ -155,18 +193,19 @@ summary(int_emtrends, conf.int = TRUE)
 ## Use these vars as interaction terms
 # Age split at 40: age_cat_40
 # Waist split at 80: waist_cat
-# Blood pressure: bp_cat
 # Hba1c: hba1c_cat
 # Metabolic Syndrome: met_syn
 # Season: season
 
 ############################################################
-model_int <- lmer(outcome ~ stove_use_3*season + ns(date_sphygmo, df=6) +
-                      waist_cm + school_bi + age_baseline + kitchen_temp +
-                      (1 | house_id), r00_model_data)
+model_int <- lmer(outcome ~ stove_use_3*season +
+                      waist_cm + 
+                      school_bi + 
+                      age_baseline + 
+                      (1 | house_id), r00_model_data_outliers_removed)
 # Use this summary to get p-value for interaction term
 summary(model_int)
-int_emmeans <- emmeans(model_int, pairwise ~ stove_use_3 | season)
+int_emmeans <- emmeans(model_int, revpairwise ~ stove_use_3 | season)
 #summary(int_emmeans)
 # Use this summary for estimates and confidence intervals
 confint(int_emmeans)
