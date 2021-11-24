@@ -61,7 +61,7 @@ r00_model_data <- r00_full_long %>%
   #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph, 
-  mutate(outcome = sys_bp_periph)
+  mutate(outcome = dia_bp_periph)
   # further removes 190 observations (n=1168)
   #filter(!is.na(outcome)) 
 
@@ -232,6 +232,11 @@ plot(model_itt_spline$gam, seWithMean = TRUE)
 # run and save model
 model_itt <- lmer(outcome ~ assigned_stove + ns(date_sphygmo, df=6) + 
                   (1 | house_id), r00_model_data)
+
+write_rds(model_itt, "output/itt_sbp.rds")
+write_rds(model_itt, "output/itt_dbp.rds")
+write_rds(model_itt, "output/itt_aix.rds")
+write_rds(model_itt, "output/itt_cpp.rds")
 
 ## 2 methods to calculate ICC for models
 # ICC using sjstats package
@@ -461,3 +466,69 @@ qqnorm(residuals(model_itt), main = "Primary model QQ Plot")
 
 #plot.estex(influential, which = "cook")
 ```
+
+
+```{r}
+# Load results
+itt_sbp <- read_rds("output/itt_sbp.rds")
+itt_dbp <- read_rds("output/itt_dbp.rds")
+itt_aix <- read_rds("output/itt_aix.rds")
+itt_cpp <- read_rds("output/itt_cpp.rds")
+
+# Function to clean results
+results_function <- function(model_results, model_name) {
+  
+tidy_results <- tidy(model_results, conf.int = TRUE) %>% 
+  mutate(group_filter = if_else(grepl("assigned", term), 1, 0)) %>% 
+  filter(group_filter == 1) %>% 
+  mutate(term = gsub("assigned_stove", "", term),
+         model = model_name) %>% 
+  mutate(estimate = round(estimate, digits = 2),
+         conf.low = round(conf.low, digits = 2),
+         conf.high = round(conf.high, digits = 2)) %>% 
+  dplyr::select(model, term, estimate, p.value, conf.low, conf.high)
+tidy_results
+}
+
+itt_sbp_tidy <- results_function(itt_sbp, "Systolic BP")
+itt_dbp_tidy <- results_function(itt_dbp, "Diastolic BP")
+itt_aix_tidy <- results_function(itt_aix, "Aug Index")
+itt_cpp_tidy <- results_function(itt_cpp, "Cent Pulse Press")
+
+itt_combined <- rbind(itt_sbp_tidy, itt_dbp_tidy, itt_aix_tidy, itt_cpp_tidy)
+
+
+
+# Plot results
+itt_plot_estimates <- itt_combined %>%
+  mutate(model = factor(model,
+                        levels = c("Systolic BP", "Diastolic BP", 
+                                   "Aug Index", "Cent Pulse Press"))) %>% 
+  ggplot(aes(group = term)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+             position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  theme_bw() +  
+  geom_hline(yintercept = 0) +
+  ggtitle(label = "Results for ITT framework") +
+  labs(y = "Estimate for Justa vs Traditional") +
+  labs(x = "", group = "", shape = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.text = element_blank(),) 
+itt_plot_estimates
+
+# Save plot as jpg
+#ggsave("itt_plot_estimates.jpg", width = 12, height = 6)
+```
+

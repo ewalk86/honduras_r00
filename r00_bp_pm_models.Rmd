@@ -56,7 +56,7 @@ r00_model_data <- r00_full_long %>%
   #filter(personal_takeoff == 1) %>% 
   ########### change outcome to health measure of interest ######################
   ######### sys_bp_periph, dia_bp_periph
-  mutate(outcome = sys_bp_periph) 
+  mutate(outcome = dia_bp_periph) 
   #group_by(house_id, assigned_stove) %>% 
   #mutate(outcome = mean(outcome, na.rm = T)) %>% 
   #distinct(house_id, assigned_stove, .keep_all = T)
@@ -145,6 +145,12 @@ model_apm_no_time <- lmer(outcome ~ log_a_twa + age_baseline +
                          waist_cm + school_bi + (1 | house_id), 
                          r00_model_data)
 #summary(model_apm_no_time)
+
+write_rds(model_apm_no_time, "output/kpm_sbp.rds")
+write_rds(model_apm_no_time, "output/kpm_dbp.rds")
+write_rds(model_apm_no_time, "output/kpm_aix.rds")
+write_rds(model_apm_no_time, "output/kpm_cpp.rds")
+
 tidy_model_apm_no_time <- tidy(model_apm_no_time, conf.int = TRUE) %>% 
     filter(grepl('log_a_twa', term)) %>% 
     mutate(model = if_else(term == "log_a_twa", "no time", "na"))
@@ -155,6 +161,12 @@ nobs(model_apm_no_time)
 model_apm_lta <- lmer(outcome ~ pred_log_a_twa_LTA + age_baseline + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
 #summary(model_ppm_lta)
+
+write_rds(model_apm_lta, "output/kpm_lta_sbp.rds")
+write_rds(model_apm_lta, "output/kpm_lta_dbp.rds")
+write_rds(model_apm_lta, "output/kpm_lta_aix.rds")
+write_rds(model_apm_lta, "output/kpm_lta_cpp.rds")
+
 tidy_model_apm_lta <- tidy(model_apm_lta, conf.int = TRUE) %>% 
     filter(grepl('pred_log_a_twa_LTA', term)) %>% 
     mutate(model = if_else(term == "pred_log_a_twa_LTA", "all data, primary", "na")) 
@@ -597,6 +609,12 @@ nobs(model_ppm)
 model_ppm_no_time <- lmer(outcome ~ log_p_twa + age_baseline +
                          waist_cm + school_bi + (1 | house_id), 
                          r00_model_data)
+
+write_rds(model_ppm_no_time, "output/ppm_sbp.rds")
+write_rds(model_ppm_no_time, "output/ppm_dbp.rds")
+write_rds(model_ppm_no_time, "output/ppm_aix.rds")
+write_rds(model_ppm_no_time, "output/ppm_cpp.rds")
+
 #summary(model_ppm_no_time)
 tidy_model_ppm_no_time <- tidy(model_ppm_no_time, conf.int = TRUE) %>% 
     filter(grepl('log_p_twa', term)) %>% 
@@ -607,6 +625,12 @@ nobs(model_ppm_no_time)
 ##### LTA personal PM
 model_ppm_lta <- lmer(outcome ~ pred_log_p_twa_LTA + age_baseline + 
                     waist_cm + school_bi + (1 | house_id), r00_model_data)
+
+write_rds(model_ppm_lta, "output/ppm_lta_sbp.rds")
+write_rds(model_ppm_lta, "output/ppm_lta_dbp.rds")
+write_rds(model_ppm_lta, "output/ppm_lta_aix.rds")
+write_rds(model_ppm_lta, "output/ppm_lta_cpp.rds")
+
 #summary(model_ppm_lta)
 tidy_model_ppm_lta <- tidy(model_ppm_lta, conf.int = TRUE) %>% 
     filter(grepl('pred_log_p_twa_LTA', term)) %>% 
@@ -1032,6 +1056,12 @@ qqnorm(residuals(model_ppm), main = "Personal PM primary model")
 model_abc_no_time <- lmer(outcome ~ log_bc_area + age_baseline +
                          waist_cm + school_bi + (1 | house_id), 
                          r00_model_data)
+
+write_rds(model_abc_no_time, "output/kbc_sbp.rds")
+write_rds(model_abc_no_time, "output/kbc_dbp.rds")
+write_rds(model_abc_no_time, "output/kbc_aix.rds")
+write_rds(model_abc_no_time, "output/kbc_cpp.rds")
+
 #summary(model_abc_no_time)
 tidy_model_abc_no_time <- tidy(model_abc_no_time, conf.int = TRUE) %>% 
     filter(grepl('log_bc_area', term)) %>% 
@@ -1042,6 +1072,12 @@ nobs(model_abc_no_time)
 ##### LTA Kitchen BC
 model_abc_lta <- lmer(outcome ~ pred_log_bc_area_LTA + age_baseline + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
+
+write_rds(model_abc_lta, "output/kbc_lta_sbp.rds")
+write_rds(model_abc_lta, "output/kbc_lta_dbp.rds")
+write_rds(model_abc_lta, "output/kbc_lta_aix.rds")
+write_rds(model_abc_lta, "output/kbc_lta_cpp.rds")
+
 #summary(model_abc_lta)
 tidy_model_abc_lta <- tidy(model_abc_lta, conf.int = TRUE) %>% 
     filter(grepl('pred_log_bc_area_LTA', term)) %>% 
@@ -1060,6 +1096,12 @@ nobs(model_abc_lta)
 model_pbc_no_time <- lmer(outcome ~ log_bc_personal + age_baseline +
                          waist_cm + school_bi + (1 | house_id), 
                          r00_model_data)
+
+write_rds(model_pbc_no_time, "output/pbc_sbp.rds")
+write_rds(model_pbc_no_time, "output/pbc_dbp.rds")
+write_rds(model_pbc_no_time, "output/pbc_aix.rds")
+write_rds(model_pbc_no_time, "output/pbc_cpp.rds")
+
 #summary(model_pbc_no_time)
 tidy_model_pbc_no_time <- tidy(model_pbc_no_time, conf.int = TRUE) %>% 
     filter(grepl('log_bc_personal', term)) %>% 
@@ -1070,6 +1112,12 @@ nobs(model_pbc_no_time)
 ##### LTA Personal BC
 model_pbc_lta <- lmer(outcome ~ pred_log_bc_personal_LTA + age_baseline + 
                       waist_cm + school_bi + (1 | house_id), r00_model_data)
+
+write_rds(model_pbc_lta, "output/pbc_lta_sbp.rds")
+write_rds(model_pbc_lta, "output/pbc_lta_dbp.rds")
+write_rds(model_pbc_lta, "output/pbc_lta_aix.rds")
+write_rds(model_pbc_lta, "output/pbc_lta_cpp.rds")
+
 #summary(model_pbc_lta)
 tidy_model_pbc_lta <- tidy(model_pbc_lta, conf.int = TRUE) %>% 
     filter(grepl('pred_log_bc_personal_LTA', term)) %>% 
@@ -1078,4 +1126,242 @@ nobs(model_pbc_lta)
 
 ############################################################
 
+```
+
+
+```{r}
+# Load results
+kpm_sbp <- read_rds("output/kpm_sbp.rds")
+kpm_dbp <- read_rds("output/kpm_dbp.rds")
+kpm_aix <- read_rds("output/kpm_aix.rds")
+kpm_cpp <- read_rds("output/kpm_cpp.rds")
+
+ppm_sbp <- read_rds("output/ppm_sbp.rds")
+ppm_dbp <- read_rds("output/ppm_dbp.rds")
+ppm_aix <- read_rds("output/ppm_aix.rds")
+ppm_cpp <- read_rds("output/ppm_cpp.rds")
+
+kbc_sbp <- read_rds("output/kbc_sbp.rds")
+kbc_dbp <- read_rds("output/kbc_dbp.rds")
+kbc_aix <- read_rds("output/kbc_aix.rds")
+kbc_cpp <- read_rds("output/kbc_cpp.rds")
+
+pbc_sbp <- read_rds("output/pbc_sbp.rds")
+pbc_dbp <- read_rds("output/pbc_dbp.rds")
+pbc_aix <- read_rds("output/pbc_aix.rds")
+pbc_cpp <- read_rds("output/pbc_cpp.rds")
+
+kpm_lta_sbp <- read_rds("output/kpm_lta_sbp.rds")
+kpm_lta_dbp <- read_rds("output/kpm_lta_dbp.rds")
+kpm_lta_aix <- read_rds("output/kpm_lta_aix.rds")
+kpm_lta_cpp <- read_rds("output/kpm_lta_cpp.rds")
+
+ppm_lta_sbp <- read_rds("output/ppm_lta_sbp.rds")
+ppm_lta_dbp <- read_rds("output/ppm_lta_dbp.rds")
+ppm_lta_aix <- read_rds("output/ppm_lta_aix.rds")
+ppm_lta_cpp <- read_rds("output/ppm_lta_cpp.rds")
+
+kbc_lta_sbp <- read_rds("output/kbc_lta_sbp.rds")
+kbc_lta_dbp <- read_rds("output/kbc_lta_dbp.rds")
+kbc_lta_aix <- read_rds("output/kbc_lta_aix.rds")
+kbc_lta_cpp <- read_rds("output/kbc_lta_cpp.rds")
+
+pbc_lta_sbp <- read_rds("output/pbc_lta_sbp.rds")
+pbc_lta_dbp <- read_rds("output/pbc_lta_dbp.rds")
+pbc_lta_aix <- read_rds("output/pbc_lta_aix.rds")
+pbc_lta_cpp <- read_rds("output/pbc_lta_cpp.rds")
+
+# Function to clean results
+results_function <- function(model_results, model_name) {
+  
+tidy_results <- tidy(model_results, conf.int = TRUE) %>% 
+  mutate(group_filter = if_else(grepl("log", term), 1, 0)) %>% 
+  filter(group_filter == 1) %>% 
+  mutate(term = gsub("log_a_twa", "Kitchen PM", term),
+         term = gsub("log_p_twa", "Personal PM", term),
+         term = gsub("log_bc_area", "Kitchen BC", term),
+         term = gsub("log_bc_personal", "Personal BC", term),
+         model = model_name) %>% 
+  mutate(estimate = round(estimate, digits = 2),
+         conf.low = round(conf.low, digits = 2),
+         conf.high = round(conf.high, digits = 2)) %>% 
+  dplyr::select(model, term, estimate, p.value, conf.low, conf.high)
+tidy_results
+}
+
+results_function_lta <- function(model_results, model_name) {
+  
+tidy_results <- tidy(model_results, conf.int = TRUE) %>% 
+  mutate(group_filter = if_else(grepl("log", term), 1, 0)) %>% 
+  filter(group_filter == 1) %>% 
+  mutate(term = gsub("pred_log_a_twa_LTA", "Kitchen PM, LTA", term),
+         term = gsub("pred_log_p_twa_LTA", "Personal PM, LTA", term),
+         term = gsub("pred_log_bc_area_LTA", "Kitchen BC, LTA", term),
+         term = gsub("pred_log_bc_personal_LTA", "Personal BC, LTA", term),
+         model = model_name) %>% 
+  mutate(estimate = round(estimate, digits = 2),
+         conf.low = round(conf.low, digits = 2),
+         conf.high = round(conf.high, digits = 2)) %>% 
+  dplyr::select(model, term, estimate, p.value, conf.low, conf.high)
+tidy_results
+}
+
+kpm_sbp_tidy <- results_function(kpm_sbp, "Systolic BP")
+kpm_dbp_tidy <- results_function(kpm_dbp, "Diastolic BP")
+kpm_aix_tidy <- results_function(kpm_aix, "Aug Index")
+kpm_cpp_tidy <- results_function(kpm_cpp, "Cent Pulse Press")
+
+kpm_combined <- rbind(kpm_sbp_tidy, kpm_dbp_tidy, kpm_aix_tidy, kpm_cpp_tidy)
+
+ppm_sbp_tidy <- results_function(ppm_sbp, "Systolic BP")
+ppm_dbp_tidy <- results_function(ppm_dbp, "Diastolic BP")
+ppm_aix_tidy <- results_function(ppm_aix, "Aug Index")
+ppm_cpp_tidy <- results_function(ppm_cpp, "Cent Pulse Press")
+
+ppm_combined <- rbind(ppm_sbp_tidy, ppm_dbp_tidy, ppm_aix_tidy, ppm_cpp_tidy)
+
+pm_combined <- rbind(kpm_sbp_tidy, kpm_dbp_tidy, kpm_aix_tidy, kpm_cpp_tidy,
+                     ppm_sbp_tidy, ppm_dbp_tidy, ppm_aix_tidy, ppm_cpp_tidy)
+
+kbc_sbp_tidy <- results_function(kbc_sbp, "Systolic BP")
+kbc_dbp_tidy <- results_function(kbc_dbp, "Diastolic BP")
+kbc_aix_tidy <- results_function(kbc_aix, "Aug Index")
+kbc_cpp_tidy <- results_function(kbc_cpp, "Cent Pulse Press")
+
+kbc_combined <- rbind(kbc_sbp_tidy, kbc_dbp_tidy, kbc_aix_tidy, kbc_cpp_tidy)
+
+pbc_sbp_tidy <- results_function(pbc_sbp, "Systolic BP")
+pbc_dbp_tidy <- results_function(pbc_dbp, "Diastolic BP")
+pbc_aix_tidy <- results_function(pbc_aix, "Aug Index")
+pbc_cpp_tidy <- results_function(pbc_cpp, "Cent Pulse Press")
+
+pbc_combined <- rbind(pbc_sbp_tidy, pbc_dbp_tidy, pbc_aix_tidy, pbc_cpp_tidy)
+
+bc_combined <- rbind(kbc_sbp_tidy, kbc_dbp_tidy, kbc_aix_tidy, kbc_cpp_tidy,
+                     pbc_sbp_tidy, pbc_dbp_tidy, pbc_aix_tidy, pbc_cpp_tidy)
+
+
+kpm_lta_sbp_tidy <- results_function_lta(kpm_lta_sbp, "Systolic BP")
+kpm_lta_dbp_tidy <- results_function_lta(kpm_lta_dbp, "Diastolic BP")
+kpm_lta_aix_tidy <- results_function_lta(kpm_lta_aix, "Aug Index")
+kpm_lta_cpp_tidy <- results_function_lta(kpm_lta_cpp, "Cent Pulse Press")
+
+kpm_lta_combined <- rbind(kpm_lta_sbp_tidy, kpm_lta_dbp_tidy, 
+                          kpm_lta_aix_tidy, kpm_lta_cpp_tidy)
+
+ppm_lta_sbp_tidy <- results_function_lta(ppm_lta_sbp, "Systolic BP")
+ppm_lta_dbp_tidy <- results_function_lta(ppm_lta_dbp, "Diastolic BP")
+ppm_lta_aix_tidy <- results_function_lta(ppm_lta_aix, "Aug Index")
+ppm_lta_cpp_tidy <- results_function_lta(ppm_lta_cpp, "Cent Pulse Press")
+
+ppm_lta_combined <- rbind(ppm_lta_sbp_tidy, ppm_lta_dbp_tidy, 
+                          ppm_lta_aix_tidy, ppm_lta_cpp_tidy)
+
+pm_lta_combined <- rbind(kpm_lta_sbp_tidy, kpm_lta_dbp_tidy, 
+                         kpm_lta_aix_tidy, kpm_lta_cpp_tidy,
+                         ppm_lta_sbp_tidy, ppm_lta_dbp_tidy, 
+                         ppm_lta_aix_tidy, ppm_lta_cpp_tidy)
+
+kbc_lta_sbp_tidy <- results_function_lta(kbc_lta_sbp, "Systolic BP")
+kbc_lta_dbp_tidy <- results_function_lta(kbc_lta_dbp, "Diastolic BP")
+kbc_lta_aix_tidy <- results_function_lta(kbc_lta_aix, "Aug Index")
+kbc_lta_cpp_tidy <- results_function_lta(kbc_lta_cpp, "Cent Pulse Press")
+
+kbc_lta_combined <- rbind(kbc_lta_sbp_tidy, kbc_lta_dbp_tidy, 
+                          kbc_lta_aix_tidy, kbc_lta_cpp_tidy)
+
+pbc_lta_sbp_tidy <- results_function_lta(pbc_lta_sbp, "Systolic BP")
+pbc_lta_dbp_tidy <- results_function_lta(pbc_lta_dbp, "Diastolic BP")
+pbc_lta_aix_tidy <- results_function_lta(pbc_lta_aix, "Aug Index")
+pbc_lta_cpp_tidy <- results_function_lta(pbc_lta_cpp, "Cent Pulse Press")
+
+pbc_lta_combined <- rbind(pbc_lta_sbp_tidy, pbc_lta_dbp_tidy, 
+                          pbc_lta_aix_tidy, pbc_lta_cpp_tidy)
+
+bc_lta_combined <- rbind(kbc_lta_sbp_tidy, kbc_lta_dbp_tidy, 
+                         kbc_lta_aix_tidy, kbc_lta_cpp_tidy,
+                         pbc_lta_sbp_tidy, pbc_lta_dbp_tidy, 
+                         pbc_lta_aix_tidy, pbc_lta_cpp_tidy)
+
+
+all_pm_combined <- rbind(kpm_sbp_tidy, kpm_dbp_tidy, kpm_aix_tidy, kpm_cpp_tidy,
+                     ppm_sbp_tidy, ppm_dbp_tidy, ppm_aix_tidy, ppm_cpp_tidy,
+                     kpm_lta_sbp_tidy, kpm_lta_dbp_tidy, 
+                     kpm_lta_aix_tidy, kpm_lta_cpp_tidy,
+                     ppm_lta_sbp_tidy, ppm_lta_dbp_tidy, 
+                     ppm_lta_aix_tidy, ppm_lta_cpp_tidy)
+
+all_bc_combined <- rbind(kbc_sbp_tidy, kbc_dbp_tidy, kbc_aix_tidy, kbc_cpp_tidy,
+                     pbc_sbp_tidy, pbc_dbp_tidy, pbc_aix_tidy, pbc_cpp_tidy,
+                     kbc_lta_sbp_tidy, kbc_lta_dbp_tidy, 
+                     kbc_lta_aix_tidy, kbc_lta_cpp_tidy,
+                     pbc_lta_sbp_tidy, pbc_lta_dbp_tidy, 
+                     pbc_lta_aix_tidy, pbc_lta_cpp_tidy)
+
+
+
+# Plot results
+pm_plot_estimates <- all_pm_combined %>%
+  mutate(model = factor(model,
+                        levels = c("Systolic BP", "Diastolic BP", 
+                                   "Aug Index", "Cent Pulse Press"))) %>% 
+  ggplot(aes(group = term, shape = term)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+             position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  theme_bw() +  
+  geom_hline(yintercept = 0) +
+  ggtitle(label = "Results for ER framework, PM2.5") +
+  labs(y = "Estimate per log unit increase in PM") +
+  labs(x = "", group = "", shape = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "top",
+          legend.text = element_text(size = 14, colour = "black")) 
+pm_plot_estimates
+
+# Save plot as jpg
+#ggsave("pm_plot_estimates.jpg", width = 12, height = 6)
+
+bc_plot_estimates <- all_bc_combined %>%
+  mutate(model = factor(model,
+                        levels = c("Systolic BP", "Diastolic BP", 
+                                   "Aug Index", "Cent Pulse Press"))) %>% 
+  ggplot(aes(group = term, shape = term)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+             position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  theme_bw() +  
+  geom_hline(yintercept = 0) +
+  ggtitle(label = "Results for ER framework, BC") +
+  labs(y = "Estimate per log unit increase in BC") +
+  labs(x = "", group = "", shape = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "top",
+          legend.text = element_text(size = 14, colour = "black")) 
+bc_plot_estimates
+
+# Save plot as jpg
+#ggsave("bc_plot_estimates.jpg", width = 12, height = 6)
 ```

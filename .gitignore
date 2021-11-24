@@ -6,6 +6,7 @@
 *.RDS
 *.csv
 *.jpeg
+*.jpg
 doc/**/*.RDS
 doc/**/*.csv
 input

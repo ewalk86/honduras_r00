@@ -541,6 +541,12 @@ stove_use_options_2 <- stove_use_3 %>%
 model_stove_use_no_time <- lmer(outcome ~ stove_use_3 + 
                          waist_cm + school_bi + age_baseline +
                          (1 | house_id), r00_model_data)
+
+write_rds(model_stove_use_no_time, "output/su_sbp.rds")
+write_rds(model_stove_use_no_time, "output/su_dbp.rds")
+write_rds(model_stove_use_no_time, "output/su_aix.rds")
+write_rds(model_stove_use_no_time, "output/su_cpp.rds")
+
 #summary(model_stove_use_no_time)
 #icc(model_stove_use_no_time)
 tidy_model_stove_use_no_time <- tidy(model_stove_use_no_time, conf.int = TRUE) %>% 
@@ -1185,3 +1191,72 @@ qqnorm(residuals(model_stove_use_3), main = "Stove-use model")
 
 #plot.estex(influential, which = "cook")
 ```
+
+
+```{r}
+# Load results
+su_sbp <- read_rds("output/su_sbp.rds")
+su_dbp <- read_rds("output/su_dbp.rds")
+su_aix <- read_rds("output/su_aix.rds")
+su_cpp <- read_rds("output/su_cpp.rds")
+
+# Function to clean results
+results_function <- function(model_results, model_name) {
+  
+tidy_results <- tidy(model_results, conf.int = TRUE) %>% 
+  mutate(group_filter = if_else(grepl("stove_use", term), 1, 0)) %>% 
+  filter(group_filter == 1) %>% 
+  mutate(term = factor(term,
+                       levels = c("stove_use_3justa/imprvd", "stove_use_3justa+trad"),
+                       labels = c("Justa/Improve", "Justa + Trad")),
+         model = model_name) %>% 
+  mutate(estimate = round(estimate, digits = 2),
+         conf.low = round(conf.low, digits = 2),
+         conf.high = round(conf.high, digits = 2)) %>% 
+  dplyr::select(model, term, estimate, p.value, conf.low, conf.high)
+tidy_results
+}
+
+su_sbp_tidy <- results_function(su_sbp, "Systolic BP")
+su_dbp_tidy <- results_function(su_dbp, "Diastolic BP")
+su_aix_tidy <- results_function(su_aix, "Aug Index")
+su_cpp_tidy <- results_function(su_cpp, "Cent Pulse Press")
+
+su_combined <- rbind(su_sbp_tidy, su_dbp_tidy, su_aix_tidy, su_cpp_tidy)
+
+
+
+# Plot results
+su_plot_estimates <- su_combined %>%
+  mutate(model = factor(model,
+                        levels = c("Systolic BP", "Diastolic BP", 
+                                   "Aug Index", "Cent Pulse Press"))) %>% 
+  ggplot(aes(group = term, shape = term)) +
+  geom_point(aes(x=model, y=estimate), 
+             position = position_dodge(width = 0.5), size = 4) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
+             position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  theme_bw() +  
+  geom_hline(yintercept = 0) +
+  ggtitle(label = "Results for stove use framework") +
+  labs(y = "Estimate vs traditional only stove use") +
+  labs(x = "", group = "", shape = "") +
+  theme(title = element_text(size = 16), 
+          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+                                     hjust = 1, vjust = .8),
+          axis.text.y = element_text(size = 16, colour = "black"),
+          axis.title.y = element_text(size = 16,
+                                      margin = margin(t = 0, r = 20, b = 0, l = 0)),
+          axis.line.x = element_line(colour = "black", size = 1.2), 
+          axis.line.y = element_line(colour = "black", size = 1.2), 
+          axis.ticks = element_blank(), 
+          panel.border = element_blank(), 
+          panel.grid = element_blank(),
+          legend.position = "top",
+          legend.text = element_text(size = 14, colour = "black")) 
+su_plot_estimates
+
+# Save plot as jpg
+#ggsave("su_plot_estimates.jpg", width = 12, height = 6)
+```
+
