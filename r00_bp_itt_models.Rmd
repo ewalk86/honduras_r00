@@ -511,14 +511,14 @@ itt_plot_estimates <- itt_combined %>%
              position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
-  ggtitle(label = "Results for ITT framework") +
-  labs(y = "Estimate for Justa vs Traditional") +
+  ggtitle(label = "") +
+  labs(y = "Estimate: Justa vs Traditional") +
   labs(x = "", group = "", shape = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+          axis.text.x = element_text(size = 24, colour = "black", angle = 45,
                                      hjust = 1, vjust = .8),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
+          axis.text.y = element_text(size = 24, colour = "black"),
+          axis.title.y = element_text(size = 24,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -529,6 +529,6 @@ itt_plot_estimates <- itt_combined %>%
 itt_plot_estimates
 
 # Save plot as jpg
-#ggsave("itt_plot_estimates.jpg", width = 12, height = 6)
+#ggsave("itt_plot_estimates.jpg", width = 12, height = 6.5)
 ```
 

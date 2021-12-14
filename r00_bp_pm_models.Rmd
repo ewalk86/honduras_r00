@@ -1312,14 +1312,14 @@ pm_plot_estimates <- all_pm_combined %>%
              position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
-  ggtitle(label = "Results for ER framework, PM2.5") +
-  labs(y = "Estimate per log unit increase in PM") +
+  ggtitle(label = "") +
+  labs(y = "Estimate: per ln increase in PM2.5") +
   labs(x = "", group = "", shape = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+          axis.text.x = element_text(size = 24, colour = "black", angle = 45,
                                      hjust = 1, vjust = .8),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
+          axis.text.y = element_text(size = 24, colour = "black"),
+          axis.title.y = element_text(size = 24,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1327,11 +1327,11 @@ pm_plot_estimates <- all_pm_combined %>%
           panel.border = element_blank(), 
           panel.grid = element_blank(),
           legend.position = "top",
-          legend.text = element_text(size = 14, colour = "black")) 
+          legend.text = element_text(size = 24, colour = "black")) 
 pm_plot_estimates
 
 # Save plot as jpg
-#ggsave("pm_plot_estimates.jpg", width = 12, height = 6)
+#ggsave("pm_plot_estimates.jpg", width = 12, height = 6.5)
 
 bc_plot_estimates <- all_bc_combined %>%
   mutate(model = factor(model,
@@ -1344,14 +1344,14 @@ bc_plot_estimates <- all_bc_combined %>%
              position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
-  ggtitle(label = "Results for ER framework, BC") +
-  labs(y = "Estimate per log unit increase in BC") +
+  ggtitle(label = "") +
+  labs(y = "Estimate: per ln increase in BC") +
   labs(x = "", group = "", shape = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+          axis.text.x = element_text(size = 24, colour = "black", angle = 45,
                                      hjust = 1, vjust = .8),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
+          axis.text.y = element_text(size = 24, colour = "black"),
+          axis.title.y = element_text(size = 24,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1359,9 +1359,9 @@ bc_plot_estimates <- all_bc_combined %>%
           panel.border = element_blank(), 
           panel.grid = element_blank(),
           legend.position = "top",
-          legend.text = element_text(size = 14, colour = "black")) 
+          legend.text = element_text(size = 24, colour = "black")) 
 bc_plot_estimates
 
 # Save plot as jpg
-#ggsave("bc_plot_estimates.jpg", width = 12, height = 6)
+#ggsave("bc_plot_estimates.jpg", width = 12, height = 6.5)
 ```

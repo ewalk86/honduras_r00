@@ -143,7 +143,7 @@ stove_use_compliance <- r00_model_data %>%
 ```
 
 ```{r, eval=FALSE}
-# Other "test" datasets when assessing missing data and selection bias
+# Other "test" datasets when assessing missing data and selection bias 
 ## Saving in case I need it for future analyses
 ## DO NOT USE THIS CHUNK OF CODE ##
 # load full dataset
@@ -352,7 +352,7 @@ r00_model_data_phase2 <- stove_use_data %>%
 ```
 
 ```{r, eval=FALSE}
-# Analysis plan
+# Analysis plan 
 ## New variables here are already incorporated into the full database
 ## DO NOT USE THIS CHUNK OF CODE ##
 # stratify assigned stove and stove-use variables
@@ -1238,14 +1238,14 @@ su_plot_estimates <- su_combined %>%
              position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
-  ggtitle(label = "Results for stove use framework") +
+  ggtitle(label = "") +
   labs(y = "Estimate vs traditional only stove use") +
   labs(x = "", group = "", shape = "") +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_text(size = 16, colour = "black", angle = 45,
+          axis.text.x = element_text(size = 24, colour = "black", angle = 45,
                                      hjust = 1, vjust = .8),
-          axis.text.y = element_text(size = 16, colour = "black"),
-          axis.title.y = element_text(size = 16,
+          axis.text.y = element_text(size = 24, colour = "black"),
+          axis.title.y = element_text(size = 24,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1253,10 +1253,10 @@ su_plot_estimates <- su_combined %>%
           panel.border = element_blank(), 
           panel.grid = element_blank(),
           legend.position = "top",
-          legend.text = element_text(size = 14, colour = "black")) 
+          legend.text = element_text(size = 24, colour = "black")) 
 su_plot_estimates
 
 # Save plot as jpg
-#ggsave("su_plot_estimates.jpg", width = 12, height = 6)
+#ggsave("su_plot_estimates.jpg", width = 12, height = 7)
 ```
 

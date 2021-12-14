@@ -1,0 +1,59 @@
+---
+title: "Honduras SES stats by stove-use category"
+author: "Ethan Walker"
+date: "14 Dec 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 8, fig.height = 5)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+
+```{r}
+r00_full_long <- read_csv("input/r00_full_dataset_28July2021_jpk.csv")
+```
+
+
+```{r}
+stove_use_summary_function <- function(var, label, dataset = r00_full_long) {
+
+summary_stats <- dataset %>% 
+  rename(variable = var) %>% 
+  #filter(phase == 3 | phase == 4) %>% 
+  mutate(stove_use_3 = factor(stove_use_3, 
+                              levels = c("trad", "justa/imprvd", "justa+trad"))) %>% 
+  filter(!is.na(study_arm)) %>% 
+  filter(!is.na(stove_use_3)) %>% 
+  filter(!is.na(variable)) %>% 
+  group_by(stove_use_3) %>% 
+  mutate(stove_use_n = as.numeric(n())) %>% 
+  group_by(stove_use_3, variable) %>% 
+  mutate(var_n = as.numeric(n()),
+         var_percent = round(var_n/stove_use_n*100), digits = 1,
+         var_name = label) %>% 
+  distinct(stove_use_3, variable, .keep_all = T) %>% 
+  select(var_name, variable, stove_use_3, var_n, var_percent) %>% 
+  arrange(stove_use_3, variable) 
+summary_stats
+
+}
+
+stove_use_summary_function("dds_cat", "Diet Diversity Score")
+stove_use_summary_function("whr_cat", "Waist/Hip Ratio")
+stove_use_summary_function("phys_act_cat", "Phys Act")
+stove_use_summary_function("bpp_cat", "Beds Per Person")
+stove_use_summary_function("ses_cat", "SES Materials")
+stove_use_summary_function("age_cat_40", "Age")
+stove_use_summary_function("electricity", "Electricity")
+stove_use_summary_function("bmi_cat", "BMI")
+stove_use_summary_function("school_bi", "School (1 = 6+yrs)")
+```
+
+
