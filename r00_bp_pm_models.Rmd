@@ -1130,6 +1130,13 @@ nobs(model_pbc_lta)
 
 
 ```{r}
+jv_palette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+
+colorblind_palette <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499", 
+                        "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888")
+
 # Load results
 kpm_sbp <- read_rds("output/kpm_sbp.rds")
 kpm_dbp <- read_rds("output/kpm_dbp.rds")
@@ -1305,11 +1312,12 @@ pm_plot_estimates <- all_pm_combined %>%
   mutate(model = factor(model,
                         levels = c("Systolic BP", "Diastolic BP", 
                                    "Aug Index", "Cent Pulse Press"))) %>% 
-  ggplot(aes(group = term, shape = term)) +
-  geom_point(aes(x=model, y=estimate), 
+  ggplot(aes()) +
+  geom_point(aes(x=model, y=estimate, color = term, shape = term), 
              position = position_dodge(width = 0.5), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-             position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = term), 
+             position = position_dodge(width = 0.5), size = 1.2, width = 0.5,
+                    show.legend = FALSE) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
   ggtitle(label = "") +
@@ -1326,22 +1334,28 @@ pm_plot_estimates <- all_pm_combined %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
+          legend.title = element_blank(),
           legend.position = "top",
-          legend.text = element_text(size = 24, colour = "black")) 
+          legend.text = element_text(size = 24, colour = "black")) +
+  scale_color_manual(values = colorblind_palette,
+                     name = "Model") +
+  scale_shape_manual(values = c(15, 16, 17, 18),
+                     name = "Model")
 pm_plot_estimates
 
 # Save plot as jpg
-#ggsave("pm_plot_estimates.jpg", width = 12, height = 6.5)
+ggsave("pm_plot_estimates.jpg", width = 12, height = 6.5)
 
 bc_plot_estimates <- all_bc_combined %>%
   mutate(model = factor(model,
                         levels = c("Systolic BP", "Diastolic BP", 
                                    "Aug Index", "Cent Pulse Press"))) %>% 
-  ggplot(aes(group = term, shape = term)) +
-  geom_point(aes(x=model, y=estimate), 
+  ggplot(aes()) +
+  geom_point(aes(x=model, y=estimate, color = term, shape = term), 
              position = position_dodge(width = 0.5), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-             position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = term), 
+             position = position_dodge(width = 0.5), size = 1.2, width = 0.5,
+                    show.legend = FALSE) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
   ggtitle(label = "") +
@@ -1358,10 +1372,15 @@ bc_plot_estimates <- all_bc_combined %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
+          legend.title = element_blank(),
           legend.position = "top",
-          legend.text = element_text(size = 24, colour = "black")) 
+          legend.text = element_text(size = 24, colour = "black")) +
+  scale_color_manual(values = c("#88CCEE", "#CC6677", "#DDCC77", "#117733"),
+                     name = "Model") +
+  scale_shape_manual(values = c(15, 16, 17, 18),
+                     name = "Model")
 bc_plot_estimates
 
 # Save plot as jpg
-#ggsave("bc_plot_estimates.jpg", width = 12, height = 6.5)
+ggsave("bc_plot_estimates.jpg", width = 12, height = 6.5)
 ```

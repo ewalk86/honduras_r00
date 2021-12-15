@@ -1,7 +1,6 @@
 ---
-title: "Honduras SES stats by stove-use category"
-author: "Ethan Walker"
-date: "14 Dec 2021"
+title: "Honduras covariates by stove-use category"
+date: "15 Dec 2021"
 output: pdf_document
 ---
 
@@ -13,6 +12,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
 
 ```{r, include=FALSE}
 library(tidyverse)
+library(knitr)
 ```
 
 
@@ -41,7 +41,7 @@ summary_stats <- dataset %>%
   distinct(stove_use_3, variable, .keep_all = T) %>% 
   select(var_name, variable, stove_use_3, var_n, var_percent) %>% 
   arrange(stove_use_3, variable) 
-summary_stats
+kable(summary_stats)
 
 }
 
@@ -49,7 +49,7 @@ stove_use_summary_function("dds_cat", "Diet Diversity Score")
 stove_use_summary_function("whr_cat", "Waist/Hip Ratio")
 stove_use_summary_function("phys_act_cat", "Phys Act")
 stove_use_summary_function("bpp_cat", "Beds Per Person")
-stove_use_summary_function("ses_cat", "SES Materials")
+stove_use_summary_function("ses_cat_2", "SES Materials")
 stove_use_summary_function("age_cat_40", "Age")
 stove_use_summary_function("electricity", "Electricity")
 stove_use_summary_function("bmi_cat", "BMI")

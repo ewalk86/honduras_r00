@@ -32,6 +32,8 @@ library(influence.ME)
 library(sjstats)
 library(rptR)
 library(gamm4)
+library(ggpmisc)
+
 jvPalette <- c("#330099","#CC0066","#FF6633", 
                  "#0099CC", "#FF9900","#CC6633",
                   "#FF3366", "#33CC99", "#33999")
@@ -469,11 +471,42 @@ qqnorm(residuals(model_itt), main = "Primary model QQ Plot")
 
 
 ```{r}
+jv_palette <- c("#330099","#CC0066","#FF6633", 
+                 "#0099CC", "#FF9900","#CC6633",
+                  "#FF3366", "#33CC99", "#33999")
+
+colorblind_palette <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499", 
+                        "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888")
+
 # Load results
 itt_sbp <- read_rds("output/itt_sbp.rds")
+model_obs_sbp <- as.data.frame(table(model.frame(itt_sbp)$assigned_stove)) %>% 
+  rename(term = Var1,
+         N = Freq) %>% 
+  mutate(model = "Systolic BP")
+
 itt_dbp <- read_rds("output/itt_dbp.rds")
+model_obs_dbp <- as.data.frame(table(model.frame(itt_dbp)$assigned_stove)) %>% 
+  rename(term = Var1,
+         N = Freq) %>% 
+  mutate(model = "Diastolic BP")
+
 itt_aix <- read_rds("output/itt_aix.rds")
+model_obs_aix <- as.data.frame(table(model.frame(itt_aix)$assigned_stove)) %>% 
+  rename(term = Var1,
+         N = Freq) %>% 
+  mutate(model = "Aug Index")
+
 itt_cpp <- read_rds("output/itt_cpp.rds")
+model_obs_cpp <- as.data.frame(table(model.frame(itt_cpp)$assigned_stove)) %>% 
+  rename(term = Var1,
+         N = Freq) %>% 
+  mutate(model = "Cent Pulse Press")
+
+obs_combined <- rbind(model_obs_sbp, model_obs_dbp, model_obs_aix, model_obs_cpp) %>% 
+  rename(Model = model,
+         Stove = term) %>% 
+  select(Model, Stove, N)
 
 # Function to clean results
 results_function <- function(model_results, model_name) {
@@ -486,8 +519,8 @@ tidy_results <- tidy(model_results, conf.int = TRUE) %>%
   mutate(estimate = round(estimate, digits = 2),
          conf.low = round(conf.low, digits = 2),
          conf.high = round(conf.high, digits = 2)) %>% 
-  dplyr::select(model, term, estimate, p.value, conf.low, conf.high)
-tidy_results
+  dplyr::select(model, term, estimate, p.value, conf.low, conf.high) 
+
 }
 
 itt_sbp_tidy <- results_function(itt_sbp, "Systolic BP")
@@ -505,12 +538,15 @@ itt_plot_estimates <- itt_combined %>%
                         levels = c("Systolic BP", "Diastolic BP", 
                                    "Aug Index", "Cent Pulse Press"))) %>% 
   ggplot(aes(group = term)) +
-  geom_point(aes(x=model, y=estimate), 
-             position = position_dodge(width = 0.5), size = 4) +
-  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high), 
-             position = position_dodge(width = 0.5), size = 1.2, width = 0.5) +
+  geom_point(aes(x=model, y=estimate, color = model), 
+             position = position_dodge(width = 0.5), size = 4, 
+             show.legend = FALSE) +
+  geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = model), 
+             position = position_dodge(width = 0.5), size = 1.2, width = 0.5, 
+             show.legend = FALSE) +
   theme_bw() +  
-  geom_hline(yintercept = 0) +
+  #geom_hline(yintercept = 0) +
+  annotate("segment", x = 0, xend = 4.5, y = 0, yend = 0, size = 1.2) +
   ggtitle(label = "") +
   labs(y = "Estimate: Justa vs Traditional") +
   labs(x = "", group = "", shape = "") +
@@ -525,10 +561,13 @@ itt_plot_estimates <- itt_combined %>%
           axis.ticks = element_blank(), 
           panel.border = element_blank(), 
           panel.grid = element_blank(),
-          legend.text = element_blank(),) 
+          legend.text = element_blank()) +
+  scale_color_manual(values = colorblind_palette) +
+  annotate(geom = "table", x = 7, y = 2, label = list(obs_combined),
+           color = "black", fill = "white", size = 6)
 itt_plot_estimates
 
 # Save plot as jpg
-#ggsave("itt_plot_estimates.jpg", width = 12, height = 6.5)
+ggsave("itt_plot_estimates.jpg", width = 12, height = 6.5)
 ```
 
