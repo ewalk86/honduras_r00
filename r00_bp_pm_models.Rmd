@@ -1139,44 +1139,148 @@ colorblind_palette <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "
 
 # Load results
 kpm_sbp <- read_rds("output/kpm_sbp.rds")
+model_obs_kpm_sbp <- as.data.frame(nobs(kpm_sbp)) %>% 
+  rename(N = `nobs(kpm_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Kitchen PM")
+
 kpm_dbp <- read_rds("output/kpm_dbp.rds")
+model_obs_kpm_dbp <- as.data.frame(nobs(kpm_dbp)) %>% 
+  rename(N = `nobs(kpm_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Kitchen PM")
+
 kpm_aix <- read_rds("output/kpm_aix.rds")
 kpm_cpp <- read_rds("output/kpm_cpp.rds")
 
+
 ppm_sbp <- read_rds("output/ppm_sbp.rds")
+model_obs_ppm_sbp <- as.data.frame(nobs(ppm_sbp)) %>% 
+  rename(N = `nobs(ppm_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Personal PM")
+
 ppm_dbp <- read_rds("output/ppm_dbp.rds")
+model_obs_ppm_dbp <- as.data.frame(nobs(ppm_dbp)) %>% 
+  rename(N = `nobs(ppm_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Personal PM")
+
 ppm_aix <- read_rds("output/ppm_aix.rds")
 ppm_cpp <- read_rds("output/ppm_cpp.rds")
 
 kbc_sbp <- read_rds("output/kbc_sbp.rds")
+model_obs_kbc_sbp <- as.data.frame(nobs(kbc_sbp)) %>% 
+  rename(N = `nobs(kbc_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Kitchen BC")
+
 kbc_dbp <- read_rds("output/kbc_dbp.rds")
+model_obs_kbc_dbp <- as.data.frame(nobs(kbc_dbp)) %>% 
+  rename(N = `nobs(kbc_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Kitchen BC")
+
 kbc_aix <- read_rds("output/kbc_aix.rds")
 kbc_cpp <- read_rds("output/kbc_cpp.rds")
 
 pbc_sbp <- read_rds("output/pbc_sbp.rds")
+model_obs_pbc_sbp <- as.data.frame(nobs(pbc_sbp)) %>% 
+  rename(N = `nobs(pbc_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Personal BC")
+
 pbc_dbp <- read_rds("output/pbc_dbp.rds")
+model_obs_pbc_dbp <- as.data.frame(nobs(pbc_dbp)) %>% 
+  rename(N = `nobs(pbc_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Personal BC")
+
 pbc_aix <- read_rds("output/pbc_aix.rds")
 pbc_cpp <- read_rds("output/pbc_cpp.rds")
 
 kpm_lta_sbp <- read_rds("output/kpm_lta_sbp.rds")
+model_obs_kpm_lta_sbp <- as.data.frame(nobs(kpm_lta_sbp)) %>% 
+  rename(N = `nobs(kpm_lta_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Kitchen PM, LTA")
+
 kpm_lta_dbp <- read_rds("output/kpm_lta_dbp.rds")
+model_obs_kpm_lta_dbp <- as.data.frame(nobs(kpm_lta_dbp)) %>% 
+  rename(N = `nobs(kpm_lta_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Kitchen PM, LTA")
+
 kpm_lta_aix <- read_rds("output/kpm_lta_aix.rds")
 kpm_lta_cpp <- read_rds("output/kpm_lta_cpp.rds")
 
 ppm_lta_sbp <- read_rds("output/ppm_lta_sbp.rds")
+model_obs_ppm_lta_sbp <- as.data.frame(nobs(ppm_lta_sbp)) %>% 
+  rename(N = `nobs(ppm_lta_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Personal PM, LTA")
+
 ppm_lta_dbp <- read_rds("output/ppm_lta_dbp.rds")
+model_obs_ppm_lta_dbp <- as.data.frame(nobs(ppm_lta_dbp)) %>% 
+  rename(N = `nobs(ppm_lta_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Personal PM, LTA")
+
 ppm_lta_aix <- read_rds("output/ppm_lta_aix.rds")
 ppm_lta_cpp <- read_rds("output/ppm_lta_cpp.rds")
 
 kbc_lta_sbp <- read_rds("output/kbc_lta_sbp.rds")
+model_obs_kbc_lta_sbp <- as.data.frame(nobs(kbc_lta_sbp)) %>% 
+  rename(N = `nobs(kbc_lta_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Kitchen BC, LTA")
+
 kbc_lta_dbp <- read_rds("output/kbc_lta_dbp.rds")
+model_obs_kbc_lta_dbp <- as.data.frame(nobs(kbc_lta_dbp)) %>% 
+  rename(N = `nobs(kbc_lta_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Kitchen BC, LTA")
+
 kbc_lta_aix <- read_rds("output/kbc_lta_aix.rds")
 kbc_lta_cpp <- read_rds("output/kbc_lta_cpp.rds")
 
 pbc_lta_sbp <- read_rds("output/pbc_lta_sbp.rds")
+model_obs_pbc_lta_sbp <- as.data.frame(nobs(pbc_lta_sbp)) %>% 
+  rename(N = `nobs(pbc_lta_sbp)`) %>% 
+  mutate(model = "Systolic BP",
+         Exposure = "Personal BC, LTA")
+
 pbc_lta_dbp <- read_rds("output/pbc_lta_dbp.rds")
+model_obs_pbc_lta_dbp <- as.data.frame(nobs(pbc_lta_dbp)) %>% 
+  rename(N = `nobs(pbc_lta_dbp)`) %>% 
+  mutate(model = "Diastolic BP",
+         Exposure = "Personal BC, LTA")
+
 pbc_lta_aix <- read_rds("output/pbc_lta_aix.rds")
 pbc_lta_cpp <- read_rds("output/pbc_lta_cpp.rds")
+
+pm_obs_combined <- rbind(model_obs_kpm_sbp, model_obs_kpm_dbp,
+                         model_obs_ppm_sbp, model_obs_ppm_dbp,
+                         model_obs_kpm_lta_sbp, model_obs_kpm_lta_dbp,
+                         model_obs_ppm_lta_sbp, model_obs_ppm_lta_dbp) %>% 
+  rename(Model = model) %>% 
+  select(Model, Exposure, N) %>% 
+  mutate(Model = factor(Model, levels = c("Systolic BP", "Diastolic BP")),
+         Exposure = factor(Exposure, levels = c("Kitchen PM", "Kitchen PM, LTA",
+                                      "Personal PM", "Personal PM, LTA"))) %>% 
+  arrange(Model, Exposure)
+
+bc_obs_combined <- rbind(model_obs_kbc_sbp, model_obs_kbc_dbp,
+                         model_obs_pbc_sbp, model_obs_pbc_dbp,
+                         model_obs_kbc_lta_sbp, model_obs_kbc_lta_dbp,
+                         model_obs_pbc_lta_sbp, model_obs_pbc_lta_dbp) %>% 
+  rename(Model = model) %>% 
+  select(Model, Exposure, N) %>% 
+  mutate(Model = factor(Model, levels = c("Systolic BP", "Diastolic BP")),
+         Exposure = factor(Exposure, levels = c("Kitchen BC", "Kitchen BC, LTA",
+                                      "Personal BC", "Personal BC, LTA"))) %>% 
+  arrange(Model, Exposure)
+
 
 # Function to clean results
 results_function <- function(model_results, model_name) {
@@ -1291,43 +1395,39 @@ bc_lta_combined <- rbind(kbc_lta_sbp_tidy, kbc_lta_dbp_tidy,
                          pbc_lta_aix_tidy, pbc_lta_cpp_tidy)
 
 
-all_pm_combined <- rbind(kpm_sbp_tidy, kpm_dbp_tidy, kpm_aix_tidy, kpm_cpp_tidy,
-                     ppm_sbp_tidy, ppm_dbp_tidy, ppm_aix_tidy, ppm_cpp_tidy,
+all_pm_combined <- rbind(kpm_sbp_tidy, kpm_dbp_tidy,
+                     ppm_sbp_tidy, ppm_dbp_tidy,
                      kpm_lta_sbp_tidy, kpm_lta_dbp_tidy, 
-                     kpm_lta_aix_tidy, kpm_lta_cpp_tidy,
-                     ppm_lta_sbp_tidy, ppm_lta_dbp_tidy, 
-                     ppm_lta_aix_tidy, ppm_lta_cpp_tidy)
+                     ppm_lta_sbp_tidy, ppm_lta_dbp_tidy)
 
-all_bc_combined <- rbind(kbc_sbp_tidy, kbc_dbp_tidy, kbc_aix_tidy, kbc_cpp_tidy,
-                     pbc_sbp_tidy, pbc_dbp_tidy, pbc_aix_tidy, pbc_cpp_tidy,
+all_bc_combined <- rbind(kbc_sbp_tidy, kbc_dbp_tidy, 
+                     pbc_sbp_tidy, pbc_dbp_tidy, 
                      kbc_lta_sbp_tidy, kbc_lta_dbp_tidy, 
-                     kbc_lta_aix_tidy, kbc_lta_cpp_tidy,
-                     pbc_lta_sbp_tidy, pbc_lta_dbp_tidy, 
-                     pbc_lta_aix_tidy, pbc_lta_cpp_tidy)
+                     pbc_lta_sbp_tidy, pbc_lta_dbp_tidy)
 
 
 
 # Plot results
 pm_plot_estimates <- all_pm_combined %>%
   mutate(model = factor(model,
-                        levels = c("Systolic BP", "Diastolic BP", 
-                                   "Aug Index", "Cent Pulse Press"))) %>% 
+                        levels = c("Systolic BP", "Diastolic BP"))) %>% 
   ggplot(aes()) +
   geom_point(aes(x=model, y=estimate, color = term, shape = term), 
-             position = position_dodge(width = 0.5), size = 4) +
+             position = position_dodge(width = 0.5), size = 6) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = term), 
-             position = position_dodge(width = 0.5), size = 1.2, width = 0.5,
+             position = position_dodge(width = 0.5), size = 1.3, width = 0.5,
                     show.legend = FALSE) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
   ggtitle(label = "") +
   labs(y = "Estimate: per ln increase in PM2.5") +
   labs(x = "", group = "", shape = "") +
+  scale_y_continuous(breaks = c(seq(-1, 2, 0.5)), labels = c(seq(-1, 2, 0.5))) +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_text(size = 24, colour = "black", angle = 45,
-                                     hjust = 1, vjust = .8),
-          axis.text.y = element_text(size = 24, colour = "black"),
-          axis.title.y = element_text(size = 24,
+          axis.text.x = element_text(size = 26, colour = "black", angle = 25,
+                                     hjust = 0.5, vjust = 0.5),
+          axis.text.y = element_text(size = 26, colour = "black"),
+          axis.title.y = element_text(size = 26,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1340,32 +1440,34 @@ pm_plot_estimates <- all_pm_combined %>%
   scale_color_manual(values = colorblind_palette,
                      name = "Model") +
   scale_shape_manual(values = c(15, 16, 17, 18),
-                     name = "Model")
+                     name = "Model") +
+  annotate(geom = "table", x = 4.5, y = 1.5, label = list(pm_obs_combined),
+           color = "black", fill = "white", size = 9)
 pm_plot_estimates
 
 # Save plot as jpg
-ggsave("pm_plot_estimates.jpg", width = 12, height = 6.5)
+ggsave("pm_plot_estimates.jpg", width = 14, height = 7)
 
 bc_plot_estimates <- all_bc_combined %>%
   mutate(model = factor(model,
-                        levels = c("Systolic BP", "Diastolic BP", 
-                                   "Aug Index", "Cent Pulse Press"))) %>% 
+                        levels = c("Systolic BP", "Diastolic BP"))) %>% 
   ggplot(aes()) +
   geom_point(aes(x=model, y=estimate, color = term, shape = term), 
-             position = position_dodge(width = 0.5), size = 4) +
+             position = position_dodge(width = 0.5), size = 6) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = term), 
-             position = position_dodge(width = 0.5), size = 1.2, width = 0.5,
+             position = position_dodge(width = 0.5), size = 1.3, width = 0.5,
                     show.legend = FALSE) +
   theme_bw() +  
   geom_hline(yintercept = 0) +
   ggtitle(label = "") +
   labs(y = "Estimate: per ln increase in BC") +
   labs(x = "", group = "", shape = "") +
+  scale_y_continuous(breaks = c(seq(-0.4, 1.0, 0.2)), labels = c(seq(-0.4, 1.0, 0.2))) +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_text(size = 24, colour = "black", angle = 45,
-                                     hjust = 1, vjust = .8),
-          axis.text.y = element_text(size = 24, colour = "black"),
-          axis.title.y = element_text(size = 24,
+          axis.text.x = element_text(size = 26, colour = "black", angle = 25,
+                                     hjust = 0.5, vjust = 0.5),
+          axis.text.y = element_text(size = 26, colour = "black"),
+          axis.title.y = element_text(size = 26,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1378,9 +1480,11 @@ bc_plot_estimates <- all_bc_combined %>%
   scale_color_manual(values = c("#88CCEE", "#CC6677", "#DDCC77", "#117733"),
                      name = "Model") +
   scale_shape_manual(values = c(15, 16, 17, 18),
-                     name = "Model")
+                     name = "Model") +
+  annotate(geom = "table", x = 4.5, y = 0.8, label = list(bc_obs_combined),
+           color = "black", fill = "white", size = 9)
 bc_plot_estimates
 
 # Save plot as jpg
-ggsave("bc_plot_estimates.jpg", width = 12, height = 6.5)
+ggsave("bc_plot_estimates.jpg", width = 14, height = 7)
 ```

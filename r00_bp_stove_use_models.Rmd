@@ -1226,7 +1226,7 @@ model_obs_cpp <- as.data.frame(table(model.frame(su_cpp)$stove_use_3)) %>%
          N = Freq) %>% 
   mutate(model = "Cent Pulse Press")
 
-obs_combined <- rbind(model_obs_sbp, model_obs_dbp, model_obs_aix, model_obs_cpp) %>% 
+su_obs_combined <- rbind(model_obs_sbp, model_obs_dbp) %>% 
   rename(Model = model,
          Stove = term) %>% 
   mutate(Stove = factor(Stove,
@@ -1258,32 +1258,32 @@ su_dbp_tidy <- results_function(su_dbp, "Diastolic BP")
 su_aix_tidy <- results_function(su_aix, "Aug Index")
 su_cpp_tidy <- results_function(su_cpp, "Cent Pulse Press")
 
-su_combined <- rbind(su_sbp_tidy, su_dbp_tidy, su_aix_tidy, su_cpp_tidy)
+su_combined <- rbind(su_sbp_tidy, su_dbp_tidy)
 
 
 
 # Plot results
 su_plot_estimates <- su_combined %>%
   mutate(model = factor(model,
-                        levels = c("Systolic BP", "Diastolic BP", 
-                                   "Aug Index", "Cent Pulse Press"))) %>% 
+                        levels = c("Systolic BP", "Diastolic BP"))) %>% 
   ggplot(aes(group = term, shape = term)) +
   geom_point(aes(x=model, y=estimate, color = term, shape = term), 
-             position = position_dodge(width = 0.5), size = 4) +
+             position = position_dodge(width = 0.5), size = 6) +
   geom_errorbar(aes(x=model, ymin=conf.low, ymax=conf.high, color = term), 
-             position = position_dodge(width = 0.5), size = 1.2, width = 0.5,
+             position = position_dodge(width = 0.5), size = 1.3, width = 0.5,
              show.legend = F) +
   theme_bw() +  
   #geom_hline(yintercept = 0) +
-  annotate("segment", x = 0, xend = 4.5, y = 0, yend = 0, size = 1.2) +
+  annotate("segment", x = 0, xend = 2.5, y = 0, yend = 0, size = 1.2) +
   ggtitle(label = "") +
   labs(y = "Estimate vs traditional only stove use") +
   labs(x = "", group = "", shape = "") +
+  scale_y_continuous(breaks = c(seq(-2, 2, 0.5)), labels = c(seq(-2, 2, 0.5))) +
   theme(title = element_text(size = 16), 
-          axis.text.x = element_text(size = 24, colour = "black", angle = 45,
-                                     hjust = 1, vjust = .8),
-          axis.text.y = element_text(size = 24, colour = "black"),
-          axis.title.y = element_text(size = 24,
+          axis.text.x = element_text(size = 28, colour = "black", angle = 25,
+                                     hjust = 0.5, vjust = 0.5),
+          axis.text.y = element_text(size = 28, colour = "black"),
+          axis.title.y = element_text(size = 28,
                                       margin = margin(t = 0, r = 20, b = 0, l = 0)),
           axis.line.x = element_line(colour = "black", size = 1.2), 
           axis.line.y = element_line(colour = "black", size = 1.2), 
@@ -1297,11 +1297,11 @@ su_plot_estimates <- su_combined %>%
                      name = "Model") +
   scale_shape_manual(values = c(15, 16, 17, 18),
                      name = "Model") +
-  annotate(geom = "table", x = 7, y = 4, label = list(obs_combined),
-           color = "black", fill = "white", size = 5)
+  annotate(geom = "table", x = 4.5, y = 1.25, label = list(su_obs_combined),
+           color = "black", fill = "white", size = 9)
 su_plot_estimates
 
 # Save plot as jpg
-ggsave("su_plot_estimates.jpg", width = 12, height = 7)
+ggsave("su_plot_estimates.jpg", width = 14, height = 7)
 ```
 
